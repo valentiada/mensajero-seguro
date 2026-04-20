@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import random
+import secrets
+import time
 from typing import Any
 
 from ..repositories.casino_repository import CasinoRepository
@@ -41,6 +43,19 @@ _SLOTS_PAYOUTS = {
     ('🍋', '🍋', '🍋'):  5,
     ('🍒', '🍒', '🍒'):  3,
 }
+
+
+# ── In-memory game sessions (prod: Redis) ────────────────────────────────────
+_crash_sessions: dict[str, dict] = {}
+_mines_sessions: dict[str, dict] = {}
+_chicken_sessions: dict[str, dict] = {}
+
+
+def _cleanup_old_sessions(store: dict, max_age: float = 300.0) -> None:
+    now = time.time()
+    stale = [k for k, v in store.items() if now - v.get('started_at', now) > max_age]
+    for k in stale:
+        store.pop(k, None)
 
 
 class CasinoService:
@@ -200,6 +215,260 @@ class CasinoService:
             'new_balance': wallet['balance'] + net,
             'xp_gained': xp,
         }
+
+    # ── Crash ─────────────────────────────────────────────────────────────────
+
+    def start_crash(self, user_id: int, bet: float) -> dict:
+        _cleanup_old_sessions(_crash_sessions)
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+
+        r = random.random()
+        crash_at = 1.00 if r < 0.05 else round(max(1.01, 1 / (1 - random.random() * 0.96)), 2)
+
+        session_id = secrets.token_hex(16)
+        _crash_sessions[session_id] = {
+            'user_id': user_id, 'bet': bet, 'crash_at': crash_at,
+            'status': 'running', 'started_at': time.time(),
+        }
+        new_balance = self.repo.update_balance(user_id, -bet)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+        return {'session_id': session_id, 'new_balance': new_balance}
+
+    def cashout_crash(self, user_id: int, session_id: str, mult: float) -> dict:
+        sess = _crash_sessions.get(session_id)
+        if not sess:
+            raise ValueError('Сесія не знайдена.')
+        if sess['user_id'] != user_id:
+            raise ValueError('Доступ заборонено.')
+        if sess['status'] != 'running':
+            raise ValueError('Гра вже завершена.')
+
+        crash_at = sess['crash_at']
+        bet = sess['bet']
+        elapsed = time.time() - sess['started_at']
+        max_mult = round(1.04 ** (elapsed * 10 + 3), 2)
+        mult = min(mult, max_mult)
+
+        crashed = mult >= crash_at
+        cashed_at = crash_at if crashed else round(mult, 2)
+        win = 0.0 if crashed else round(bet * cashed_at, 2)
+
+        if win > 0:
+            new_balance = self.repo.update_balance(user_id, win)
+            self.repo.add_bet_stats(user_id, bet, win)
+            self.repo.upsert_leaderboard(user_id, win)
+        else:
+            new_balance = self.repo.ensure_wallet(user_id)['balance']
+            self.repo.add_bet_stats(user_id, bet, 0)
+
+        self.repo.save_game(user_id, 'crash', bet, win, {
+            'crash_at': crash_at, 'cashed_at': cashed_at, 'crashed': crashed,
+        })
+        _crash_sessions.pop(session_id, None)
+        return {
+            'crashed': crashed, 'crash_at': crash_at, 'cashed_at': cashed_at,
+            'win': win, 'bet': bet, 'net': win - bet, 'new_balance': new_balance,
+        }
+
+    # ── Mines ─────────────────────────────────────────────────────────────────
+
+    MINES_GRID = 25
+
+    def start_mines(self, user_id: int, bet: float, mine_count: int) -> dict:
+        _cleanup_old_sessions(_mines_sessions)
+        if mine_count < 1 or mine_count > 24:
+            raise ValueError('Кількість мін: 1–24.')
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+
+        mine_set: set[int] = set()
+        while len(mine_set) < mine_count:
+            mine_set.add(random.randint(0, self.MINES_GRID - 1))
+
+        session_id = secrets.token_hex(16)
+        _mines_sessions[session_id] = {
+            'user_id': user_id, 'bet': bet, 'mine_count': mine_count,
+            'mines': mine_set, 'revealed': set(), 'status': 'playing',
+            'started_at': time.time(),
+        }
+        new_balance = self.repo.update_balance(user_id, -bet)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+        return {'session_id': session_id, 'new_balance': new_balance, 'mine_count': mine_count}
+
+    def reveal_mines_tile(self, user_id: int, session_id: str, tile: int) -> dict:
+        sess = _mines_sessions.get(session_id)
+        if not sess:
+            raise ValueError('Сесія не знайдена.')
+        if sess['user_id'] != user_id:
+            raise ValueError('Доступ заборонено.')
+        if sess['status'] != 'playing':
+            raise ValueError('Гра вже завершена.')
+        if tile < 0 or tile >= self.MINES_GRID:
+            raise ValueError('Невірний індекс клітинки.')
+        if tile in sess['revealed']:
+            raise ValueError('Клітинка вже відкрита.')
+
+        sess['revealed'].add(tile)
+        is_mine = tile in sess['mines']
+
+        if is_mine:
+            sess['status'] = 'lost'
+            self.repo.add_bet_stats(user_id, sess['bet'], 0)
+            self.repo.save_game(user_id, 'mines', sess['bet'], 0, {
+                'mine_count': sess['mine_count'],
+                'revealed': len(sess['revealed']),
+                'mines': sorted(sess['mines']),
+            })
+            _mines_sessions.pop(session_id, None)
+            return {
+                'is_mine': True, 'tile': tile,
+                'mines': sorted(sess['mines']),
+                'new_balance': self.repo.ensure_wallet(user_id)['balance'],
+            }
+
+        gems = len(sess['revealed'])
+        mult = self._mines_mult(gems, sess['mine_count'])
+        return {'is_mine': False, 'tile': tile, 'gems': gems, 'mult': mult}
+
+    def cashout_mines(self, user_id: int, session_id: str) -> dict:
+        sess = _mines_sessions.get(session_id)
+        if not sess:
+            raise ValueError('Сесія не знайдена.')
+        if sess['user_id'] != user_id:
+            raise ValueError('Доступ заборонено.')
+        if sess['status'] != 'playing':
+            raise ValueError('Гра вже завершена.')
+        if not sess['revealed']:
+            raise ValueError('Відкрийте хоча б одну клітинку.')
+
+        bet = sess['bet']
+        mult = self._mines_mult(len(sess['revealed']), sess['mine_count'])
+        win = round(bet * mult, 2)
+        new_balance = self.repo.update_balance(user_id, win)
+        self.repo.add_bet_stats(user_id, bet, win)
+        if win >= 5000:
+            self.repo.unlock_achievement(user_id, 'big_winner')
+        self.repo.upsert_leaderboard(user_id, win)
+        self.repo.save_game(user_id, 'mines', bet, win, {
+            'mine_count': sess['mine_count'], 'gems': len(sess['revealed']), 'mult': mult,
+        })
+        _mines_sessions.pop(session_id, None)
+        return {'mult': mult, 'win': win, 'bet': bet, 'net': win - bet, 'new_balance': new_balance}
+
+    @staticmethod
+    def _mines_mult(gems: int, mine_count: int) -> float:
+        g = CasinoService.MINES_GRID
+        m = 1.0
+        for i in range(gems):
+            m *= (g - mine_count - i) / (g - i)
+        return round(0.97 / m, 2) if m > 0 else 1.0
+
+    # ── Dice ──────────────────────────────────────────────────────────────────
+
+    def roll_dice(self, user_id: int, bet: float, target: int, direction: str) -> dict:
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+        if target < 2 or target > 97:
+            raise ValueError('Мета: 2–97.')
+        if direction not in ('over', 'under'):
+            raise ValueError("Напрямок: 'over' або 'under'.")
+
+        val = random.randint(1, 100)
+        won = (val > target) if direction == 'over' else (val < target)
+        win_chance = (100 - target) if direction == 'over' else target
+        payout = round(98 / win_chance, 4)
+        win = round(bet * payout, 2) if won else 0.0
+
+        net = win - bet
+        new_balance = self.repo.update_balance(user_id, net)
+        self.repo.add_bet_stats(user_id, bet, win)
+        xp = max(1, int(bet / 20))
+        self.repo.add_xp(user_id, xp)
+        self.repo.save_game(user_id, 'dice', bet, win, {
+            'result': val, 'target': target, 'direction': direction, 'won': won,
+        })
+        if win >= 5000:
+            self.repo.unlock_achievement(user_id, 'big_winner')
+        if won:
+            self.repo.upsert_leaderboard(user_id, win)
+
+        return {
+            'result': val, 'won': won, 'win': win, 'bet': bet,
+            'net': net, 'payout': payout, 'new_balance': new_balance,
+        }
+
+    # ── Chicken Road ──────────────────────────────────────────────────────────
+
+    _CHICKEN_RISKS = [0.05, 0.08, 0.10, 0.13, 0.16, 0.20, 0.24, 0.28, 0.33, 0.40]
+    _CHICKEN_MULTS = [1.5, 2.2, 3.0, 4.2, 5.8, 8.0, 11.0, 16.0, 22.0, 30.0]
+
+    def start_chicken(self, user_id: int, bet: float) -> dict:
+        _cleanup_old_sessions(_chicken_sessions)
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+
+        cars = [random.random() < risk for risk in self._CHICKEN_RISKS]
+        session_id = secrets.token_hex(16)
+        _chicken_sessions[session_id] = {
+            'user_id': user_id, 'bet': bet, 'cars': cars,
+            'lane': 0, 'status': 'playing', 'started_at': time.time(),
+        }
+        new_balance = self.repo.update_balance(user_id, -bet)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+        return {'session_id': session_id, 'new_balance': new_balance}
+
+    def step_chicken(self, user_id: int, session_id: str) -> dict:
+        sess = _chicken_sessions.get(session_id)
+        if not sess:
+            raise ValueError('Сесія не знайдена.')
+        if sess['user_id'] != user_id:
+            raise ValueError('Доступ заборонено.')
+        if sess['status'] != 'playing':
+            raise ValueError('Гра вже завершена.')
+
+        lane = sess['lane']
+        if lane >= len(self._CHICKEN_RISKS):
+            raise ValueError('Курка вже на фініші.')
+
+        hit = sess['cars'][lane]
+        if hit:
+            sess['status'] = 'hit'
+            self.repo.add_bet_stats(user_id, sess['bet'], 0)
+            self.repo.save_game(user_id, 'chicken', sess['bet'], 0, {'hit_lane': lane, 'cars': sess['cars']})
+            _chicken_sessions.pop(session_id, None)
+            return {'hit': True, 'lane': lane, 'cars': sess['cars'],
+                    'new_balance': self.repo.ensure_wallet(user_id)['balance']}
+
+        sess['lane'] = lane + 1
+        mult = self._CHICKEN_MULTS[lane]
+        finished = sess['lane'] >= len(self._CHICKEN_RISKS)
+        if finished:
+            return self._chicken_cashout(sess, session_id, user_id, mult)
+        return {'hit': False, 'lane': sess['lane'], 'mult': mult}
+
+    def cashout_chicken(self, user_id: int, session_id: str) -> dict:
+        sess = _chicken_sessions.get(session_id)
+        if not sess:
+            raise ValueError('Сесія не знайдена.')
+        if sess['user_id'] != user_id:
+            raise ValueError('Доступ заборонено.')
+        if sess['status'] != 'playing':
+            raise ValueError('Гра вже завершена.')
+        if sess['lane'] == 0:
+            raise ValueError('Потрібно зробити хоча б один крок.')
+        mult = self._CHICKEN_MULTS[sess['lane'] - 1]
+        return self._chicken_cashout(sess, session_id, user_id, mult)
+
+    def _chicken_cashout(self, sess: dict, session_id: str, user_id: int, mult: float) -> dict:
+        bet = sess['bet']
+        win = round(bet * mult, 2)
+        new_balance = self.repo.update_balance(user_id, win)
+        self.repo.add_bet_stats(user_id, bet, win)
+        self.repo.upsert_leaderboard(user_id, win)
+        self.repo.save_game(user_id, 'chicken', bet, win, {'lane': sess['lane'], 'mult': mult})
+        _chicken_sessions.pop(session_id, None)
+        return {'hit': False, 'cashed': True, 'mult': mult, 'win': win, 'net': win - bet, 'new_balance': new_balance}
 
     # ── Achievements ──────────────────────────────────────────────────────────
 

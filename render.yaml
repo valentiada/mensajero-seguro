@@ -1,12 +1,10 @@
 services:
   - type: web
     name: weego-messenger
-    runtime: python
-    buildCommand: |
-      pip install -r requirements.txt
-      npm ci
-      npm run build
-    startCommand: gunicorn "backend.app:app" --workers 2 --threads 4 --worker-class gthread --bind 0.0.0.0:$PORT --timeout 120 --log-level info
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    startCommand: gunicorn backend.app:app --workers 2 --threads 4 --worker-class gthread --bind 0.0.0.0:$PORT --timeout 120 --log-level info
     healthCheckPath: /api/ping
     envVars:
       - key: DATABASE_URL

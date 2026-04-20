@@ -10,9 +10,11 @@ class UserRepository:
         return query_one('SELECT * FROM users WHERE id = ?', (user_id,))
 
     def get_by_phone_or_email(self, identity: str) -> dict | None:
+        # Email is stored lowercase, so normalize for comparison
+        identity_lower = identity.lower()
         return query_one(
-            'SELECT * FROM users WHERE phone = ? OR email = ?',
-            (identity, identity),
+            'SELECT * FROM users WHERE phone = ? OR LOWER(email) = ?',
+            (identity, identity_lower),
         )
 
     def create_user(self, full_name: str, phone: str, email: str, password_hash: str) -> int:

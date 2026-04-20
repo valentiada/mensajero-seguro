@@ -26,7 +26,7 @@ class AuthService:
         phone = data['phone'].strip()
         email = data['email'].strip().lower()
 
-        if self.users.get_by_phone_or_email(phone) or self.users.get_by_phone_or_email(email):
+        if self.users.get_by_phone_or_email(phone):
             raise ValueError('Користувач з таким телефоном або email вже існує.')
 
         user_id = self.users.create_user(
@@ -35,7 +35,7 @@ class AuthService:
             email=email,
             password_hash=hash_password(data['password']),
         )
-        return self.login({'identity': phone, 'password': data['password']})
+        return self.login({'identity': email, 'password': data['password']})
 
     def login(self, data: dict) -> dict:
         require_fields(data, ['identity', 'password'])

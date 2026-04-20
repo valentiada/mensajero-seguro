@@ -187,7 +187,7 @@ function guessCountryFromLang(lang: LangCode): Country {
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Role = 'soldier' | 'operator' | 'admin';
-type SidebarTab = 'chats' | 'casino' | 'profile';
+type SidebarTab = 'chats' | 'casino' | 'profile' | 'admin';
 type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'deposit' | 'leaderboard' | 'history';
 
 interface User {
@@ -2021,9 +2021,10 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
 
 // ─── Casino Lobby ─────────────────────────────────────────────────────────────
 
-function CasinoLobby({ wallet, onSelectGame, token, notify }: {
+function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
   wallet: CasinoWallet;
   onSelectGame: (g: CasinoView) => void;
+  onWalletUpdate: (w: Partial<CasinoWallet>) => void;
   token: string;
   notify: (m: string) => void;
 }) {
@@ -2056,13 +2057,28 @@ function CasinoLobby({ wallet, onSelectGame, token, notify }: {
     });
   }, []);
 
-  const BONUSES = [
-    { day: 1, amount: 50,  claimed: true },
-    { day: 2, amount: 100, claimed: false },
-    { day: 3, amount: 200, claimed: false },
-    { day: 4, amount: 300, claimed: false },
-    { day: 5, amount: 500, claimed: false },
-  ];
+  type BonusDay = { day: number; amount: number; claimed: boolean; today: boolean };
+  type BonusStatus = { claimed_today: boolean; streak: number; next_amount: number; days: BonusDay[] };
+  const [bonus, setBonus] = useState<BonusStatus | null>(null);
+  const [claiming, setClaiming] = useState(false);
+
+  useEffect(() => {
+    api<BonusStatus>('/casino/daily-bonus', {}, token).then(r => {
+      if (r.ok && r.data) setBonus(r.data);
+    });
+  }, [token]);
+
+  async function claimBonus() {
+    setClaiming(true);
+    const r = await api<BonusStatus & { amount: number; new_balance: number }>(
+      '/casino/daily-bonus/claim', { method: 'POST' }, token,
+    );
+    setClaiming(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    onWalletUpdate({ balance: r.data!.new_balance });
+    notify(`🎁 +${fmtCoins(r.data!.amount)} — День ${r.data!.streak}!`);
+    setBonus(r.data!);
+  }
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4 bg-[#0B1A12]">
@@ -2103,30 +2119,42 @@ function CasinoLobby({ wallet, onSelectGame, token, notify }: {
 
       {/* Daily bonuses */}
       <div>
-        <div className="font-black text-[10px] uppercase tracking-widest text-[#E8F2EA]/50 mb-2 px-1">Щоденні бонуси</div>
+        <div className="flex items-center justify-between mb-2 px-1">
+          <div className="font-black text-[10px] uppercase tracking-widest text-[#E8F2EA]/50">Щоденні бонуси</div>
+          {bonus && <div className="font-mono text-[10px] text-[#E4A24B]">🔥 Стрік {bonus.streak} дн.</div>}
+        </div>
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1">
-          {BONUSES.map(b => (
-            <button key={b.day} disabled={b.claimed}
-              onClick={() => !b.claimed && notify(`+${b.amount} ₮ отримано`)}
-              className="shrink-0 w-[142px] rounded-xl p-3 text-left cursor-pointer disabled:cursor-default transition-all"
-              style={{
-                background: b.claimed ? '#112A1C' : '#163524',
-                border: `1px solid ${b.claimed ? 'rgba(255,255,255,0.06)' : 'rgba(228,162,75,0.3)'}`,
-                opacity: b.claimed ? 0.5 : 1,
-              }}>
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                  style={{ background: b.claimed ? '#163524' : 'rgba(228,162,75,0.2)' }}>
-                  <Gift size={14} style={{ color: b.claimed ? '#6b7c6d' : '#E4A24B' }} />
+          {(bonus?.days ?? []).map(b => {
+            const isToday = b.today && !bonus?.claimed_today;
+            const isCurrent = b.today;
+            return (
+              <button key={b.day}
+                disabled={b.claimed || (isCurrent && (bonus?.claimed_today ?? true)) || (!isCurrent && !b.today)}
+                onClick={isToday ? claimBonus : undefined}
+                className="shrink-0 w-[130px] rounded-xl p-3 text-left transition-all"
+                style={{
+                  background: b.claimed ? '#0d1a10' : isCurrent ? '#163524' : '#0f1e14',
+                  border: `1px solid ${b.claimed ? 'rgba(255,255,255,0.04)' : isCurrent ? 'rgba(228,162,75,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                  opacity: (!b.claimed && !isCurrent) ? 0.45 : 1,
+                  cursor: isToday ? 'pointer' : 'default',
+                  boxShadow: isCurrent && !bonus?.claimed_today ? '0 0 12px rgba(228,162,75,0.15)' : undefined,
+                }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style={{ background: b.claimed ? '#163524' : 'rgba(228,162,75,0.15)' }}>
+                    {b.claimed ? <span className="text-sm">✅</span> : <Gift size={14} style={{ color: '#E4A24B' }} />}
+                  </div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-[#E8F2EA]/60">День {b.day}</div>
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-widest text-[#E8F2EA]/60">День {b.day}</div>
-              </div>
-              <div className="mt-2 font-black text-base" style={{ color: b.claimed ? '#6b7c6d' : '#E4A24B' }}>
-                +{b.amount} ₮
-              </div>
-              <div className="font-mono text-[10px] text-[#E8F2EA]/40 mt-0.5">{b.claimed ? 'Отримано' : 'Забрати'}</div>
-            </button>
-          ))}
+                <div className="mt-2 font-black text-base" style={{ color: b.claimed ? '#4caf7d' : '#E4A24B' }}>
+                  +{b.amount} ₮
+                </div>
+                <div className="font-mono text-[10px] text-[#E8F2EA]/40 mt-0.5">
+                  {b.claimed ? 'Отримано' : isToday ? (claiming ? '⏳…' : 'Забрати!') : isCurrent && bonus?.claimed_today ? 'Завтра' : '—'}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -2424,6 +2452,254 @@ function HistoryView({ token }: { token: string }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Admin Panel ─────────────────────────────────────────────────────────────
+
+type AdminTab = 'stats' | 'withdrawals' | 'users' | 'adjust';
+
+function AdminView({ token, userRole, notify }: { token: string; userRole: Role; notify: (m: string) => void }) {
+  const [tab, setTab] = useState<AdminTab>('stats');
+
+  const TABS: { key: AdminTab; label: string; icon: string; adminOnly?: boolean }[] = [
+    { key: 'stats',       label: 'Статистика', icon: '📊' },
+    { key: 'withdrawals', label: 'Виводи',     icon: '💸' },
+    { key: 'users',       label: 'Гравці',     icon: '👥', adminOnly: true },
+    { key: 'adjust',      label: 'Баланс',     icon: '⚙️', adminOnly: true },
+  ].filter(t => !t.adminOnly || userRole === 'admin');
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-[#0B1A12]">
+      {/* Tab bar */}
+      <div className="flex gap-1 px-3 py-2 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest cursor-pointer transition-all"
+            style={{
+              background: tab === t.key ? 'rgba(228,162,75,0.15)' : 'transparent',
+              color: tab === t.key ? '#E4A24B' : 'rgba(232,242,234,0.4)',
+              border: `1px solid ${tab === t.key ? 'rgba(228,162,75,0.3)' : 'transparent'}`,
+            }}>
+            <span>{t.icon}</span>{t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'stats'       && <AdminStats token={token} />}
+      {tab === 'withdrawals' && <AdminWithdrawals token={token} notify={notify} />}
+      {tab === 'users'       && <AdminUsers token={token} notify={notify} />}
+      {tab === 'adjust'      && <AdminAdjust token={token} notify={notify} />}
+    </div>
+  );
+}
+
+function AdminStats({ token }: { token: string }) {
+  type Stats = { total_users: number; active_today: number; total_wagered: number; total_won: number; house_edge_pct: number; games_today: number; total_deposits_usdt: number; deposits_today: number; pending_deposits: number };
+  const [s, setS] = useState<Stats | null>(null);
+
+  useEffect(() => {
+    api<Stats>('/admin/stats', {}, token).then(r => { if (r.ok && r.data) setS(r.data); });
+  }, [token]);
+
+  if (!s) return <div className="flex-1 flex items-center justify-center font-mono text-sm text-[#E8F2EA]/30 animate-pulse">Завантаження…</div>;
+
+  const cards = [
+    { label: 'Гравців',      value: s.total_users,             color: '#E8F2EA' },
+    { label: 'Активних сьогодні', value: s.active_today,       color: '#5BBE8A' },
+    { label: 'Ставок всього', value: fmtCoins(s.total_wagered), color: '#E4A24B' },
+    { label: 'Виплачено',    value: fmtCoins(s.total_won),     color: '#E54B5E' },
+    { label: 'Перевага казино', value: `${s.house_edge_pct}%`, color: '#5BBE8A' },
+    { label: 'Ігор сьогодні', value: s.games_today,            color: '#E8F2EA' },
+    { label: 'Депозитів USDT', value: fmtCoins(s.total_deposits_usdt), color: '#E4A24B' },
+    { label: 'Депозитів сьогодні', value: fmtCoins(s.deposits_today), color: '#5BBE8A' },
+  ];
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="grid grid-cols-2 gap-2">
+        {cards.map(c => (
+          <div key={c.label} className="rounded-xl px-4 py-3"
+            style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="font-mono text-[9px] text-[#E8F2EA]/40 uppercase mb-1">{c.label}</div>
+            <div className="font-black text-lg" style={{ color: c.color }}>{c.value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminWithdrawals({ token, notify }: { token: string; notify: (m: string) => void }) {
+  type WD = { id: number; user_id: number; full_name: string; amount_usdt: number; address: string; status: string; created_at: string };
+  const [rows, setRows] = useState<WD[]>([]);
+  const [statusFilter, setStatusFilter] = useState('pending');
+  const [processing, setProcessing] = useState<number | null>(null);
+  const [txHash, setTxHash] = useState<Record<number, string>>({});
+
+  const load = () => api<WD[]>(`/admin/withdrawals?status=${statusFilter}`, {}, token).then(r => { if (r.ok && r.data) setRows(r.data); });
+  useEffect(() => { load(); }, [statusFilter, token]);
+
+  async function process(id: number, action: 'approve' | 'reject') {
+    setProcessing(id);
+    const r = await api(`/admin/withdrawals/${id}/process`, {
+      method: 'POST',
+      body: JSON.stringify({ action, tx_hash: txHash[id] || '' }),
+    }, token);
+    setProcessing(null);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    notify(action === 'approve' ? '✅ Підтверджено' : '❌ Відхилено');
+    load();
+  }
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex gap-1.5 px-3 py-2 shrink-0">
+        {['pending', 'done', 'rejected'].map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className="px-3 py-1 rounded-lg font-mono text-[10px] uppercase tracking-widest cursor-pointer transition-all"
+            style={{ background: statusFilter === s ? 'rgba(228,162,75,0.15)' : 'rgba(255,255,255,0.04)', color: statusFilter === s ? '#E4A24B' : 'rgba(232,242,234,0.4)', border: `1px solid ${statusFilter === s ? 'rgba(228,162,75,0.3)' : 'transparent'}` }}>
+            {s}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-2">
+        {rows.length === 0 && <div className="text-center font-mono text-xs text-[#E8F2EA]/30 mt-8">Немає заявок</div>}
+        {rows.map(w => (
+          <div key={w.id} className="rounded-xl p-3 flex flex-col gap-2"
+            style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-black text-xs text-[#E8F2EA]">{w.full_name}</div>
+                <div className="font-mono text-[10px] text-[#E8F2EA]/40">{new Date(w.created_at).toLocaleString('uk')}</div>
+              </div>
+              <div className="font-black text-sm text-[#E4A24B]">{w.amount_usdt} USDT</div>
+            </div>
+            <div className="font-mono text-[10px] text-[#E8F2EA]/50 break-all">{w.address}</div>
+            {w.status === 'pending' && (
+              <div className="flex flex-col gap-1.5">
+                <input className="u24-input font-mono text-xs" placeholder="tx_hash (0x…)" value={txHash[w.id] || ''}
+                  onChange={e => setTxHash(h => ({ ...h, [w.id]: e.target.value }))} />
+                <div className="flex gap-2">
+                  <button onClick={() => process(w.id, 'approve')} disabled={processing === w.id || !txHash[w.id]}
+                    className="flex-1 py-2 rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer disabled:opacity-40 transition-all"
+                    style={{ background: 'rgba(76,175,125,0.15)', color: '#4caf7d', border: '1px solid rgba(76,175,125,0.3)' }}>
+                    {processing === w.id ? '⏳' : '✅ Підтвердити'}
+                  </button>
+                  <button onClick={() => process(w.id, 'reject')} disabled={processing === w.id}
+                    className="flex-1 py-2 rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer disabled:opacity-40 transition-all"
+                    style={{ background: 'rgba(229,75,94,0.1)', color: '#E54B5E', border: '1px solid rgba(229,75,94,0.2)' }}>
+                    ❌ Відхилити
+                  </button>
+                </div>
+              </div>
+            )}
+            {w.status !== 'pending' && (
+              <span className="font-mono text-[10px] font-bold" style={{ color: w.status === 'done' ? '#4caf7d' : '#E54B5E' }}>
+                {w.status === 'done' ? '✅ Виконано' : '❌ Відхилено'}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminUsers({ token, notify }: { token: string; notify: (m: string) => void }) {
+  type URow = { id: number; full_name: string; phone: string; email: string; role: string; balance?: number };
+  const [rows, setRows] = useState<URow[]>([]);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    api<{ users: URow[] }>('/admin/users', {}, token).then(r => { if (r.ok && r.data) setRows(r.data.users ?? []); });
+  }, [token]);
+
+  async function setRole(userId: number, role: string) {
+    const r = await api(`/admin/users/${userId}/role`, { method: 'PUT', body: JSON.stringify({ role }) }, token);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    setRows(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
+    notify('✅ Роль змінено');
+  }
+
+  const filtered = rows.filter(u =>
+    !search || u.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    (u.phone || '').includes(search) || (u.email || '').includes(search),
+  );
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="px-3 py-2 shrink-0">
+        <input className="u24-input text-sm" placeholder="Пошук за ім'ям / телефоном…" value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+      <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-2">
+        {filtered.map(u => (
+          <div key={u.id} className="rounded-xl px-3 py-2.5 flex items-center gap-3"
+            style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm shrink-0"
+              style={{ background: 'rgba(228,162,75,0.12)', color: '#E4A24B' }}>
+              {(u.full_name || '?')[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-black text-xs text-[#E8F2EA] truncate">{u.full_name}</div>
+              <div className="font-mono text-[10px] text-[#E8F2EA]/40 truncate">{u.phone || u.email}</div>
+            </div>
+            <select value={u.role} onChange={e => setRole(u.id, e.target.value)}
+              className="font-mono text-[10px] rounded-lg px-2 py-1 cursor-pointer"
+              style={{ background: '#0B1A12', color: '#E4A24B', border: '1px solid rgba(228,162,75,0.25)' }}>
+              {['soldier', 'operator', 'admin', 'banned'].map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminAdjust({ token, notify }: { token: string; notify: (m: string) => void }) {
+  const [userId, setUserId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    if (!userId || !amount) { notify('Заповніть всі поля.'); return; }
+    setLoading(true);
+    const r = await api('/admin/payments/adjust', {
+      method: 'POST', body: JSON.stringify({ user_id: +userId, amount: +amount, note }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    notify(`✅ Баланс оновлено: user ${userId} ${+amount > 0 ? '+' : ''}${amount}`);
+    setUserId(''); setAmount(''); setNote('');
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      <div className="rounded-xl p-4 flex flex-col gap-3"
+        style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="font-black text-xs text-[#E8F2EA] uppercase tracking-widest mb-1">Коригування балансу</div>
+        <div>
+          <label className="block font-mono text-[10px] text-[#E8F2EA]/40 uppercase mb-1">User ID</label>
+          <input className="u24-input" type="number" placeholder="123" value={userId} onChange={e => setUserId(e.target.value)} />
+        </div>
+        <div>
+          <label className="block font-mono text-[10px] text-[#E8F2EA]/40 uppercase mb-1">Сума (+ зарахувати / − списати)</label>
+          <input className="u24-input" type="number" placeholder="+500 або -100" value={amount} onChange={e => setAmount(e.target.value)} />
+        </div>
+        <div>
+          <label className="block font-mono text-[10px] text-[#E8F2EA]/40 uppercase mb-1">Примітка</label>
+          <input className="u24-input" placeholder="Причина" value={note} onChange={e => setNote(e.target.value)} />
+        </div>
+        <button onClick={submit} disabled={loading}
+          className="u24-button-gold py-3 text-sm disabled:opacity-50">
+          {loading ? '⏳ Зберігаємо…' : '⚡ Застосувати'}
+        </button>
+      </div>
+      <div className="font-mono text-[10px] text-[#E8F2EA]/30 leading-relaxed px-1">
+        Зміни фіксуються в audit_log. Негативна сума списує кошти, позитивна — зараховує. Мінімальний баланс = 0.
+      </div>
     </div>
   );
 }
@@ -2988,11 +3264,14 @@ export default function App() {
 
   // ── AppTabBar ─────────────────────────────────────────────
   const AppTabBar = () => {
-    const tabs = [
-      { key: 'chats' as SidebarTab, icon: <MessageCircle size={17} />, label: 'Чати', badge: totalUnread },
-      { key: 'casino' as SidebarTab, icon: <Zap size={17} />, label: 'Казино', badge: 0 },
-      { key: 'profile' as SidebarTab, icon: <Award size={17} />, label: 'Профіль', badge: 0 },
+    const tabs: { key: SidebarTab; icon: React.ReactNode; label: string; badge: number }[] = [
+      { key: 'chats',   icon: <MessageCircle size={17} />, label: 'Чати',    badge: totalUnread },
+      { key: 'casino',  icon: <Zap size={17} />,           label: 'Казино',  badge: 0 },
+      { key: 'profile', icon: <Award size={17} />,          label: 'Профіль', badge: 0 },
     ];
+    if (user?.role === 'admin' || user?.role === 'operator') {
+      tabs.push({ key: 'admin', icon: <Shield size={17} />, label: 'Адмін', badge: 0 });
+    }
     return (
       <div style={{
         display: 'flex', gap: 6, padding: '10px 18px 4px',
@@ -3256,7 +3535,7 @@ export default function App() {
 
         {/* CASINO TAB */}
         {sidebarTab === 'casino' && casinoView === 'lobby' && (
-          <CasinoLobby wallet={wallet} onSelectGame={v => setCasinoView(v)} token={token} notify={notify} />
+          <CasinoLobby wallet={wallet} onSelectGame={v => setCasinoView(v)} onWalletUpdate={updateWallet} token={token} notify={notify} />
         )}
         {sidebarTab === 'casino' && casinoView === 'roulette' && (
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -3316,6 +3595,11 @@ export default function App() {
         {/* PROFILE TAB */}
         {sidebarTab === 'profile' && user && (
           <ProfileView user={user} wallet={wallet} tickets={tickets} notify={notify} onLogout={handleLogout} />
+        )}
+
+        {/* ADMIN TAB */}
+        {sidebarTab === 'admin' && user && (user.role === 'admin' || user.role === 'operator') && (
+          <AdminView token={token} userRole={user.role} notify={notify} />
         )}
 
       </div>

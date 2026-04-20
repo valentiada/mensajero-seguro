@@ -11,7 +11,58 @@ import {
 
 // ─── Brand ───────────────────────────────────────────────────────────────────
 
-const APP_NAME = 'Nexus';
+const APP_NAME = 'Колібрі';
+
+function HummingbirdLogo({ size = 48, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      {/* Body */}
+      <ellipse cx="34" cy="36" rx="11" ry="7" transform="rotate(-35 34 36)" fill="url(#hb_body)" />
+      {/* Head */}
+      <circle cx="24" cy="22" r="7" fill="url(#hb_head)" />
+      {/* Beak */}
+      <path d="M18 20 L4 17 L18 22 Z" fill="#a8792a" />
+      {/* Eye */}
+      <circle cx="22" cy="20" r="1.5" fill="#0d1a10" />
+      <circle cx="21.5" cy="19.5" r="0.5" fill="white" />
+      {/* Wing top */}
+      <path d="M30 28 Q44 14 54 18 Q46 24 36 30 Z" fill="url(#hb_wing1)" opacity="0.9" />
+      {/* Wing bottom blur */}
+      <path d="M32 34 Q48 26 56 32 Q46 36 36 36 Z" fill="url(#hb_wing2)" opacity="0.6" />
+      {/* Tail */}
+      <path d="M44 42 Q52 50 50 58 Q46 52 42 48 Q46 56 43 62 Q40 55 38 48 Z" fill="url(#hb_tail)" />
+      {/* Throat iridescent patch */}
+      <ellipse cx="26" cy="26" rx="4" ry="3" transform="rotate(-20 26 26)" fill="url(#hb_throat)" opacity="0.8" />
+      <defs>
+        <linearGradient id="hb_body" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#2ecc71" />
+          <stop offset="100%" stopColor="#1a5c35" />
+        </linearGradient>
+        <linearGradient id="hb_head" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#27ae60" />
+          <stop offset="100%" stopColor="#145a32" />
+        </linearGradient>
+        <linearGradient id="hb_wing1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#52d68a" />
+          <stop offset="100%" stopColor="#1abc9c" />
+        </linearGradient>
+        <linearGradient id="hb_wing2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#48c774" />
+          <stop offset="100%" stopColor="#0e9960" />
+        </linearGradient>
+        <linearGradient id="hb_tail" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1a5c35" />
+          <stop offset="100%" stopColor="#0d3320" />
+        </linearGradient>
+        <linearGradient id="hb_throat" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#e91e8c" />
+          <stop offset="50%" stopColor="#f39c12" />
+          <stop offset="100%" stopColor="#8e44ad" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
@@ -1737,7 +1788,7 @@ function CountryPicker({ value, onChange, t }: { value: Country; onChange: (c: C
   );
 }
 
-function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void }) {
+function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: boolean) => void }) {
   const [lang, setLang] = useState<LangCode>(detectLang);
   const t = I18N[lang];
   const [tab, setTab] = useState<'login' | 'register'>('login');
@@ -1764,7 +1815,7 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void })
       : { full_name: form.full_name, phone: fullPhone, email: form.email, password: form.password };
     const res = await api<{ token: string; user: User }>(endpoint, { method: 'POST', body: JSON.stringify(body) });
     setLoading(false);
-    if (res.ok && res.data) onAuth(res.data.user, res.data.token);
+    if (res.ok && res.data) onAuth(res.data.user, res.data.token, tab === 'register');
     else setError(res.error || t.errorDefault);
   }
 
@@ -1772,145 +1823,171 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void })
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #0a120c 0%, #111d13 40%, #1a2e1e 70%, #0d1a10 100%)' }}>
-      {/* Ambient glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #a8792a, transparent)' }} />
-        <div className="absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full opacity-8" style={{ background: 'radial-gradient(circle, #1d4636, transparent)' }} />
+      style={{ background: 'linear-gradient(160deg, #071a0c 0%, #0f2415 35%, #1a3320 65%, #0a1a0e 100%)' }}>
+
+      {/* Animated background particles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="absolute rounded-full opacity-[0.07]"
+            style={{
+              width: `${80 + i * 40}px`, height: `${80 + i * 40}px`,
+              background: 'radial-gradient(circle, #a8792a, transparent)',
+              left: `${10 + i * 15}%`, top: `${5 + i * 12}%`,
+              animation: `float-coin ${3 + i * 0.7}s ease-in-out ${i * 0.5}s infinite alternate`,
+              animationName: 'hb-hover',
+            }} />
+        ))}
       </div>
 
-      <div className="w-full max-w-sm relative z-10">
+      <div className="w-full max-w-[380px] relative z-10">
+
         {/* Logo */}
-        <div className="mb-7 text-center">
-          <div className="inline-flex flex-col items-center gap-3">
-            <div className="relative">
-              <div className="w-16 h-16 flex items-center justify-center" style={{
-                background: 'linear-gradient(135deg, #1d4636, #2f4a37)',
-                border: '2px solid #a8792a',
-                boxShadow: '0 0 32px rgba(168,121,42,0.35), 0 4px 0 0 #7d5a1e',
+        <div className="mb-8 flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-2xl flex items-center justify-center hb-hover"
+              style={{
+                background: 'linear-gradient(135deg, #1a4a2e 0%, #0f2415 100%)',
+                boxShadow: '0 8px 32px rgba(168,121,42,0.4), 0 0 0 1px rgba(168,121,42,0.3)',
               }}>
-                <Shield size={30} className="text-[#a8792a]" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#4caf7d] border-2 border-[#0d1a10] animate-pulse" />
+              <HummingbirdLogo size={52} />
             </div>
-            <div>
-              <div className="font-black text-4xl tracking-tighter" style={{ color: '#f1f5ee', textShadow: '0 0 24px rgba(168,121,42,0.4)' }}>
-                {APP_NAME}
-              </div>
-              <div className="font-mono text-[10px] tracking-[0.25em] uppercase mt-0.5" style={{ color: '#a8792a' }}>
-                {t.tagline}
-              </div>
-            </div>
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#4caf7d] border-2 border-[#071a0c]"
+              style={{ boxShadow: '0 0 8px #4caf7d' }} />
+          </div>
+          <div className="text-center">
+            <h1 className="font-black text-4xl tracking-tight text-white"
+              style={{ textShadow: '0 0 30px rgba(168,121,42,0.5)' }}>
+              {APP_NAME}
+            </h1>
+            <p className="text-xs tracking-[0.2em] uppercase mt-1" style={{ color: '#a8792a' }}>
+              {t.tagline}
+            </p>
           </div>
         </div>
 
-        {/* Lang switcher */}
-        <div className="flex justify-center gap-2 mb-5">
+        {/* Lang flags */}
+        <div className="flex justify-center gap-2.5 mb-6">
           {(Object.keys(I18N) as LangCode[]).map(l => (
-            <button key={l} type="button" onClick={() => setLang(l)} title={l.toUpperCase()}
-              className="relative cursor-pointer transition-all"
-              style={{ transform: lang === l ? 'scale(1.15)' : 'scale(1)', opacity: lang === l ? 1 : 0.45 }}>
-              <span className="text-xl">{LANG_FLAGS[l]}</span>
-              {lang === l && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#a8792a]" />}
+            <button key={l} type="button" onClick={() => setLang(l)}
+              className="transition-all duration-200 cursor-pointer"
+              style={{ transform: lang === l ? 'scale(1.25)' : 'scale(1)', opacity: lang === l ? 1 : 0.4, filter: lang === l ? 'drop-shadow(0 2px 4px rgba(168,121,42,0.6))' : 'none' }}>
+              <span className="text-2xl">{LANG_FLAGS[l]}</span>
             </button>
           ))}
         </div>
 
         {/* Card */}
-        <div style={{
-          background: 'rgba(241,245,238,0.97)',
-          border: '2px solid #1d2e20',
-          boxShadow: '8px 8px 0 0 rgba(168,121,42,0.6)',
-        }}>
+        <div className="overflow-hidden"
+          style={{
+            background: 'rgba(255,255,255,0.96)',
+            borderRadius: '24px',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1)',
+          }}>
+
           {/* Tabs */}
-          <div className="grid grid-cols-2" style={{ borderBottom: '2px solid #1d2e20' }}>
+          <div className="flex p-1.5 gap-1.5" style={{ background: 'rgba(0,0,0,0.04)' }}>
             {(['login', 'register'] as const).map(tab_ => (
-              <button key={tab_} type="button" onClick={() => { setTab(tab_); setError(''); }}
-                className="relative py-4 font-black uppercase tracking-widest text-[11px] transition-all cursor-pointer overflow-hidden"
+              <button key={tab_} type="button"
+                onClick={() => { setTab(tab_); setError(''); }}
+                className="flex-1 py-3 font-bold text-sm cursor-pointer transition-all duration-200 rounded-xl"
                 style={{
-                  background: tab === tab_ ? '#1d2e20' : 'transparent',
-                  color: tab === tab_ ? '#f1f5ee' : '#1d2e20',
-                  borderRight: tab_ === 'login' ? '1px solid #1d2e2030' : 'none',
+                  background: tab === tab_ ? 'white' : 'transparent',
+                  color: tab === tab_ ? '#1d2e20' : '#6b7c6d',
+                  boxShadow: tab === tab_ ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
+                  fontWeight: tab === tab_ ? 800 : 600,
                 }}>
-                {tab === tab_ && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#a8792a]" />
-                )}
                 {tab_ === 'login' ? t.login : t.register}
               </button>
             ))}
           </div>
 
           <form onSubmit={submit} className="p-6 flex flex-col gap-4">
-            {/* Name */}
+
             {tab === 'register' && (
               <div>
-                <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.fullName}</label>
-                <input className="u24-input" placeholder={t.namePlaceholder} value={form.full_name} onChange={set('full_name')} required autoFocus />
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>{t.fullName}</label>
+                <input className="u24-input" placeholder={t.namePlaceholder}
+                  value={form.full_name} onChange={set('full_name')} required autoFocus />
               </div>
             )}
 
-            {/* Country picker (both tabs — needed for phone login too) */}
+            {/* Country */}
             <div>
-              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.country}</label>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>{t.country}</label>
               <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
             </div>
 
-            {/* Phone / Email */}
+            {/* Phone/Email */}
             <div>
-              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>
                 {tab === 'login' ? `${t.phone} / ${t.email}` : t.phone}
               </label>
-              <div className="flex">
-                <div className="flex items-center gap-1.5 px-3 shrink-0 font-mono text-sm select-none"
-                  style={{ background: '#1d2e20', color: '#f1f5ee', border: '2px solid #1d2e20', borderRight: 'none' }}>
+              <div className="flex rounded-xl overflow-hidden" style={{ border: '1.5px solid rgba(0,0,0,0.12)' }}>
+                <div className="flex items-center gap-1.5 px-3 shrink-0 select-none text-sm font-bold"
+                  style={{ background: '#1d2e20', color: '#f1f5ee', minWidth: 80 }}>
                   <span>{country.flag}</span>
-                  <span className="text-[#a8792a]">{country.dialCode}</span>
+                  <span style={{ color: '#a8792a' }}>{country.dialCode}</span>
                 </div>
-                <input className="u24-input flex-1" style={{ borderLeft: 'none' }}
+                <input style={{ border: 'none', borderRadius: 0, background: 'white' }}
+                  className="u24-input rounded-none flex-1 focus:ring-0"
                   placeholder={tab === 'login' ? `${t.phonePlaceholder} / ${t.emailPlaceholder}` : t.phonePlaceholder}
                   value={phone} onChange={e => setPhone(e.target.value)}
-                  required inputMode={phone.includes('@') ? 'email' : 'tel'} autoComplete={tab === 'login' ? 'username' : 'tel'} />
+                  required={tab === 'register'} inputMode={phone.includes('@') ? 'email' : 'tel'} />
               </div>
               {tab === 'login' && (
-                <div className="font-mono text-[9px] mt-1" style={{ color: '#6b7c6d' }}>
-                  Код країни застосовується якщо вводите телефон. Email вводьте повністю.
-                </div>
+                <p className="text-[10px] mt-1" style={{ color: '#9b9b9b' }}>
+                  Введіть email повністю або цифри телефону
+                </p>
               )}
             </div>
 
-            {/* Email */}
             {tab === 'register' && (
               <div>
-                <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.email}</label>
-                <input className="u24-input" type="email" placeholder={t.emailPlaceholder} value={form.email} onChange={set('email')} required autoComplete="email" />
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>{t.email}</label>
+                <input className="u24-input" type="email" placeholder={t.emailPlaceholder}
+                  value={form.email} onChange={set('email')} required autoComplete="email" />
               </div>
             )}
 
-            {/* Password */}
             <div>
-              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.password}</label>
-              <input className="u24-input" type="password" placeholder="••••••••" value={form.password} onChange={set('password')} required autoComplete={tab === 'login' ? 'current-password' : 'new-password'} />
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>{t.password}</label>
+              <input className="u24-input" type="password" placeholder="••••••••"
+                value={form.password} onChange={set('password')} required
+                autoComplete={tab === 'login' ? 'current-password' : 'new-password'} />
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 px-3 py-2.5 font-mono text-xs"
-                style={{ border: '2px solid #c0392b', background: 'rgba(192,57,43,0.07)', color: '#c0392b' }}>
-                <span>⚠</span> {error}
+              <div className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium rounded-xl"
+                style={{ background: 'rgba(192,57,43,0.08)', color: '#c0392b', border: '1px solid rgba(192,57,43,0.2)' }}>
+                <span className="text-base">⚠️</span> {error}
+              </div>
+            )}
+
+            {tab === 'register' && (
+              <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl"
+                style={{ background: 'rgba(168,121,42,0.08)', border: '1px solid rgba(168,121,42,0.2)' }}>
+                <span className="text-xl">🎁</span>
+                <div>
+                  <div className="font-bold text-sm" style={{ color: '#a8792a' }}>Бонус при реєстрації</div>
+                  <div className="text-xs" style={{ color: '#6b7c6d' }}>+200₮ на баланс одразу після входу</div>
+                </div>
               </div>
             )}
 
             <button type="submit" disabled={loading}
-              className="u24-button w-full mt-1 justify-center text-sm py-3"
-              style={loading ? {} : { boxShadow: '4px 4px 0 0 rgba(168,121,42,0.5)' }}>
+              className="u24-button-gold w-full justify-center py-4 text-base font-black rounded-2xl mt-1">
               {loading
                 ? <span className="animate-blink">{t.loading}</span>
-                : <><Lock size={14} />{tab === 'login' ? t.loginBtn : t.registerBtn}</>}
+                : <>{tab === 'login' ? '🔐' : '🚀'} {tab === 'login' ? t.loginBtn : t.registerBtn}</>}
             </button>
           </form>
 
-          <div className="flex items-center gap-2 px-6 py-3" style={{ borderTop: '1px solid #1d2e2025' }}>
-            <Lock size={9} className="shrink-0" style={{ color: '#6b7c6d' }} />
-            <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: '#6b7c6d' }}>{t.e2e} · {APP_NAME}</span>
+          <div className="flex items-center justify-center gap-2 py-3 mx-6 mb-4 rounded-xl"
+            style={{ background: 'rgba(0,0,0,0.04)' }}>
+            <span className="text-xs">🔒</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: '#9b9b9b' }}>
+              {t.e2e} · {APP_NAME}
+            </span>
           </div>
         </div>
       </div>
@@ -1973,7 +2050,7 @@ export default function App() {
   const [search, setSearch] = useState('');
 
   // Nav
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('chats');
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('profile');
   const [casinoView, setCasinoView] = useState<CasinoView>('lobby');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showChatInfo, setShowChatInfo] = useState(false);
@@ -2002,8 +2079,18 @@ export default function App() {
 
   function updateWallet(delta: Partial<CasinoWallet>) { setWallet(prev => ({ ...prev, ...delta })); }
 
-  function handleAuth(u: User, t: string) { setUser(u); setToken(t); setScreen('app'); }
-  function handleLogout() { setUser(null); setToken(''); setScreen('auth'); }
+  function handleAuth(u: User, t: string, isNew = false) {
+    setUser(u); setToken(t); setScreen('app');
+    setSidebarTab('profile');
+    if (isNew) {
+      // Welcome bonus: animate +200
+      setTimeout(() => {
+        setWallet(prev => ({ ...prev, balance: prev.balance + 200 }));
+        notify('🎁 Вітаємо! +200₮ бонус нараховано!');
+      }, 800);
+    }
+  }
+  function handleLogout() { setUser(null); setToken(''); setScreen('auth'); setSidebarTab('profile'); }
 
   function selectChat(chat: Chat) {
     setActiveChat(chat);
@@ -2068,8 +2155,8 @@ export default function App() {
         ${sidebarOpen ? 'fixed inset-0 flex' : 'hidden md:flex'}`}>
         {/* Header */}
         <div className="px-4 py-3 border-b-2 border-[#2f4a37] flex items-center gap-2">
-          <Shield size={16} className="text-[#a8792a] shrink-0" />
-          <span className="font-black text-sm uppercase tracking-tight flex-1">Nexus</span>
+          <HummingbirdLogo size={22} />
+          <span className="font-black text-sm uppercase tracking-tight flex-1">Колібрі</span>
           <button onClick={() => setShowSupport(v => !v)} className="text-[#6b7c6d] hover:text-[#a8792a] transition-colors cursor-pointer" title="Підтримка">
             <LifeBuoy size={15} />
           </button>
@@ -2210,7 +2297,7 @@ export default function App() {
         {/* Mobile top header — visible only when sidebar is closed on mobile */}
         {!sidebarOpen && (
           <div className="md:hidden flex items-center gap-3 px-4 py-3 shrink-0" style={{ background: '#111d13', borderBottom: '2px solid #1d2e20' }}>
-            <Shield size={16} className="text-[#a8792a]" />
+            <HummingbirdLogo size={20} />
             <span className="font-black text-sm uppercase tracking-tight flex-1 text-white">{APP_NAME}</span>
             <div className="font-mono text-xs text-[#a8792a]">{fmtCoins(wallet.balance)}</div>
             <button onClick={handleLogout} className="text-[#6b7c6d]" title="Вийти"><LogOut size={16} /></button>

@@ -318,13 +318,13 @@ const SLOT_WEIGHTS = [30, 25, 20, 15, 5, 3, 2];
 
 const BASE = '/api';
 
-async function api<T = unknown>(path: string, opts: RequestInit = {}, token?: string) {
+async function api<T = unknown>(path: string, opts: RequestInit = {}, token?: string): Promise<{ ok: boolean; data?: T; error?: string }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(opts.headers as Record<string, string> || {}) };
   try {
     const res = await fetch(`${BASE}${path}`, { ...opts, headers });
     return await res.json() as { ok: boolean; data?: T; error?: string };
   } catch {
-    return { ok: false, error: 'Мережева помилка.' } as { ok: boolean; error: string };
+    return { ok: false, error: 'Мережева помилка.' };
   }
 }
 
@@ -586,9 +586,10 @@ function RouletteBetBoard({
   );
 }
 
-function RouletteView({ wallet, onWalletUpdate, notify }: {
+function RouletteView({ wallet, onWalletUpdate, token, notify }: {
   wallet: CasinoWallet;
   onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string;
   notify: (m: string) => void;
 }) {
   const [bets, setBets] = useState<Record<string, number>>({});
@@ -613,16 +614,10 @@ function RouletteView({ wallet, onWalletUpdate, notify }: {
 
   async function spin() {
     if (spinning || totalBet === 0) return;
-    if (totalBet > wallet.balance) { notify('Недостатньо фішок!'); return; }
     setSpinning(true);
     setResult(null);
-
     await new Promise(r => setTimeout(r, 2000));
 
-    const num = Math.floor(Math.random() * 37);
-    const color = rouletteColor(num);
-
-    let totalWin = 0;
     const betArr = Object.entries(bets).filter(([, v]) => v > 0).map(([k, v]) => {
       let type = k, nums: number[] = [];
       if (k.startsWith('n_')) { type = 'straight'; nums = [parseInt(k.slice(2))]; }
@@ -630,25 +625,19 @@ function RouletteView({ wallet, onWalletUpdate, notify }: {
       return { type, numbers: nums, amount: v };
     });
 
-    const details = betArr.map(b => {
-      const won = calcRouletteWin(b.type, b.numbers, num, color, b.amount);
-      totalWin += won;
-      return { ...b, won };
-    });
-
-    const net = totalWin - totalBet;
-    const newBalance = wallet.balance + net;
-    const xp = Math.max(1, Math.floor(totalBet / 10));
-
-    const res: RouletteResult = { number: num, color, total_bet: totalBet, total_win: totalWin, net, new_balance: newBalance, xp_gained: xp };
-    setResult(res);
-    setHistory(h => [res, ...h.slice(0, 9)]);
-    onWalletUpdate({ balance: newBalance, xp: wallet.xp + xp });
-    setBets({});
+    const apiRes = await api<RouletteResult>('/casino/roulette/spin', {
+      method: 'POST', body: JSON.stringify({ bets: betArr }),
+    }, token);
     setSpinning(false);
 
-    if (net > 0) notify(`🎉 Виграш ${fmtCoins(totalWin)}! Число: ${num}`);
-    else notify(`Число ${num} — програш ${fmtCoins(Math.abs(net))}`);
+    if (!apiRes.ok) { notify(apiRes.error || 'Помилка крутіння.'); return; }
+    const res = apiRes.data!;
+    setResult(res);
+    setHistory(h => [res, ...h.slice(0, 9)]);
+    onWalletUpdate({ balance: res.new_balance, xp: wallet.xp + (res.xp_gained || 0) });
+    setBets({});
+    if (res.net > 0) notify(`🎉 Виграш ${fmtCoins(res.total_win)}! Число: ${res.number}`);
+    else notify(`Число ${res.number} — програш ${fmtCoins(Math.abs(res.net))}`);
   }
 
   return (
@@ -737,9 +726,10 @@ const SLOTS_PAY: Record<string, number> = {
   '7️⃣,7️⃣,7️⃣': 50,'💎,💎,💎': 25,'⭐,⭐,⭐': 15,'🍇,🍇,🍇': 10,'🍊,🍊,🍊': 8,'🍋,🍋,🍋': 5,'🍒,🍒,🍒': 3,
 };
 
-function SlotsView({ wallet, onWalletUpdate, notify }: {
+function SlotsView({ wallet, onWalletUpdate, token, notify }: {
   wallet: CasinoWallet;
   onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string;
   notify: (m: string) => void;
 }) {
   const [bet, setBet] = useState(10);
@@ -750,39 +740,29 @@ function SlotsView({ wallet, onWalletUpdate, notify }: {
   const [animReels, setAnimReels] = useState([false, false, false]);
 
   async function spin() {
-    if (spinning || bet > wallet.balance) { if (bet > wallet.balance) notify('Недостатньо фішок!'); return; }
+    if (spinning) return;
     setSpinning(true);
     setLastResult(null);
 
-    // Animate reels sequentially
     for (let i = 0; i < 3; i++) {
       setAnimReels(prev => { const next = [...prev]; next[i] = true; return next; });
       await new Promise(r => setTimeout(r, 300));
     }
+    await new Promise(r => setTimeout(r, 500));
 
-    const newReels = spinReels();
-    await new Promise(r => setTimeout(r, 800));
+    const apiRes = await api<SlotsResult>('/casino/slots/spin', {
+      method: 'POST', body: JSON.stringify({ bet }),
+    }, token);
 
     setAnimReels([false, false, false]);
-    setReels(newReels);
-
-    const line = [newReels[0][1], newReels[1][1], newReels[2][1]];
-    const key  = line.join(',');
-    let mult = SLOTS_PAY[key] || 0;
-    if (mult === 0 && line[0] === line[1]) mult = 1;
-
-    const win = bet * mult;
-    const net = win - bet;
-    const newBalance = wallet.balance + net;
-    const xp = Math.max(1, Math.floor(bet / 20));
-
-    const res: SlotsResult = { reels: newReels, line, multiplier: mult, bet, win, net, new_balance: newBalance, xp_gained: xp };
+    setSpinning(false);
+    if (!apiRes.ok) { notify(apiRes.error || 'Помилка.'); return; }
+    const res = apiRes.data!;
+    setReels(res.reels);
     setLastResult(res);
     setHistory(h => [res, ...h.slice(0, 9)]);
-    onWalletUpdate({ balance: newBalance, xp: wallet.xp + xp });
-    setSpinning(false);
-
-    if (win > 0) notify(`🎰 Виграш ×${mult} = ${fmtCoins(win)}!`);
+    onWalletUpdate({ balance: res.new_balance, xp: wallet.xp + (res.xp_gained || 0) });
+    if (res.win > 0) notify(`🎰 Виграш ×${res.multiplier} = ${fmtCoins(res.win)}!`);
     else notify('Без виграшу. Спробуйте ще!');
   }
 
@@ -943,60 +923,65 @@ function CrashChart({ points, crashed, cashed }: { points: number[]; crashed: bo
   );
 }
 
-function CrashView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
+function CrashView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; token: string; notify: (m: string) => void }) {
   const [bet, setBet] = useState(100);
   const [phase, setPhase] = useState<'idle' | 'running' | 'cashed' | 'crashed'>('idle');
   const [mult, setMult] = useState(1.00);
-  const [crashAt, setCrashAt] = useState(1.00);
   const [autoCashout, setAutoCashout] = useState(2.0);
   const [history, setHistory] = useState<number[]>([5.2, 1.3, 12.4, 2.1, 1.0, 3.7, 1.8]);
   const [chartPoints, setChartPoints] = useState<number[]>([1]);
+  const [loading, setLoading] = useState(false);
+  const sessionRef = useRef<string>('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const multRef = useRef(1.00);
+  const autoCashoutRef = useRef(autoCashout);
+  useEffect(() => { autoCashoutRef.current = autoCashout; }, [autoCashout]);
 
-  function genCrash() {
-    const r = Math.random();
-    if (r < 0.05) return 1.00;
-    return Math.max(1.01, parseFloat((1 / (1 - Math.random() * 0.97)).toFixed(2)));
-  }
-
-  function start() {
-    if (bet > wallet.balance) { notify('Недостатньо коштів!'); return; }
-    const crash = genCrash();
-    setCrashAt(crash);
+  async function start() {
+    if (loading || phase === 'running') return;
+    setLoading(true);
+    const res = await api<{ session_id: string; new_balance: number }>('/casino/crash/start', {
+      method: 'POST', body: JSON.stringify({ bet }),
+    }, token);
+    setLoading(false);
+    if (!res.ok) { notify(res.error || 'Помилка старту.'); return; }
+    sessionRef.current = res.data!.session_id;
+    onWalletUpdate({ balance: res.data!.new_balance });
+    multRef.current = 1.00;
     setMult(1.00);
     setChartPoints([1]);
     setPhase('running');
-    onWalletUpdate({ balance: wallet.balance - bet });
-    let m = 1.00;
     timerRef.current = setInterval(() => {
-      m = parseFloat((m * 1.04).toFixed(2));
+      multRef.current = parseFloat((multRef.current * 1.04).toFixed(2));
+      const m = multRef.current;
       setMult(m);
       setChartPoints(prev => [...prev.slice(-80), m]);
-      if (m >= autoCashout) { cashout(m, crash); return; }
-      if (m >= crash) {
-        clearInterval(timerRef.current!);
-        setMult(crash);
-        setChartPoints(prev => [...prev, crash]);
-        setPhase('crashed');
-        setHistory(h => [crash, ...h.slice(0, 9)]);
-        notify(`💥 Крах на ×${crash}!`);
-      }
+      if (m >= autoCashoutRef.current) { cashout(m); }
     }, 100);
   }
 
-  function cashout(currentMult: number, crash: number) {
+  async function cashout(currentMult?: number) {
+    if (phase !== 'running') return;
     clearInterval(timerRef.current!);
-    if (currentMult >= crash) {
+    timerRef.current = null;
+    const m = currentMult ?? multRef.current;
+    const res = await api<{ crashed: boolean; crash_at: number; cashed_at: number; win: number; new_balance: number }>(
+      '/casino/crash/cashout', { method: 'POST', body: JSON.stringify({ session_id: sessionRef.current, mult: m }) }, token,
+    );
+    if (!res.ok) { setPhase('idle'); notify(res.error || 'Помилка виплати.'); return; }
+    const { crashed, crash_at, cashed_at, win, new_balance } = res.data!;
+    setHistory(h => [crash_at, ...h.slice(0, 9)]);
+    if (crashed) {
+      setMult(crash_at);
+      setChartPoints(prev => [...prev, crash_at]);
       setPhase('crashed');
-      setHistory(h => [crash, ...h.slice(0, 9)]);
-      notify(`💥 Крах на ×${crash}!`);
-      return;
+      notify(`💥 Крах на ×${crash_at}!`);
+    } else {
+      setMult(cashed_at);
+      onWalletUpdate({ balance: new_balance, total_won: wallet.total_won + win });
+      setPhase('cashed');
+      notify(`✅ Виплата ×${cashed_at.toFixed(2)} = +${win}₮`);
     }
-    const win = parseFloat((bet * currentMult).toFixed(2));
-    onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
-    setPhase('cashed');
-    setHistory(h => [crash, ...h.slice(0, 9)]);
-    notify(`✅ Виплата ×${currentMult.toFixed(2)} = +${win}₮`);
   }
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
@@ -1071,11 +1056,11 @@ function CrashView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; o
       </div>
       <div className="flex gap-3">
         {['idle', 'crashed', 'cashed'].includes(phase) ? (
-          <button className="u24-button flex-1 py-4 text-base" onClick={start} disabled={bet < 1}>
-            🚀 Запустити ({fmtCoins(bet)})
+          <button className="u24-button flex-1 py-4 text-base" onClick={start} disabled={bet < 1 || loading}>
+            {loading ? '⏳ Старт…' : `🚀 Запустити (${fmtCoins(bet)})`}
           </button>
         ) : (
-          <button className="u24-button-gold flex-1 py-4 text-lg animate-gold-pulse" onClick={() => cashout(mult, crashAt)}>
+          <button className="u24-button-gold flex-1 py-4 text-lg animate-gold-pulse" onClick={() => cashout()}>
             💸 ВИПЛАТА ×{mult.toFixed(2)} = {fmtCoins(parseFloat((bet * mult).toFixed(2)))}
           </button>
         )}
@@ -1086,7 +1071,7 @@ function CrashView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; o
 
 // ─── Mines ────────────────────────────────────────────────────────────────────
 
-function MinesView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
+function MinesView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; token: string; notify: (m: string) => void }) {
   const GRID = 25;
   const [bet, setBet] = useState(100);
   const [mineCount, setMineCount] = useState(5);
@@ -1095,47 +1080,58 @@ function MinesView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; o
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [mult, setMult] = useState(1.0);
   const [justRevealed, setJustRevealed] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const sessionRef = useRef('');
 
-  function calcMult(gems: number, totalMines: number): number {
-    const safeTotal = GRID - totalMines;
-    let m = 1.0;
-    for (let i = 0; i < gems; i++) m *= (safeTotal - i) / (GRID - i);
-    return parseFloat((0.97 / m).toFixed(2));
-  }
-
-  function startGame() {
-    if (bet > wallet.balance) { notify('Недостатньо коштів!'); return; }
-    const mineSet = new Set<number>();
-    while (mineSet.size < mineCount) mineSet.add(Math.floor(Math.random() * GRID));
-    setMines(mineSet);
+  async function startGame() {
+    setLoading(true);
+    const res = await api<{ session_id: string; new_balance: number; mine_count: number }>(
+      '/casino/mines/start', { method: 'POST', body: JSON.stringify({ bet, mine_count: mineCount }) }, token,
+    );
+    setLoading(false);
+    if (!res.ok) { notify(res.error || 'Помилка старту.'); return; }
+    sessionRef.current = res.data!.session_id;
+    onWalletUpdate({ balance: res.data!.new_balance });
+    setMines(new Set());
     setRevealed(new Set());
     setMult(1.0);
     setJustRevealed(null);
     setPhase('playing');
-    onWalletUpdate({ balance: wallet.balance - bet });
   }
 
-  function reveal(idx: number) {
-    if (phase !== 'playing' || revealed.has(idx)) return;
+  async function reveal(idx: number) {
+    if (phase !== 'playing' || revealed.has(idx) || loading) return;
+    setLoading(true);
+    const res = await api<{ is_mine: boolean; tile: number; gems?: number; mult?: number; mines?: number[]; new_balance?: number }>(
+      '/casino/mines/reveal', { method: 'POST', body: JSON.stringify({ session_id: sessionRef.current, tile: idx }) }, token,
+    );
+    setLoading(false);
+    if (!res.ok) { notify(res.error || 'Помилка.'); return; }
     setJustRevealed(idx);
     setTimeout(() => setJustRevealed(null), 500);
-    if (mines.has(idx)) {
-      setRevealed(new Set([...revealed, idx]));
+    if (res.data!.is_mine) {
+      setMines(new Set(res.data!.mines ?? []));
+      setRevealed(prev => new Set([...prev, idx]));
       setPhase('lost');
-      notify(`💣 Міна! Втрачено ${bet}₮`);
-      return;
+      notify(`💣 Міна! Втрачено ${fmtCoins(bet)}`);
+    } else {
+      setRevealed(prev => new Set([...prev, idx]));
+      setMult(res.data!.mult ?? mult);
     }
-    const newRevealed = new Set([...revealed, idx]);
-    setRevealed(newRevealed);
-    setMult(calcMult(newRevealed.size, mineCount));
   }
 
-  function cashout() {
-    if (phase !== 'playing' || revealed.size === 0) return;
-    const win = parseFloat((bet * mult).toFixed(2));
-    onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
+  async function cashout() {
+    if (phase !== 'playing' || revealed.size === 0 || loading) return;
+    setLoading(true);
+    const res = await api<{ mult: number; win: number; new_balance: number }>(
+      '/casino/mines/cashout', { method: 'POST', body: JSON.stringify({ session_id: sessionRef.current }) }, token,
+    );
+    setLoading(false);
+    if (!res.ok) { notify(res.error || 'Помилка виплати.'); return; }
+    onWalletUpdate({ balance: res.data!.new_balance, total_won: wallet.total_won + res.data!.win });
+    setMult(res.data!.mult);
     setPhase('won');
-    notify(`💎 Виплата ×${mult} = +${win}₮`);
+    notify(`💎 Виплата ×${res.data!.mult} = +${fmtCoins(res.data!.win)}`);
   }
 
   const gemCount = GRID - mineCount;
@@ -1159,8 +1155,8 @@ function MinesView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; o
           <div className="font-black text-xl text-[#a8792a]">×{mult.toFixed(2)}</div>
         </div>
         {phase === 'playing' && revealed.size > 0 && (
-          <button className="u24-button-gold px-3 py-2 text-xs animate-gold-pulse" onClick={cashout}>
-            💸 Забрати
+          <button className="u24-button-gold px-3 py-2 text-xs animate-gold-pulse" onClick={cashout} disabled={loading}>
+            {loading ? '⏳' : '💸 Забрати'}
           </button>
         )}
       </div>
@@ -1250,8 +1246,8 @@ function MinesView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; o
               </button>
             ))}
           </div>
-          <button className="u24-button py-4 text-base" onClick={startGame} disabled={bet < 1}>
-            💣 Нова гра ({fmtCoins(bet)})
+          <button className="u24-button py-4 text-base" onClick={startGame} disabled={bet < 1 || loading}>
+            {loading ? '⏳ Старт…' : `💣 Нова гра (${fmtCoins(bet)})`}
           </button>
         </div>
       )}
@@ -1265,7 +1261,7 @@ const CHICKEN_LANES = 10;
 const CHICKEN_BASE_RISK = [0.05, 0.08, 0.10, 0.13, 0.16, 0.20, 0.24, 0.28, 0.33, 0.40];
 const CHICKEN_MULTS = [1.5, 2.2, 3.0, 4.2, 5.8, 8.0, 11, 16, 22, 30];
 
-function ChickenRoadView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
+function ChickenRoadView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; token: string; notify: (m: string) => void }) {
   const [bet, setBet] = useState(100);
   const [phase, setPhase] = useState<'idle' | 'playing' | 'won' | 'hit'>('idle');
   const [lane, setLane] = useState(0);
@@ -1273,46 +1269,65 @@ function ChickenRoadView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWal
   const [hitLane, setHitLane] = useState<number | null>(null);
   const [cars, setCars] = useState<boolean[]>([]);
   const [jumping, setJumping] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const sessionRef = useRef('');
 
-  function start() {
-    if (bet > wallet.balance) { notify('Недостатньо коштів!'); return; }
-    setCars(CHICKEN_BASE_RISK.map(risk => Math.random() < risk));
+  async function start() {
+    setLoading(true);
+    const res = await api<{ session_id: string; new_balance: number }>(
+      '/casino/chicken/start', { method: 'POST', body: JSON.stringify({ bet }) }, token,
+    );
+    setLoading(false);
+    if (!res.ok) { notify(res.error || 'Помилка старту.'); return; }
+    sessionRef.current = res.data!.session_id;
+    onWalletUpdate({ balance: res.data!.new_balance });
+    setCars([]);
     setLane(0);
     setMult(1.0);
     setHitLane(null);
     setPhase('playing');
-    onWalletUpdate({ balance: wallet.balance - bet });
   }
 
   async function jump() {
-    if (phase !== 'playing' || jumping) return;
+    if (phase !== 'playing' || jumping || loading) return;
     setJumping(true);
     await new Promise(r => setTimeout(r, 200));
     setJumping(false);
-    if (cars[lane]) {
+    setLoading(true);
+    const res = await api<{ hit: boolean; lane?: number; mult?: number; cars?: boolean[]; cashed?: boolean; win?: number; new_balance?: number }>(
+      '/casino/chicken/step', { method: 'POST', body: JSON.stringify({ session_id: sessionRef.current }) }, token,
+    );
+    setLoading(false);
+    if (!res.ok) { notify(res.error || 'Помилка.'); return; }
+    const d = res.data!;
+    if (d.hit) {
+      setCars(d.cars ?? []);
       setHitLane(lane);
       setPhase('hit');
       notify(`🚗 Збила машина на смузі ${lane + 1}! Втрата ${fmtCoins(bet)}`);
       return;
     }
-    const nextLane = lane + 1;
-    setLane(nextLane);
-    const newMult = CHICKEN_MULTS[lane] ?? CHICKEN_MULTS[CHICKEN_MULTS.length - 1];
-    setMult(newMult);
-    if (nextLane >= CHICKEN_LANES) {
-      const win = parseFloat((bet * CHICKEN_MULTS[CHICKEN_LANES - 1]).toFixed(2));
-      onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
+    setLane(d.lane ?? lane + 1);
+    setMult(d.mult ?? mult);
+    if (d.cashed) {
+      onWalletUpdate({ balance: d.new_balance!, total_won: wallet.total_won + (d.win ?? 0) });
       setPhase('won');
-      notify(`🎉 Пройшла всю дорогу! ×${CHICKEN_MULTS[CHICKEN_LANES - 1]} = +${win}₮`);
+      notify(`🎉 Пройшла всю дорогу! ×${d.mult} = +${fmtCoins(d.win ?? 0)}`);
     }
   }
 
-  function cashout() {
-    if (phase !== 'playing' || lane === 0) return;
-    const win = parseFloat((bet * mult).toFixed(2));
-    onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
+  async function cashout() {
+    if (phase !== 'playing' || lane === 0 || loading) return;
+    setLoading(true);
+    const res = await api<{ mult: number; win: number; new_balance: number }>(
+      '/casino/chicken/cashout', { method: 'POST', body: JSON.stringify({ session_id: sessionRef.current }) }, token,
+    );
+    setLoading(false);
+    if (!res.ok) { notify(res.error || 'Помилка виплати.'); return; }
+    onWalletUpdate({ balance: res.data!.new_balance, total_won: wallet.total_won + res.data!.win });
+    setMult(res.data!.mult);
     setPhase('won');
-    notify(`💸 Курка втекла! ×${mult} = +${fmtCoins(win)}`);
+    notify(`💸 Курка втекла! ×${res.data!.mult} = +${fmtCoins(res.data!.win)}`);
   }
 
   return (
@@ -1424,17 +1439,17 @@ function ChickenRoadView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWal
               </div>
             </div>
           </div>
-          <button className="u24-button py-4 text-base" onClick={start}>
-            🐔 Запустити курку ({fmtCoins(bet)})
+          <button className="u24-button py-4 text-base" onClick={start} disabled={loading}>
+            {loading ? '⏳ Старт…' : `🐔 Запустити курку (${fmtCoins(bet)})`}
           </button>
         </div>
       ) : (
         <div className="flex gap-3">
-          <button className="u24-button flex-1 py-4 text-base" onClick={jump} disabled={jumping}>
-            {jumping ? '✨ Стрибає...' : '⬆️ Стрибнути'}
+          <button className="u24-button flex-1 py-4 text-base" onClick={jump} disabled={jumping || loading}>
+            {jumping || loading ? '✨ Стрибає...' : '⬆️ Стрибнути'}
           </button>
           {lane > 0 && (
-            <button className="u24-button-gold flex-1 py-4 animate-gold-pulse" onClick={cashout}>
+            <button className="u24-button-gold flex-1 py-4 animate-gold-pulse" onClick={cashout} disabled={loading}>
               💸 ×{mult.toFixed(1)} = {fmtCoins(parseFloat((bet * mult).toFixed(2)))}
             </button>
           )}
@@ -1446,7 +1461,7 @@ function ChickenRoadView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWal
 
 // ─── Dice ─────────────────────────────────────────────────────────────────────
 
-function DiceView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
+function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; token: string; notify: (m: string) => void }) {
   const [bet, setBet] = useState(100);
   const [target, setTarget] = useState(50);
   const [dir, setDir] = useState<'over' | 'under'>('over');
@@ -1459,23 +1474,19 @@ function DiceView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; on
   const isWin = result !== null && (dir === 'over' ? result > target : result < target);
 
   async function roll() {
-    if (bet > wallet.balance) { notify('Недостатньо коштів!'); return; }
     setRolling(true);
     setResult(null);
-    onWalletUpdate({ balance: wallet.balance - bet });
-    await new Promise(r => setTimeout(r, 700));
-    const val = Math.floor(Math.random() * 100) + 1;
-    const won = dir === 'over' ? val > target : val < target;
-    setResult(val);
+    const res = await api<{ result: number; won: boolean; win: number; payout: number; new_balance: number }>(
+      '/casino/dice/roll', { method: 'POST', body: JSON.stringify({ bet, target, direction: dir }) }, token,
+    );
     setRolling(false);
+    if (!res.ok) { notify(res.error || 'Помилка.'); return; }
+    const { result: val, won, win, new_balance } = res.data!;
+    setResult(val);
     setHistory(h => [{ val, won }, ...h.slice(0, 14)]);
-    if (won) {
-      const win = parseFloat((bet * payout).toFixed(2));
-      onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
-      notify(`🎲 ${val} — Виграш! +${fmtCoins(win)}`);
-    } else {
-      notify(`🎲 ${val} — Програш!`);
-    }
+    onWalletUpdate({ balance: new_balance, ...(won ? { total_won: wallet.total_won + win } : {}) });
+    if (won) notify(`🎲 ${val} — Виграш! +${fmtCoins(win)}`);
+    else notify(`🎲 ${val} — Програш!`);
   }
 
   return (
@@ -2774,37 +2785,37 @@ export default function App() {
         {sidebarTab === 'casino' && casinoView === 'roulette' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎡" title="Рулетка" sub="Європейська · До ×35" />
-            <RouletteView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+            <RouletteView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'slots' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎰" title="Слоти" sub="3 барабани · Джекпот ×50" />
-            <SlotsView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+            <SlotsView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'crash' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🚀" title="Crash" sub="Забери до краху" />
-            <CrashView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+            <CrashView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'mines' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="💣" title="Mines" sub="5×5 мінне поле" />
-            <MinesView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+            <MinesView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'chicken' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🐔" title="Chicken Road" sub="Перейди дорогу · До ×30" />
-            <ChickenRoadView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+            <ChickenRoadView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'dice' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎲" title="Dice" sub="Більше / менше" />
-            <DiceView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+            <DiceView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'deposit' && (

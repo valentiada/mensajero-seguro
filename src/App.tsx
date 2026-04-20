@@ -598,7 +598,7 @@ function RouletteView({ wallet, onWalletUpdate, token, notify }: {
   const [result, setResult] = useState<RouletteResult | null>(null);
   const [history, setHistory] = useState<RouletteResult[]>([]);
 
-  const totalBet = Object.values(bets).reduce((a, b) => a + b, 0);
+  const totalBet = (Object.values(bets) as number[]).reduce((a, b) => a + b, 0);
 
   function toggleBet(type: string, nums?: number[]) {
     if (spinning) return;
@@ -618,7 +618,7 @@ function RouletteView({ wallet, onWalletUpdate, token, notify }: {
     setResult(null);
     await new Promise(r => setTimeout(r, 2000));
 
-    const betArr = Object.entries(bets).filter(([, v]) => v > 0).map(([k, v]) => {
+    const betArr = (Object.entries(bets) as [string, number][]).filter(([, v]) => v > 0).map(([k, v]) => {
       let type = k, nums: number[] = [];
       if (k.startsWith('n_')) { type = 'straight'; nums = [parseInt(k.slice(2))]; }
       else if (k.startsWith('dozen_')) { type = 'dozen'; nums = [parseInt(k.slice(6))]; }
@@ -1678,11 +1678,25 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
   token: string;
   notify: (m: string) => void;
 }) {
+  const [tab, setTab] = useState<'deposit' | 'withdraw'>('deposit');
   const [address, setAddress] = useState<string>('');
   const [addrLoading, setAddrLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
   const [deposits, setDeposits] = useState<CryptoDeposit[]>([]);
   const [copied, setCopied] = useState(false);
+  // Withdrawal state
+  const [wdAmount, setWdAmount] = useState('');
+  const [wdAddr, setWdAddr] = useState('');
+  const [wdLoading, setWdLoading] = useState(false);
+  const [wdHistory, setWdHistory] = useState<{id:number;amount_usdt:number;address:string;status:string;created_at:string}[]>([]);
+
+  useEffect(() => {
+    if (tab === 'withdraw') {
+      api<typeof wdHistory>('/casino/withdrawals', {}, token).then(r => {
+        if (r.ok && r.data) setWdHistory(r.data);
+      });
+    }
+  }, [tab]);
 
   // Load deposit address + history on mount
   useEffect(() => {
@@ -1736,8 +1750,101 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
 
   const shortTx = (hash: string) => `${hash.slice(0, 8)}…${hash.slice(-6)}`;
 
+  async function submitWithdraw() {
+    const amt = parseFloat(wdAmount);
+    if (!amt || amt <= 0) { notify('Вкажіть суму.'); return; }
+    if (!wdAddr) { notify('Вкажіть BSC-адресу.'); return; }
+    setWdLoading(true);
+    const res = await api<{ amount: number; fee: number; new_balance: number; message: string }>(
+      '/casino/withdraw', { method: 'POST', body: JSON.stringify({ amount: amt, address: wdAddr }) }, token,
+    );
+    setWdLoading(false);
+    if (!res.ok) { notify(res.error || 'Помилка.'); return; }
+    onWalletUpdate({ balance: res.data!.new_balance });
+    setWdAmount('');
+    notify(`✅ Заявка прийнята: ${res.data!.amount} USDT → ${wdAddr.slice(0,8)}…`);
+    api<typeof wdHistory>('/casino/withdrawals', {}, token).then(r => { if (r.ok && r.data) setWdHistory(r.data); });
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      {/* Tabs */}
+      <div className="flex rounded-xl overflow-hidden border border-[#2f4a37]">
+        {(['deposit', 'withdraw'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`flex-1 py-2.5 font-black text-xs uppercase tracking-widest transition-all cursor-pointer ${tab === t ? 'bg-[#a8792a] text-white' : 'text-[#6b7c6d] hover:text-white'}`}>
+            {t === 'deposit' ? '⬆ Поповнити' : '⬇ Вивести'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'withdraw' && (
+        <div className="flex flex-col gap-3">
+          <div className="rounded-xl p-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0d1f11,#1d2e20)', border: '1.5px solid rgba(168,121,42,0.3)' }}>
+            <div>
+              <div className="font-mono text-[9px] text-[#6b7c6d] uppercase">Баланс</div>
+              <div className="font-black text-2xl text-[#a8792a]">{fmtCoins(wallet.balance)}</div>
+            </div>
+            <div>
+              <div className="font-mono text-[9px] text-[#6b7c6d] uppercase text-right">Комісія</div>
+              <div className="font-mono text-sm text-[#6b7c6d]">1 USDT</div>
+            </div>
+          </div>
+          <div>
+            <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#6b7c6d]">Сума USDT</label>
+            <input type="number" className="u24-input" placeholder="Мін. 5 USDT" value={wdAmount}
+              onChange={e => setWdAmount(e.target.value)} min={5} step={1} />
+            <div className="flex gap-1.5 mt-1.5">
+              {[10, 50, 100, 500].map(v => (
+                <button key={v} onClick={() => setWdAmount(String(v))}
+                  className="flex-1 font-mono text-xs border border-[#1d2e20]/40 rounded-lg py-1.5 hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer">
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#6b7c6d]">BSC-адреса (BEP-20)</label>
+            <input type="text" className="u24-input font-mono text-xs" placeholder="0x…"
+              value={wdAddr} onChange={e => setWdAddr(e.target.value)} />
+          </div>
+          {wdAmount && parseFloat(wdAmount) >= 5 && (
+            <div className="rounded-xl p-3 text-sm" style={{ background: 'rgba(168,121,42,0.08)', border: '1px solid rgba(168,121,42,0.25)' }}>
+              <div className="flex justify-between font-mono text-xs text-[#6b7c6d]">
+                <span>Сума виводу</span><span className="text-white">{parseFloat(wdAmount).toFixed(2)} USDT</span>
+              </div>
+              <div className="flex justify-between font-mono text-xs text-[#6b7c6d] mt-1">
+                <span>Комісія мережі</span><span className="text-white">1.00 USDT</span>
+              </div>
+              <div className="flex justify-between font-mono text-xs font-bold mt-2 pt-2 border-t border-[#2f4a37]">
+                <span className="text-[#6b7c6d]">Отримаєте</span>
+                <span className="text-[#a8792a]">{parseFloat(wdAmount).toFixed(2)} USDT</span>
+              </div>
+            </div>
+          )}
+          <button className="u24-button-gold py-3 text-sm" onClick={submitWithdraw} disabled={wdLoading || !wdAmount || !wdAddr}>
+            {wdLoading ? '⏳ Обробка…' : '⬇ Відправити заявку'}
+          </button>
+          {wdHistory.length > 0 && (
+            <div>
+              <div className="font-black text-[10px] uppercase tracking-widest text-[#6b7c6d] mb-2">Історія виводів</div>
+              {wdHistory.map(w => (
+                <div key={w.id} className="flex items-center justify-between py-2 border-b border-[#1d2e20] text-xs">
+                  <div>
+                    <div className="font-mono text-[#E8F2EA]">{w.amount_usdt} USDT</div>
+                    <div className="font-mono text-[#6b7c6d] text-[10px]">{w.address.slice(0,10)}…</div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${w.status === 'pending' ? 'bg-[#a8792a]/20 text-[#a8792a]' : w.status === 'done' ? 'bg-[#4caf7d]/20 text-[#4caf7d]' : 'bg-[#c0392b]/20 text-[#c0392b]'}`}>
+                    {w.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'deposit' && <>
       {/* Balance */}
       <div className="border-2 border-[#a8792a] bg-[#1d2e20] text-white p-4 flex items-center justify-between">
         <div>
@@ -1852,15 +1959,17 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
           </div>
         </div>
       )}
+      </>}
     </div>
   );
 }
 
 // ─── Casino Lobby ─────────────────────────────────────────────────────────────
 
-function CasinoLobby({ wallet, onSelectGame, notify }: {
+function CasinoLobby({ wallet, onSelectGame, token, notify }: {
   wallet: CasinoWallet;
   onSelectGame: (g: CasinoView) => void;
+  token: string;
   notify: (m: string) => void;
 }) {
   const xpToNext = wallet.level * 500;
@@ -1875,16 +1984,22 @@ function CasinoLobby({ wallet, onSelectGame, notify }: {
     { key: 'slots',    label: 'Slots',        tag: 'Jackpot', hint: '×50',   accent: '#5BBE8A' },
   ];
 
-  const WINS = [
-    { user: 'Sofía',   game: 'Crash',    amount: 8450 },
-    { user: 'Kwame',   game: 'Mines',    amount: 2100 },
-    { user: 'Lucía',   game: 'Roulette', amount: 14200 },
-    { user: 'Túndé',   game: 'Dice',     amount: 3870 },
-    { user: 'Diego',   game: 'Slots',    amount: 1200 },
-    { user: 'Amara',   game: 'Chicken',  amount: 560 },
-    { user: 'Paolo',   game: 'Crash',    amount: 920 },
-    { user: 'Zainab',  game: 'Mines',    amount: 4400 },
+  const FALLBACK_WINS = [
+    { user_name: 'Sofía',  game_type: 'crash',    win_amount: 8450 },
+    { user_name: 'Kwame',  game_type: 'mines',    win_amount: 2100 },
+    { user_name: 'Lucía',  game_type: 'roulette', win_amount: 14200 },
+    { user_name: 'Diego',  game_type: 'slots',    win_amount: 1200 },
+    { user_name: 'Amara',  game_type: 'chicken',  win_amount: 560 },
+    { user_name: 'Paolo',  game_type: 'crash',    win_amount: 920 },
+    { user_name: 'Zainab', game_type: 'mines',    win_amount: 4400 },
+    { user_name: 'Túndé',  game_type: 'dice',     win_amount: 3870 },
   ];
+  const [wins, setWins] = useState(FALLBACK_WINS);
+  useEffect(() => {
+    api<{ user_name: string; game_type: string; win_amount: number }[]>('/casino/recent-wins').then(r => {
+      if (r.ok && r.data && r.data.length >= 4) setWins(r.data.slice(0, 20));
+    });
+  }, []);
 
   const BONUSES = [
     { day: 1, amount: 50,  claimed: true },
@@ -1974,12 +2089,12 @@ function CasinoLobby({ wallet, onSelectGame, notify }: {
             WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)',
           }}>
           <div className="flex gap-5 animate-ticker shrink-0">
-            {[...WINS, ...WINS].map((w, i) => (
+            {[...wins, ...wins].map((w, i) => (
               <div key={i} className="flex items-center gap-1.5 shrink-0 font-mono text-xs text-[#E8F2EA]/60 whitespace-nowrap">
-                <span className="font-bold text-[#E8F2EA]">{w.user}</span>
+                <span className="font-bold text-[#E8F2EA]">{w.user_name.split(' ')[0]}</span>
                 <span className="text-[#E8F2EA]/30">·</span>
-                <span>{w.game}</span>
-                <span className="font-black" style={{ color: '#5BBE8A' }}>+{w.amount}₮</span>
+                <span className="capitalize">{w.game_type}</span>
+                <span className="font-black" style={{ color: '#5BBE8A' }}>+{fmtCoins(w.win_amount)}</span>
               </div>
             ))}
           </div>
@@ -2884,7 +2999,7 @@ export default function App() {
 
         {/* CASINO TAB */}
         {sidebarTab === 'casino' && casinoView === 'lobby' && (
-          <CasinoLobby wallet={wallet} onSelectGame={v => setCasinoView(v)} notify={notify} />
+          <CasinoLobby wallet={wallet} onSelectGame={v => setCasinoView(v)} token={token} notify={notify} />
         )}
         {sidebarTab === 'casino' && casinoView === 'roulette' && (
           <div className="flex-1 flex flex-col overflow-hidden">

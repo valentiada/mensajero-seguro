@@ -6,8 +6,132 @@ import {
   X, ArrowLeft, Info, Edit3, Trash2, MessageCircle, Zap,
   Trophy, Star, ChevronRight, ChevronLeft, RefreshCw,
   Coins, TrendingUp, Award, LifeBuoy, AlertCircle,
-  BarChart2, Target, Gift,
+  BarChart2, Target, Gift, ChevronDown,
 } from 'lucide-react';
+
+// ─── Brand ───────────────────────────────────────────────────────────────────
+
+const APP_NAME = 'Nexus';
+
+// ─── i18n ─────────────────────────────────────────────────────────────────────
+
+const I18N = {
+  en: {
+    login: 'Sign in', register: 'Sign up', fullName: 'Full name',
+    phone: 'Phone', email: 'Email', password: 'Password',
+    loginBtn: 'Sign in', registerBtn: 'Create account',
+    loading: 'Loading…', errorDefault: 'Error. Please try again.',
+    country: 'Country', phonePlaceholder: 'Phone number',
+    namePlaceholder: 'John Smith', emailPlaceholder: 'you@example.com',
+    tagline: 'Secure messenger · Casino',
+    e2e: 'End-to-end encrypted',
+  },
+  uk: {
+    login: 'Вхід', register: 'Реєстрація', fullName: "Повне ім'я",
+    phone: 'Телефон', email: 'Email', password: 'Пароль',
+    loginBtn: 'Увійти', registerBtn: 'Створити акаунт',
+    loading: 'Завантаження…', errorDefault: 'Помилка. Спробуйте ще раз.',
+    country: 'Країна', phonePlaceholder: 'Номер телефону',
+    namePlaceholder: 'Іваненко Іван', emailPlaceholder: 'you@example.com',
+    tagline: 'Захищений месенджер · Казино',
+    e2e: 'E2E шифрування',
+  },
+  ru: {
+    login: 'Вход', register: 'Регистрация', fullName: 'Полное имя',
+    phone: 'Телефон', email: 'Email', password: 'Пароль',
+    loginBtn: 'Войти', registerBtn: 'Создать аккаунт',
+    loading: 'Загрузка…', errorDefault: 'Ошибка. Попробуйте ещё раз.',
+    country: 'Страна', phonePlaceholder: 'Номер телефона',
+    namePlaceholder: 'Иванов Иван', emailPlaceholder: 'you@example.com',
+    tagline: 'Защищённый мессенджер · Казино',
+    e2e: 'E2E шифрование',
+  },
+  es: {
+    login: 'Iniciar sesión', register: 'Registrarse', fullName: 'Nombre completo',
+    phone: 'Teléfono', email: 'Correo', password: 'Contraseña',
+    loginBtn: 'Entrar', registerBtn: 'Crear cuenta',
+    loading: 'Cargando…', errorDefault: 'Error. Inténtalo de nuevo.',
+    country: 'País', phonePlaceholder: 'Número de teléfono',
+    namePlaceholder: 'García Juan', emailPlaceholder: 'tú@ejemplo.com',
+    tagline: 'Mensajero seguro · Casino',
+    e2e: 'Cifrado E2E',
+  },
+  it: {
+    login: 'Accedi', register: 'Registrati', fullName: 'Nome completo',
+    phone: 'Telefono', email: 'Email', password: 'Password',
+    loginBtn: 'Entra', registerBtn: 'Crea account',
+    loading: 'Caricamento…', errorDefault: 'Errore. Riprova.',
+    country: 'Paese', phonePlaceholder: 'Numero di telefono',
+    namePlaceholder: 'Rossi Mario', emailPlaceholder: 'tu@esempio.it',
+    tagline: 'Messenger sicuro · Casino',
+    e2e: 'Crittografia E2E',
+  },
+  de: {
+    login: 'Anmelden', register: 'Registrieren', fullName: 'Vollständiger Name',
+    phone: 'Telefon', email: 'E-Mail', password: 'Passwort',
+    loginBtn: 'Anmelden', registerBtn: 'Konto erstellen',
+    loading: 'Lädt…', errorDefault: 'Fehler. Bitte erneut versuchen.',
+    country: 'Land', phonePlaceholder: 'Telefonnummer',
+    namePlaceholder: 'Müller Hans', emailPlaceholder: 'du@beispiel.de',
+    tagline: 'Sicherer Messenger · Casino',
+    e2e: 'Ende-zu-Ende-Verschlüsselung',
+  },
+};
+type LangCode = keyof typeof I18N;
+
+function detectLang(): LangCode {
+  const bl = (navigator.language || 'en').toLowerCase();
+  if (bl.startsWith('uk')) return 'uk';
+  if (bl.startsWith('ru')) return 'ru';
+  if (bl.startsWith('es')) return 'es';
+  if (bl.startsWith('it')) return 'it';
+  if (bl.startsWith('de')) return 'de';
+  return 'en';
+}
+
+// ─── Countries ────────────────────────────────────────────────────────────────
+
+interface Country { flag: string; iso: string; dialCode: string; name: string; }
+
+const COUNTRIES: Country[] = [
+  { flag: '🇺🇦', iso: 'UA', dialCode: '+380', name: 'Ukraine / Україна' },
+  { flag: '🇷🇺', iso: 'RU', dialCode: '+7',   name: 'Russia / Россия' },
+  { flag: '🇬🇧', iso: 'GB', dialCode: '+44',  name: 'United Kingdom' },
+  { flag: '🇺🇸', iso: 'US', dialCode: '+1',   name: 'United States' },
+  { flag: '🇩🇪', iso: 'DE', dialCode: '+49',  name: 'Germany / Deutschland' },
+  { flag: '🇫🇷', iso: 'FR', dialCode: '+33',  name: 'France' },
+  { flag: '🇮🇹', iso: 'IT', dialCode: '+39',  name: 'Italy / Italia' },
+  { flag: '🇪🇸', iso: 'ES', dialCode: '+34',  name: 'Spain / España' },
+  { flag: '🇵🇱', iso: 'PL', dialCode: '+48',  name: 'Poland / Polska' },
+  { flag: '🇧🇾', iso: 'BY', dialCode: '+375', name: 'Belarus / Беларусь' },
+  { flag: '🇲🇩', iso: 'MD', dialCode: '+373', name: 'Moldova' },
+  { flag: '🇬🇪', iso: 'GE', dialCode: '+995', name: 'Georgia / საქართველო' },
+  { flag: '🇦🇲', iso: 'AM', dialCode: '+374', name: 'Armenia / Հայաստան' },
+  { flag: '🇦🇿', iso: 'AZ', dialCode: '+994', name: 'Azerbaijan' },
+  { flag: '🇰🇿', iso: 'KZ', dialCode: '+7',   name: 'Kazakhstan / Қазақстан' },
+  { flag: '🇺🇿', iso: 'UZ', dialCode: '+998', name: 'Uzbekistan' },
+  { flag: '🇹🇷', iso: 'TR', dialCode: '+90',  name: 'Turkey / Türkiye' },
+  { flag: '🇮🇱', iso: 'IL', dialCode: '+972', name: 'Israel / ישראל' },
+  { flag: '🇦🇪', iso: 'AE', dialCode: '+971', name: 'UAE / الإمارات' },
+  { flag: '🇨🇿', iso: 'CZ', dialCode: '+420', name: 'Czech Republic' },
+  { flag: '🇷🇴', iso: 'RO', dialCode: '+40',  name: 'Romania' },
+  { flag: '🇭🇺', iso: 'HU', dialCode: '+36',  name: 'Hungary' },
+  { flag: '🇸🇰', iso: 'SK', dialCode: '+421', name: 'Slovakia' },
+  { flag: '🇧🇬', iso: 'BG', dialCode: '+359', name: 'Bulgaria' },
+  { flag: '🇸🇷', iso: 'SR', dialCode: '+597', name: 'Suriname' },
+  { flag: '🇨🇦', iso: 'CA', dialCode: '+1',   name: 'Canada' },
+  { flag: '🇦🇺', iso: 'AU', dialCode: '+61',  name: 'Australia' },
+  { flag: '🇧🇷', iso: 'BR', dialCode: '+55',  name: 'Brazil / Brasil' },
+  { flag: '🇲🇽', iso: 'MX', dialCode: '+52',  name: 'Mexico / México' },
+  { flag: '🇦🇷', iso: 'AR', dialCode: '+54',  name: 'Argentina' },
+];
+
+function guessCountryFromLang(lang: LangCode): Country {
+  const map: Record<LangCode, string> = {
+    uk: 'UA', ru: 'RU', es: 'ES', it: 'IT', de: 'DE', en: 'GB',
+  };
+  return COUNTRIES.find(c => c.iso === map[lang]) ?? COUNTRIES[0];
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -626,7 +750,7 @@ function SlotsView({ wallet, onWalletUpdate, notify }: {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Machine */}
         <div className="border-2 border-black bg-[#1d2e20] p-6 flex flex-col items-center gap-4">
-          <div className="text-[#a8792a] font-black text-xs uppercase tracking-widest">🎰 WeeGo Slots</div>
+          <div className="text-[#a8792a] font-black text-xs uppercase tracking-widest">🎰 Nexus Slots</div>
 
           {/* Reels */}
           <div className="flex gap-2 bg-black border-2 border-[#a8792a] p-3">
@@ -916,65 +1040,182 @@ function ProfileView({ user, wallet, tickets, notify }: {
 
 // ─── Auth Screen ──────────────────────────────────────────────────────────────
 
+function CountryPicker({ value, onChange, t }: { value: Country; onChange: (c: Country) => void; t: typeof I18N['en'] }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = COUNTRIES.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.dialCode.includes(search) ||
+    c.iso.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="w-full u24-input flex items-center gap-2 text-left cursor-pointer">
+        <span className="text-xl leading-none">{value.flag}</span>
+        <span className="font-mono text-sm flex-1">{value.dialCode}</span>
+        <span className="text-[#6b7c6d] text-xs truncate hidden sm:block">{value.name}</span>
+        <ChevronDown size={14} className={`text-[#6b7c6d] shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#f1f5ee] border-2 border-[#1d2e20] shadow-[4px_4px_0_0_#1d2e20] max-h-56 overflow-hidden flex flex-col">
+          <div className="p-2 border-b-2 border-[#1d2e20]">
+            <input autoFocus className="u24-input text-xs py-1.5" placeholder={`${t.country}…`}
+              value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <div className="overflow-y-auto">
+            {filtered.map(c => (
+              <button key={c.iso + c.dialCode} type="button"
+                onClick={() => { onChange(c); setOpen(false); setSearch(''); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-[#1d2e20] hover:text-white transition-colors text-left cursor-pointer text-sm ${c.iso === value.iso ? 'bg-[#1d2e2010] font-bold' : ''}`}>
+                <span className="text-lg leading-none w-6">{c.flag}</span>
+                <span className="font-mono text-xs w-10 shrink-0">{c.dialCode}</span>
+                <span className="truncate text-xs">{c.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void }) {
+  const [lang, setLang] = useState<LangCode>(detectLang);
+  const t = I18N[lang];
   const [tab, setTab] = useState<'login' | 'register'>('login');
-  const [form, setForm] = useState({ full_name: '', phone: '', email: '', password: '' });
+  const [country, setCountry] = useState<Country>(() => guessCountryFromLang(detectLang()));
+  const [phone, setPhone] = useState('');
+  const [form, setForm] = useState({ full_name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const fullPhone = phone ? `${country.dialCode}${phone.replace(/^\+/, '').replace(/^0/, '')}` : '';
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setError(''); setLoading(true);
     const endpoint = tab === 'login' ? '/auth/login' : '/auth/register';
-    const body = tab === 'login' ? { identity: form.phone || form.email, password: form.password } : form;
+    const body = tab === 'login'
+      ? { identity: fullPhone || form.email, password: form.password }
+      : { full_name: form.full_name, phone: fullPhone, email: form.email, password: form.password };
     const res = await api<{ token: string; user: User }>(endpoint, { method: 'POST', body: JSON.stringify(body) });
     setLoading(false);
     if (res.ok && res.data) onAuth(res.data.user, res.data.token);
-    else setError(res.error || 'Помилка. Спробуйте ще раз.');
+    else setError(res.error || t.errorDefault);
   }
 
+  const LANG_FLAGS: Record<LangCode, string> = { en: '🇬🇧', uk: '🇺🇦', ru: '🇷🇺', es: '🇪🇸', it: '🇮🇹', de: '🇩🇪' };
+
   return (
-    <div className="min-h-screen bg-[#1d2e20] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-3 border-2 border-[#a8792a] px-6 py-3 bg-[#1d4636]">
-            <Shield size={28} className="text-[#a8792a]" />
-            <div>
-              <div className="font-black text-2xl text-white tracking-tighter uppercase">WeeGo</div>
-              <div className="font-mono text-[10px] text-[#a8792a] tracking-widest uppercase">Захищений месенджер · Казино</div>
+    <div className="min-h-screen bg-[#111d13] flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+
+        {/* Logo */}
+        <div className="mb-6 text-center">
+          <div className="inline-flex flex-col items-center gap-1">
+            <div className="w-14 h-14 bg-[#1d4636] border-2 border-[#a8792a] flex items-center justify-center shadow-[4px_4px_0_0_#a8792a]">
+              <Shield size={28} className="text-[#a8792a]" />
             </div>
+            <div className="font-black text-3xl text-white tracking-tighter uppercase mt-2">{APP_NAME}</div>
+            <div className="font-mono text-[10px] text-[#a8792a] tracking-widest uppercase">{t.tagline}</div>
           </div>
         </div>
-        <div className="bg-[#f1f5ee] border-2 border-black shadow-[8px_8px_0px_0px_#a8792a]">
-          <div className="grid grid-cols-2 border-b-2 border-black">
-            {(['login', 'register'] as const).map(t => (
-              <button key={t} onClick={() => { setTab(t); setError(''); }}
-                className={`py-4 font-black uppercase tracking-widest text-xs transition-all border-none cursor-pointer ${tab === t ? 'bg-[#1d2e20] text-white' : 'bg-transparent text-[#1d2e20] hover:bg-[#1d2e2010]'}`}>
-                {t === 'login' ? 'Вхід' : 'Реєстрація'}
+
+        {/* Lang switcher */}
+        <div className="flex justify-center gap-1 mb-4">
+          {(Object.keys(I18N) as LangCode[]).map(l => (
+            <button key={l} type="button" onClick={() => setLang(l)}
+              title={l.toUpperCase()}
+              className={`w-8 h-6 text-base leading-none flex items-center justify-center border-2 cursor-pointer transition-all ${lang === l ? 'border-[#a8792a] scale-110' : 'border-transparent opacity-50 hover:opacity-80'}`}>
+              {LANG_FLAGS[l]}
+            </button>
+          ))}
+        </div>
+
+        {/* Card */}
+        <div className="bg-[#f1f5ee] border-2 border-[#1d2e20] shadow-[6px_6px_0_0_#a8792a]">
+          {/* Tabs */}
+          <div className="grid grid-cols-2 border-b-2 border-[#1d2e20]">
+            {(['login', 'register'] as const).map(tab_ => (
+              <button key={tab_} type="button" onClick={() => { setTab(tab_); setError(''); }}
+                className={`py-3.5 font-black uppercase tracking-widest text-xs transition-all cursor-pointer ${tab === tab_ ? 'bg-[#1d2e20] text-white' : 'bg-transparent text-[#1d2e20] hover:bg-[#1d2e2012]'}`}>
+                {tab_ === 'login' ? t.login : t.register}
               </button>
             ))}
           </div>
-          <form onSubmit={submit} className="p-6 flex flex-col gap-4">
+
+          <form onSubmit={submit} className="p-5 flex flex-col gap-3.5">
+
+            {/* Name (register only) */}
             {tab === 'register' && (
-              <div><label className="block font-black text-xs uppercase tracking-widest mb-2">Повне ім'я</label>
-                <input className="u24-input" placeholder="Іваненко Іван" value={form.full_name} onChange={set('full_name')} required /></div>
+              <div>
+                <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.fullName}</label>
+                <input className="u24-input" placeholder={t.namePlaceholder} value={form.full_name} onChange={set('full_name')} required />
+              </div>
             )}
-            <div><label className="block font-black text-xs uppercase tracking-widest mb-2">{tab === 'login' ? 'Телефон або Email' : 'Телефон'}</label>
-              <input className="u24-input" placeholder="+380XXXXXXXXX" value={form.phone} onChange={set('phone')} required={tab === 'register'} /></div>
+
+            {/* Country + Phone */}
+            <div>
+              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">
+                {tab === 'login' ? `${t.phone} / ${t.email}` : t.phone}
+              </label>
+              {tab === 'register' && (
+                <div className="mb-1.5">
+                  <CountryPicker value={country} onChange={c => { setCountry(c); }} t={t} />
+                </div>
+              )}
+              <div className={tab === 'register' ? 'flex gap-0' : ''}>
+                {tab === 'register' && (
+                  <div className="border-2 border-r-0 border-[#1d2e20] bg-[#1d2e20] text-white font-mono text-sm px-3 flex items-center shrink-0 select-none">
+                    {country.flag} {country.dialCode}
+                  </div>
+                )}
+                <input className="u24-input flex-1" placeholder={tab === 'login' ? `${t.phonePlaceholder} / ${t.emailPlaceholder}` : t.phonePlaceholder}
+                  value={phone} onChange={e => setPhone(e.target.value)}
+                  required={tab === 'register'} inputMode="tel" autoComplete="tel" />
+              </div>
+            </div>
+
+            {/* Email (register only) */}
             {tab === 'register' && (
-              <div><label className="block font-black text-xs uppercase tracking-widest mb-2">Email</label>
-                <input className="u24-input" type="email" placeholder="user@example.com" value={form.email} onChange={set('email')} required /></div>
+              <div>
+                <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.email}</label>
+                <input className="u24-input" type="email" placeholder={t.emailPlaceholder} value={form.email} onChange={set('email')} required />
+              </div>
             )}
-            <div><label className="block font-black text-xs uppercase tracking-widest mb-2">Пароль</label>
-              <input className="u24-input" type="password" placeholder="••••••••" value={form.password} onChange={set('password')} required /></div>
-            {error && <div className="border-2 border-[#c0392b] bg-[#c0392b10] px-4 py-3 font-mono text-xs text-[#c0392b]">{error}</div>}
-            <button type="submit" disabled={loading} className="u24-button mt-2">
-              {loading ? <span className="animate-blink">Завантаження…</span> : <><Lock size={14} />{tab === 'login' ? 'Увійти' : 'Зареєструватися'}</>}
+
+            {/* Password */}
+            <div>
+              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.password}</label>
+              <input className="u24-input" type="password" placeholder="••••••••" value={form.password} onChange={set('password')} required autoComplete={tab === 'login' ? 'current-password' : 'new-password'} />
+            </div>
+
+            {error && (
+              <div className="border-2 border-[#c0392b] bg-[#c0392b10] px-3 py-2.5 font-mono text-xs text-[#c0392b]">{error}</div>
+            )}
+
+            <button type="submit" disabled={loading} className="u24-button mt-1">
+              {loading
+                ? <span className="animate-blink">{t.loading}</span>
+                : <><Lock size={13} />{tab === 'login' ? t.loginBtn : t.registerBtn}</>}
             </button>
           </form>
-          <div className="border-t-2 border-black px-6 py-3 flex items-center gap-2">
-            <Lock size={10} className="text-[#6b7c6d]" />
-            <span className="font-mono text-[10px] text-[#6b7c6d] uppercase tracking-widest">E2E шифрування · WeeGo Casino</span>
+
+          <div className="border-t-2 border-[#1d2e20] px-5 py-2.5 flex items-center gap-2">
+            <Lock size={9} className="text-[#6b7c6d] shrink-0" />
+            <span className="font-mono text-[9px] text-[#6b7c6d] uppercase tracking-widest">{t.e2e} · {APP_NAME}</span>
           </div>
         </div>
       </div>
@@ -1123,7 +1364,7 @@ export default function App() {
         {/* Header */}
         <div className="px-4 py-3 border-b-2 border-[#2f4a37] flex items-center gap-2">
           <Shield size={16} className="text-[#a8792a] shrink-0" />
-          <span className="font-black text-sm uppercase tracking-tight flex-1">WeeGo</span>
+          <span className="font-black text-sm uppercase tracking-tight flex-1">Nexus</span>
           <button onClick={() => setShowSupport(v => !v)} className="text-[#6b7c6d] hover:text-[#a8792a] transition-colors cursor-pointer" title="Підтримка">
             <LifeBuoy size={15} />
           </button>
@@ -1327,7 +1568,7 @@ export default function App() {
 
             <div className="bg-[#1d4636] border-b-2 border-black px-4 py-1 flex items-center gap-2">
               <Lock size={10} className="text-[#a8792a]" />
-              <span className="font-mono text-[10px] text-[#a8792a] uppercase tracking-widest">E2E Encrypted · WeeGo</span>
+              <span className="font-mono text-[10px] text-[#a8792a] uppercase tracking-widest">E2E Encrypted · Nexus</span>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
@@ -1381,7 +1622,7 @@ export default function App() {
           <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
             <div className="border-2 border-black p-8 bg-surface shadow-[8px_8px_0px_0px_#1d2e20] text-center max-w-sm">
               <div className="text-5xl mb-4">🎰</div>
-              <h2 className="font-black text-xl uppercase tracking-tight mb-2">WeeGo</h2>
+              <h2 className="font-black text-xl uppercase tracking-tight mb-2">Nexus</h2>
               <p className="font-mono text-sm text-[#6b7c6d] mb-6">Месенджер · Казино · Підтримка</p>
               <div className="grid grid-cols-2 gap-2">
                 {[

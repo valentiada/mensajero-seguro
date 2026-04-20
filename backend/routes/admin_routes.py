@@ -233,3 +233,72 @@ def set_config():
         (g.current_user['id'], 'config_update', str(data)[:500]),
     )
     return jsonify({'ok': True, 'data': _GAME_CONFIG})
+
+
+# ── Withdrawals ───────────────────────────────────────────────────────────────
+
+@admin_bp.get('/withdrawals')
+@auth_required
+@role_required('admin', 'operator')
+def list_withdrawals():
+    status = request.args.get('status', 'pending')
+    rows = query_all(
+        '''SELECT w.*, u.full_name, u.phone, u.email
+           FROM withdrawals w JOIN users u ON u.id = w.user_id
+           WHERE w.status = ?
+           ORDER BY w.id DESC LIMIT 100''',
+        (status,),
+    )
+    return jsonify({'ok': True, 'data': rows})
+
+
+@admin_bp.post('/withdrawals/<int:wd_id>/process')
+@auth_required
+@role_required('admin')
+def process_withdrawal(wd_id: int):
+    data = request.get_json(force=True) or {}
+    action = (data.get('action') or '').strip()      # 'approve' | 'reject'
+    tx_hash = (data.get('tx_hash') or '').strip()
+
+    if action not in ('approve', 'reject'):
+        return api_error("action має бути 'approve' або 'reject'.")
+
+    wd = query_one('SELECT * FROM withdrawals WHERE id = ?', (wd_id,))
+    if not wd:
+        return api_error('Заявку не знайдено.')
+    if wd['status'] != 'pending':
+        return api_error(f"Заявка вже в статусі '{wd['status']}'.")
+
+    now_sql = 'NOW()' if USE_PG else "datetime('now')"
+    if action == 'approve':
+        if not tx_hash:
+            return api_error('tx_hash обовʼязковий для approve.')
+        execute(
+            f"UPDATE withdrawals SET status='done', tx_hash=?, processed_at={now_sql} WHERE id=?",
+            (tx_hash, wd_id),
+        )
+        new_status = 'done'
+    else:
+        # Reject: refund balance
+        execute(
+            f"UPDATE withdrawals SET status='rejected', processed_at={now_sql} WHERE id=?",
+            (wd_id,),
+        )
+        total_refund = float(wd['amount_usdt']) + 1.0  # amount + fee
+        execute(
+            'UPDATE casino_wallets SET balance = balance + ? WHERE user_id = ?',
+            (total_refund, wd['user_id']),
+        )
+        execute(
+            'INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)',
+            (g.current_user['id'], 'withdrawal_rejected',
+             f'wd_id={wd_id} refund={total_refund}'),
+        )
+        new_status = 'rejected'
+
+    execute(
+        'INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)',
+        (g.current_user['id'], f'withdrawal_{action}',
+         f'wd_id={wd_id} tx_hash={tx_hash or "-"}'),
+    )
+    return jsonify({'ok': True, 'data': {'id': wd_id, 'status': new_status}})

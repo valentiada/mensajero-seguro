@@ -161,6 +161,13 @@ def mines_cashout():
 
 # ── Dice ──────────────────────────────────────────────────────────────────────
 
+@casino_bp.get('/dice/seed')
+@auth_required
+def dice_seed():
+    data = casino_service.new_pf_seed()
+    return jsonify({'ok': True, 'data': data})
+
+
 @casino_bp.post('/dice/roll')
 @auth_required
 @rate_limit(30, 10, key_func=_casino_rate_key)
@@ -172,8 +179,12 @@ def dice_roll():
         direction = str(data.get('direction', 'over')).strip()
     except (TypeError, ValueError):
         return api_error('Невірні параметри.')
+    pf_session_id = (data.get('pf_session_id') or '').strip()
+    client_seed = (data.get('client_seed') or '').strip()
     try:
-        result = casino_service.roll_dice(g.current_user['id'], bet, target, direction)
+        result = casino_service.roll_dice(
+            g.current_user['id'], bet, target, direction, pf_session_id, client_seed,
+        )
         return jsonify({'ok': True, 'data': result})
     except ValueError as exc:
         return api_error(str(exc))
@@ -226,6 +237,24 @@ def chicken_cashout():
 
 
 # ── Recent wins (public feed) ─────────────────────────────────────────────────
+
+@casino_bp.get('/history')
+@auth_required
+def history():
+    limit = min(int(request.args.get('limit', 50)), 200)
+    offset = int(request.args.get('offset', 0))
+    rows = query_all(
+        'SELECT * FROM casino_games WHERE user_id = ? ORDER BY id DESC LIMIT ? OFFSET ?',
+        (g.current_user['id'], limit, offset),
+    )
+    import json as _json
+    for r in rows:
+        try:
+            r['result_data'] = _json.loads(r.get('result_data') or '{}')
+        except Exception:
+            r['result_data'] = {}
+    return jsonify({'ok': True, 'data': rows})
+
 
 @casino_bp.get('/recent-wins')
 def recent_wins():

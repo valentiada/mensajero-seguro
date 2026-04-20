@@ -1,6 +1,8 @@
 """Сервіс казино — рулетка, слоти, профіль."""
 from __future__ import annotations
 
+import hashlib
+import hmac
 import random
 import secrets
 import time
@@ -49,6 +51,7 @@ _SLOTS_PAYOUTS = {
 _crash_sessions: dict[str, dict] = {}
 _mines_sessions: dict[str, dict] = {}
 _chicken_sessions: dict[str, dict] = {}
+_pf_sessions: dict[str, dict] = {}   # provably-fair seed store
 
 
 def _cleanup_old_sessions(store: dict, max_age: float = 300.0) -> None:
@@ -366,7 +369,16 @@ class CasinoService:
 
     # ── Dice ──────────────────────────────────────────────────────────────────
 
-    def roll_dice(self, user_id: int, bet: float, target: int, direction: str) -> dict:
+    def new_pf_seed(self) -> dict:
+        _cleanup_old_sessions(_pf_sessions)
+        server_seed = secrets.token_hex(32)
+        session_id = secrets.token_hex(16)
+        _pf_sessions[session_id] = {'server_seed': server_seed, 'started_at': time.time()}
+        seed_hash = hashlib.sha256(server_seed.encode()).hexdigest()
+        return {'session_id': session_id, 'server_seed_hash': seed_hash}
+
+    def roll_dice(self, user_id: int, bet: float, target: int, direction: str,
+                  pf_session_id: str = '', client_seed: str = '') -> dict:
         wallet = self.repo.ensure_wallet(user_id)
         self._validate_bet(bet, wallet['balance'])
         if target < 2 or target > 97:
@@ -374,7 +386,16 @@ class CasinoService:
         if direction not in ('over', 'under'):
             raise ValueError("Напрямок: 'over' або 'under'.")
 
-        val = random.randint(1, 100)
+        server_seed_revealed: str | None = None
+        if pf_session_id and pf_session_id in _pf_sessions:
+            sess = _pf_sessions.pop(pf_session_id)
+            server_seed = sess['server_seed']
+            cs = client_seed or 'default'
+            digest = hmac.new(server_seed.encode(), cs.encode(), hashlib.sha256).hexdigest()  # type: ignore[attr-defined]
+            val = int(digest[:8], 16) % 100 + 1
+            server_seed_revealed = server_seed
+        else:
+            val = random.randint(1, 100)
         won = (val > target) if direction == 'over' else (val < target)
         win_chance = (100 - target) if direction == 'over' else target
         payout = round(98 / win_chance, 4)
@@ -393,10 +414,14 @@ class CasinoService:
         if won:
             self.repo.upsert_leaderboard(user_id, win)
 
-        return {
+        res: dict[str, Any] = {
             'result': val, 'won': won, 'win': win, 'bet': bet,
             'net': net, 'payout': payout, 'new_balance': new_balance,
         }
+        if server_seed_revealed:
+            res['server_seed'] = server_seed_revealed
+            res['client_seed'] = client_seed or 'default'
+        return res
 
     # ── Chicken Road ──────────────────────────────────────────────────────────
 

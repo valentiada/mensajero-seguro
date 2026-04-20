@@ -6,7 +6,7 @@ import {
   X, ArrowLeft, Info, Edit3, Trash2, MessageCircle, Zap,
   Trophy, Star, ChevronRight, ChevronLeft, RefreshCw,
   Coins, TrendingUp, Award, LifeBuoy, AlertCircle,
-  BarChart2, Target, Gift, ChevronDown,
+  BarChart2, Target, Gift, ChevronDown, ShieldCheck,
 } from 'lucide-react';
 
 // ─── Brand ───────────────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ function guessCountryFromLang(lang: LangCode): Country {
 
 type Role = 'soldier' | 'operator' | 'admin';
 type SidebarTab = 'chats' | 'casino' | 'profile';
-type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'deposit';
+type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'deposit' | 'leaderboard' | 'history';
 
 interface User {
   id: number;
@@ -1523,6 +1523,19 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
   const [result, setResult] = useState<number | null>(null);
   const [rolling, setRolling] = useState(false);
   const [history, setHistory] = useState<{ val: number; won: boolean }[]>([]);
+  // Provably fair state
+  const [pfSessionId, setPfSessionId] = useState('');
+  const [pfHash, setPfHash] = useState('');
+  const [clientSeed, setClientSeed] = useState(() => Math.random().toString(36).slice(2, 10));
+  const [pfRevealed, setPfRevealed] = useState<{ server_seed: string; client_seed: string; result: number } | null>(null);
+  const [showPf, setShowPf] = useState(false);
+
+  useEffect(() => { fetchSeed(); }, []);
+
+  async function fetchSeed() {
+    const r = await api<{ session_id: string; server_seed_hash: string }>('/casino/dice/seed', {}, token);
+    if (r.ok && r.data) { setPfSessionId(r.data.session_id); setPfHash(r.data.server_seed_hash); }
+  }
 
   const winChance = dir === 'over' ? (100 - target) : target;
   const payout = parseFloat((98 / winChance).toFixed(4));
@@ -1531,17 +1544,22 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
   async function roll() {
     setRolling(true);
     setResult(null);
-    const res = await api<{ result: number; won: boolean; win: number; payout: number; new_balance: number }>(
-      '/casino/dice/roll', { method: 'POST', body: JSON.stringify({ bet, target, direction: dir }) }, token,
+    setPfRevealed(null);
+    const res = await api<{ result: number; won: boolean; win: number; payout: number; new_balance: number; server_seed?: string; client_seed?: string }>(
+      '/casino/dice/roll', { method: 'POST', body: JSON.stringify({ bet, target, direction: dir, pf_session_id: pfSessionId, client_seed: clientSeed }) }, token,
     );
     setRolling(false);
     if (!res.ok) { notify(res.error || 'Помилка.'); return; }
-    const { result: val, won, win, new_balance } = res.data!;
+    const { result: val, won, win, new_balance, server_seed, client_seed: cs } = res.data!;
     setResult(val);
     setHistory(h => [{ val, won }, ...h.slice(0, 14)]);
     onWalletUpdate({ balance: new_balance, ...(won ? { total_won: wallet.total_won + win } : {}) });
+    if (server_seed) setPfRevealed({ server_seed, client_seed: cs || clientSeed, result: val });
     if (won) notify(`🎲 ${val} — Виграш! +${fmtCoins(win)}`);
     else notify(`🎲 ${val} — Програш!`);
+    // Fetch new seed for next round
+    fetchSeed();
+    setClientSeed(Math.random().toString(36).slice(2, 10));
   }
 
   return (
@@ -1642,6 +1660,43 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
       <button className="u24-button py-4 text-base" onClick={roll} disabled={rolling || bet < 1}>
         {rolling ? <><span className="animate-blink">🎲</span> Кидок…</> : `🎲 Кинути (${fmtCoins(bet)})`}
       </button>
+
+      {/* Provably Fair */}
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(168,121,42,0.2)' }}>
+        <button onClick={() => setShowPf(v => !v)}
+          className="w-full flex items-center justify-between px-3 py-2.5 cursor-pointer transition-all hover:bg-[#a8792a0a]"
+          style={{ background: 'rgba(168,121,42,0.04)' }}>
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={13} style={{ color: '#a8792a' }} />
+            <span className="font-black text-[10px] uppercase tracking-widest text-[#a8792a]">Provably Fair</span>
+          </div>
+          <ChevronRight size={13} style={{ color: '#a8792a', transform: showPf ? 'rotate(90deg)' : undefined, transition: 'transform .2s' }} />
+        </button>
+        {showPf && (
+          <div className="px-3 pb-3 flex flex-col gap-2.5 pt-1" style={{ background: 'rgba(168,121,42,0.03)' }}>
+            <div>
+              <div className="font-mono text-[9px] text-[#6b7c6d] uppercase mb-1">Хеш серверного сіду (до кидка)</div>
+              <div className="font-mono text-[10px] text-[#a8792a] break-all select-all leading-relaxed">{pfHash || '—'}</div>
+            </div>
+            <div>
+              <div className="font-mono text-[9px] text-[#6b7c6d] uppercase mb-1">Ваш client seed</div>
+              <input className="u24-input font-mono text-xs" value={clientSeed} onChange={e => setClientSeed(e.target.value)} placeholder="будь-який рядок" />
+            </div>
+            {pfRevealed && (
+              <div className="rounded-lg p-3 flex flex-col gap-1.5" style={{ background: 'rgba(76,175,125,0.06)', border: '1px solid rgba(76,175,125,0.2)' }}>
+                <div className="font-black text-[10px] uppercase tracking-widest text-[#4caf7d] mb-0.5">✅ Розкритий серверний сід</div>
+                <div className="font-mono text-[10px] break-all select-all text-[#E8F2EA]">{pfRevealed.server_seed}</div>
+                <div className="font-mono text-[9px] text-[#6b7c6d] mt-1">
+                  Перевірка: <code>HMAC-SHA256("{pfRevealed.server_seed}", "{pfRevealed.client_seed}") % 100 + 1 = {pfRevealed.result}</code>
+                </div>
+              </div>
+            )}
+            <div className="font-mono text-[9px] text-[#6b7c6d] leading-relaxed">
+              Результат = HMAC-SHA256(server_seed, client_seed) → перші 8 hex → % 100 + 1. Серверний сід розкривається після кидка — перевір самостійно.
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* History */}
       {history.length > 0 && (
@@ -2166,7 +2221,209 @@ function CasinoLobby({ wallet, onSelectGame, token, notify }: {
         </div>
       </div>
 
+      {/* Quick links */}
+      <div className="flex flex-col gap-2">
+        <button onClick={() => onSelectGame('leaderboard')}
+          className="flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
+          style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(228,162,75,0.12)' }}>
+            <Trophy size={18} style={{ color: '#E4A24B' }} />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="font-black text-sm text-[#E8F2EA] uppercase tracking-tight">Таблиця лідерів</div>
+            <div className="font-mono text-[10px] text-[#E8F2EA]/50 mt-0.5">Топ-10 гравців за виграшами</div>
+          </div>
+          <ChevronRight size={16} style={{ color: '#E8F2EA40' }} />
+        </button>
+        <button onClick={() => onSelectGame('history')}
+          className="flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
+          style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(91,190,138,0.1)' }}>
+            <BarChart2 size={18} style={{ color: '#5BBE8A' }} />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="font-black text-sm text-[#E8F2EA] uppercase tracking-tight">Історія ігор</div>
+            <div className="font-mono text-[10px] text-[#E8F2EA]/50 mt-0.5">Всі ваші ставки та результати</div>
+          </div>
+          <ChevronRight size={16} style={{ color: '#E8F2EA40' }} />
+        </button>
+      </div>
+
       <div className="h-4" />
+    </div>
+  );
+}
+
+// ─── Leaderboard ──────────────────────────────────────────────────────────────
+
+function LeaderboardView({ token }: { token: string }) {
+  type LbRow = { user_id: number; full_name: string; total_won: number; games_count: number };
+  const [rows, setRows] = useState<LbRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api<LbRow[]>('/casino/leaderboard', {}, token).then(r => {
+      if (r.ok && r.data) setRows(r.data);
+      setLoading(false);
+    });
+  }, [token]);
+
+  const MEDALS = ['🥇', '🥈', '🥉'];
+  const RANK_COLORS = ['#E4A24B', '#B0BEC5', '#CD7F32'];
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="font-mono text-sm text-[#E8F2EA]/40 animate-pulse">Завантаження…</div>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center">
+          <Trophy size={40} style={{ color: 'rgba(228,162,75,0.3)' }} />
+          <div className="font-black text-sm text-[#E8F2EA]/40">Ще немає даних</div>
+          <div className="font-mono text-xs text-[#E8F2EA]/25">Зіграй першим і потрап у топ!</div>
+        </div>
+      ) : (
+        <>
+          {/* Top-3 podium */}
+          {rows.length >= 3 && (
+            <div className="flex items-end justify-center gap-3 pt-2 pb-4">
+              {[rows[1], rows[0], rows[2]].map((r, podiumIdx) => {
+                const rank = podiumIdx === 0 ? 1 : podiumIdx === 1 ? 0 : 2;
+                const heights = ['h-20', 'h-28', 'h-16'];
+                const color = RANK_COLORS[rank];
+                return (
+                  <div key={r.user_id} className="flex flex-col items-center gap-1.5" style={{ flex: podiumIdx === 1 ? '1.3' : '1' }}>
+                    <div className="text-xl">{MEDALS[rank]}</div>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-base border-2"
+                      style={{ background: `${color}18`, borderColor: `${color}50`, color }}>
+                      {(r.full_name || '?')[0].toUpperCase()}
+                    </div>
+                    <div className="font-black text-[11px] text-[#E8F2EA] text-center max-w-[70px] truncate">
+                      {r.full_name.split(' ')[0]}
+                    </div>
+                    <div className={`w-full rounded-t-lg flex items-end justify-center pb-2 ${heights[podiumIdx]}`}
+                      style={{ background: `linear-gradient(180deg, ${color}22 0%, ${color}08 100%)`, border: `1px solid ${color}30`, borderBottom: 'none' }}>
+                      <span className="font-black text-xs" style={{ color }}>{fmtCoins(r.total_won)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Full list */}
+          <div className="flex flex-col gap-1.5">
+            {rows.map((r, i) => (
+              <div key={r.user_id}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                style={{
+                  background: i < 3 ? `${RANK_COLORS[i]}0a` : '#112A1C',
+                  border: `1px solid ${i < 3 ? RANK_COLORS[i] + '25' : 'rgba(255,255,255,0.05)'}`,
+                }}>
+                <div className="w-6 text-center font-black text-sm shrink-0">
+                  {i < 3 ? MEDALS[i] : <span className="font-mono text-xs text-[#E8F2EA]/30">{i + 1}</span>}
+                </div>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm shrink-0"
+                  style={{ background: 'rgba(255,255,255,0.05)', color: i < 3 ? RANK_COLORS[i] : '#E8F2EA' }}>
+                  {(r.full_name || '?')[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-black text-xs text-[#E8F2EA] truncate">{r.full_name}</div>
+                  <div className="font-mono text-[10px] text-[#E8F2EA]/40">{r.games_count} ігор</div>
+                </div>
+                <div className="font-black text-sm shrink-0" style={{ color: i < 3 ? RANK_COLORS[i] : '#5BBE8A' }}>
+                  {fmtCoins(r.total_won)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Game History ─────────────────────────────────────────────────────────────
+
+function HistoryView({ token }: { token: string }) {
+  type GameRow = { id: number; game_type: string; bet_amount: number; win_amount: number; created_at: string; result_data: Record<string, unknown> };
+  const [rows, setRows] = useState<GameRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api<GameRow[]>('/casino/history?limit=50', {}, token).then(r => {
+      if (r.ok && r.data) setRows(r.data);
+      setLoading(false);
+    });
+  }, [token]);
+
+  const GAME_EMOJI: Record<string, string> = {
+    roulette: '🎡', slots: '🎰', crash: '🚀', mines: '💣', dice: '🎲', chicken: '🐔',
+  };
+
+  const totalBet = rows.reduce((s, r) => s + r.bet_amount, 0);
+  const totalWon = rows.reduce((s, r) => s + r.win_amount, 0);
+  const winRate = rows.length > 0 ? Math.round(rows.filter(r => r.win_amount > 0).length / rows.length * 100) : 0;
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+      {!loading && rows.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'Ставки', value: fmtCoins(totalBet), color: '#E8F2EA' },
+            { label: 'Виграші', value: fmtCoins(totalWon), color: totalWon >= totalBet ? '#5BBE8A' : '#E54B5E' },
+            { label: 'Win Rate', value: `${winRate}%`, color: '#E4A24B' },
+          ].map(s => (
+            <div key={s.label} className="rounded-xl px-3 py-2.5 text-center"
+              style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="font-mono text-[9px] text-[#E8F2EA]/40 uppercase mb-0.5">{s.label}</div>
+              <div className="font-black text-sm" style={{ color: s.color }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="font-mono text-sm text-[#E8F2EA]/40 animate-pulse">Завантаження…</div>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center">
+          <BarChart2 size={40} style={{ color: 'rgba(91,190,138,0.3)' }} />
+          <div className="font-black text-sm text-[#E8F2EA]/40">Ще немає ігор</div>
+          <div className="font-mono text-xs text-[#E8F2EA]/25">Зіграй першу партію!</div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {rows.map(r => {
+            const won = r.win_amount > 0;
+            const net = r.win_amount - r.bet_amount;
+            const date = new Date(r.created_at).toLocaleDateString('uk', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+            return (
+              <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                style={{
+                  background: '#112A1C',
+                  border: `1px solid ${won ? 'rgba(91,190,138,0.15)' : 'rgba(255,255,255,0.04)'}`,
+                }}>
+                <div className="text-xl shrink-0">{GAME_EMOJI[r.game_type] || '🎮'}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-black text-xs text-[#E8F2EA] capitalize">{r.game_type}</div>
+                  <div className="font-mono text-[10px] text-[#E8F2EA]/40">{date}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-black text-xs" style={{ color: won ? '#5BBE8A' : '#E54B5E' }}>
+                    {net >= 0 ? '+' : ''}{fmtCoins(net)}
+                  </div>
+                  <div className="font-mono text-[10px] text-[#E8F2EA]/40">bet {fmtCoins(r.bet_amount)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -3041,6 +3298,18 @@ export default function App() {
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="💰" title="Поповнення" sub="BTC · ETH · USDT · TON · SOL" />
             <DepositView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'leaderboard' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🏆" title="Таблиця лідерів" sub="Топ-10 за всіма виграшами" />
+            <LeaderboardView token={token} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'history' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="📊" title="Історія ігор" sub="Останні 50 ставок" />
+            <HistoryView token={token} />
           </div>
         )}
 

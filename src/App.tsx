@@ -873,54 +873,97 @@ function SlotsView({ wallet, onWalletUpdate, token, notify }: {
 
 // ─── Crash ────────────────────────────────────────────────────────────────────
 
-function CrashChart({ points, crashed, cashed }: { points: number[]; crashed: boolean; cashed: boolean }) {
-  const W = 340, H = 160;
-  const maxM = Math.max(...points, 2);
-  const pts = points.map((m, i) => {
-    const x = (i / Math.max(points.length - 1, 1)) * (W - 20) + 10;
-    const y = H - 10 - ((m - 1) / (maxM - 1 + 0.001)) * (H - 20);
-    return `${x},${y}`;
-  }).join(' ');
+function CrashCanvas({ points, phase }: { points: number[]; phase: 'idle' | 'running' | 'cashed' | 'crashed' }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const color = phase === 'crashed' ? '#c0392b' : phase === 'cashed' ? '#4caf7d' : '#a8792a';
 
-  const strokeColor = crashed ? '#c0392b' : cashed ? '#4caf7d' : '#a8792a';
-  const lastX = points.length > 1 ? ((points.length - 1) / Math.max(points.length - 1, 1)) * (W - 20) + 10 : 10;
-  const lastY = points.length > 0 ? H - 10 - ((points[points.length - 1] - 1) / (maxM - 1 + 0.001)) * (H - 20) : H - 10;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(dpr, dpr);
+    const W = rect.width, H = rect.height;
+    const PAD_L = 28, PAD_B = 18, PAD_T = 12, PAD_R = 10;
 
-  return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
-      {/* Grid */}
-      {[1, 2, 5, 10].filter(v => v <= maxM + 1).map(v => {
-        const y = H - 10 - ((v - 1) / (maxM - 1 + 0.001)) * (H - 20);
-        return (
-          <g key={v}>
-            <line x1="10" y1={y} x2={W - 10} y2={y} stroke="rgba(168,121,42,0.15)" strokeWidth="1" strokeDasharray="4,4" />
-            <text x="12" y={y - 2} fill="rgba(168,121,42,0.5)" fontSize="8" fontFamily="monospace">×{v}</text>
-          </g>
-        );
-      })}
-      {/* Fill */}
-      {points.length > 1 && (
-        <polygon
-          points={`10,${H - 10} ${pts} ${lastX},${H - 10}`}
-          fill={strokeColor} opacity="0.12"
-        />
-      )}
-      {/* Line */}
-      {points.length > 1 && (
-        <polyline points={pts} fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      )}
-      {/* Rocket at tip */}
-      {points.length > 0 && !crashed && (
-        <text x={lastX - 10} y={lastY + 5} fontSize="18" style={{ filter: 'drop-shadow(0 0 4px #a8792a)' }}>🚀</text>
-      )}
-      {points.length > 0 && crashed && (
-        <text x={lastX - 10} y={lastY + 5} fontSize="18">💥</text>
-      )}
-      {points.length > 0 && cashed && (
-        <text x={lastX - 10} y={lastY + 5} fontSize="18">💸</text>
-      )}
-    </svg>
-  );
+    ctx.clearRect(0, 0, W, H);
+
+    if (points.length < 1) return;
+
+    const maxM = Math.max(...points, 2);
+    const px = (i: number) => PAD_L + (i / Math.max(points.length - 1, 1)) * (W - PAD_L - PAD_R);
+    const py = (m: number) => H - PAD_B - ((m - 1) / (maxM - 1 + 0.001)) * (H - PAD_T - PAD_B);
+
+    // Grid lines
+    const gridVals = [1, 2, 5, 10, 20, 50, 100].filter(v => v <= maxM * 1.15 && v >= 1);
+    ctx.setLineDash([3, 5]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(168,121,42,0.13)';
+    ctx.fillStyle = 'rgba(168,121,42,0.45)';
+    ctx.font = `bold 9px "JetBrains Mono", monospace`;
+    gridVals.forEach(v => {
+      const y = py(v);
+      ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
+      ctx.fillText(`×${v}`, 2, y + 3.5);
+    });
+    ctx.setLineDash([]);
+
+    if (points.length < 2) return;
+
+    // Gradient fill under curve
+    const grad = ctx.createLinearGradient(0, PAD_T, 0, H - PAD_B);
+    grad.addColorStop(0, color + '38');
+    grad.addColorStop(1, color + '00');
+    ctx.beginPath();
+    ctx.moveTo(px(0), H - PAD_B);
+    points.forEach((m, i) => ctx.lineTo(px(i), py(m)));
+    ctx.lineTo(px(points.length - 1), H - PAD_B);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Glow line (wide blur pass)
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 12;
+    ctx.strokeStyle = color + '60';
+    ctx.lineWidth = 6;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    points.forEach((m, i) => { const x = px(i), y = py(m); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+    ctx.stroke();
+
+    // Sharp line
+    ctx.shadowBlur = 4;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    points.forEach((m, i) => { const x = px(i), y = py(m); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Rocket/explosion at curve tip
+    const li = points.length - 1;
+    const tipX = px(li), tipY = py(points[li]);
+    let angle = -Math.PI / 8;
+    if (points.length >= 2) {
+      const prevX = px(li - 1), prevY = py(points[li - 1]);
+      angle = Math.atan2(tipY - prevY, tipX - prevX);
+    }
+    ctx.save();
+    ctx.translate(tipX, tipY);
+    ctx.rotate(angle);
+    ctx.font = '20px serif';
+    ctx.shadowColor = phase === 'crashed' ? '#c0392b' : '#a8792a';
+    ctx.shadowBlur = 10;
+    ctx.fillText(phase === 'crashed' ? '💥' : '🚀', -10, 7);
+    ctx.restore();
+  }, [points, phase, color]);
+
+  return <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />;
 }
 
 function CrashView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; token: string; notify: (m: string) => void }) {
@@ -1023,14 +1066,16 @@ function CrashView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
           </div>
         )}
         {phase === 'idle' && (
-          <div className="absolute inset-0 flex items-end justify-start pb-4 pl-4 z-10 pointer-events-none">
-            <span className="text-5xl" style={{ filter: 'drop-shadow(0 0 8px #a8792a)' }}>🚀</span>
+          <div className="absolute inset-0 flex items-end justify-start pb-5 pl-5 z-10 pointer-events-none">
+            <span className="text-5xl hb-hover" style={{ filter: 'drop-shadow(0 0 10px #a8792a)' }}>🚀</span>
           </div>
         )}
-        <CrashChart points={chartPoints} crashed={phase === 'crashed'} cashed={phase === 'cashed'} />
+        <div style={{ height: 180, position: 'relative' }}>
+          <CrashCanvas points={chartPoints} phase={phase} />
+        </div>
         {phase === 'running' && (
           <div className="absolute bottom-2 right-3 font-mono text-[10px] text-[#6b7c6d]">
-            Auto cash: ×{autoCashout}
+            Auto ×{autoCashout}
           </div>
         )}
       </div>
@@ -1179,36 +1224,31 @@ function MinesView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
         </div>
       )}
 
-      {/* Grid */}
-      <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+      {/* Grid with 3-D flip */}
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
         {Array.from({ length: GRID }, (_, i) => {
           const isRevealed = revealed.has(i);
           const isMine = mines.has(i);
           const showMine = isRevealed && isMine;
           const showGem = isRevealed && !isMine;
           const showAllMines = (phase === 'lost' || phase === 'won') && isMine && !isRevealed;
+          const flipped = isRevealed || showAllMines;
           const isJust = justRevealed === i;
           return (
-            <button key={i} onClick={() => reveal(i)}
-              disabled={phase !== 'playing' || isRevealed}
-              className={`aspect-square rounded-xl flex items-center justify-center text-2xl font-black transition-all duration-200 cursor-pointer select-none
-                ${showMine ? 'bg-[#c0392b] border-2 border-[#e74c3c] shake' :
-                  showGem ? `border-2 border-[#4caf7d] ${isJust ? 'win-flash' : ''}` :
-                  showAllMines ? 'bg-[#c0392b]/20 border border-[#c0392b]/40' :
-                  phase === 'playing' ? 'border-2 border-[#2f4a37] hover:border-[#a8792a] hover:scale-105 active:scale-95' :
-                  'border border-[#2f4a37]/40 opacity-50'}`}
-              style={{
-                background: showMine ? undefined
-                  : showGem ? 'linear-gradient(135deg, rgba(76,175,125,0.2), rgba(76,175,125,0.05))'
-                  : showAllMines ? undefined
-                  : phase === 'playing' ? 'linear-gradient(135deg, #1d2e20, #162219)'
-                  : 'rgba(29,46,32,0.3)',
-                boxShadow: showGem ? '0 0 12px rgba(76,175,125,0.4)' : showMine ? '0 0 12px rgba(192,57,43,0.5)' : undefined,
-              }}>
-              {showMine ? '💣' : showGem ? '💎' : showAllMines ? '💣' : phase === 'playing' ? (
-                <span className="text-[#2f4a37] text-lg font-bold">◆</span>
-              ) : ''}
-            </button>
+            <div key={i} className="tile-wrap" onClick={() => reveal(i)}
+              style={{ cursor: phase === 'playing' && !isRevealed ? 'pointer' : 'default' }}>
+              <div className={`tile-inner ${flipped ? 'tile-flipped' : ''} ${isJust && showMine ? 'shake' : ''} ${isJust && showGem ? 'win-flash' : ''}`}>
+                {/* Front face — unrevealed */}
+                <div className={`tile-face tile-front ${phase === 'playing' && !isRevealed ? '' : 'opacity-50'}`}
+                  style={phase === 'playing' && !isRevealed ? { borderColor: '#2f4a37' } : {}}>
+                  <span style={{ color: '#2f4a37', fontSize: '1.1rem' }}>◆</span>
+                </div>
+                {/* Back face — gem or mine */}
+                <div className={`tile-face tile-back ${showAllMines ? 'tile-back-hidden-mine' : isMine ? 'tile-back-mine' : 'tile-back-gem'}`}>
+                  {isMine ? '💣' : '💎'}
+                </div>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -1348,62 +1388,77 @@ function ChickenRoadView({ wallet, onWalletUpdate, token, notify }: { wallet: Ca
         </div>
       </div>
 
-      {/* Road — horizontal scrollable */}
-      <div className="rounded-2xl overflow-hidden relative" style={{ background: '#0d1a0a', border: '1.5px solid rgba(76,175,125,0.2)', minHeight: 220 }}>
-        {/* Road surface stripes */}
-        <div className="absolute inset-0 flex flex-col justify-around py-4 pointer-events-none">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-px opacity-20" style={{ background: 'repeating-linear-gradient(90deg, #4caf7d 0, #4caf7d 20px, transparent 20px, transparent 40px)' }} />
+      {/* Road */}
+      <div className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(180deg,#0a1a0d 0%,#0d1f11 100%)', border: '1.5px solid rgba(76,175,125,0.25)', minHeight: 220 }}>
+        {/* Asphalt lane dividers */}
+        <div className="absolute inset-0 pointer-events-none" style={{ left: 56, right: 56 }}>
+          {Array.from({ length: CHICKEN_LANES - 1 }).map((_, i) => (
+            <div key={i} className="absolute top-0 bottom-0 w-px opacity-15" style={{ left: `${((i + 1) / CHICKEN_LANES) * 100}%`, background: '#4caf7d' }} />
           ))}
+          {/* Road center stripe */}
+          <div className="absolute inset-y-0 left-0 right-0 flex items-center pointer-events-none">
+            <div className="w-full h-px opacity-10" style={{ background: 'repeating-linear-gradient(90deg,#fff 0,#fff 14px,transparent 14px,transparent 28px)' }} />
+          </div>
         </div>
 
-        {/* Lanes (columns) */}
         <div className="relative flex h-full" style={{ minHeight: 220 }}>
-          {/* Start zone */}
-          <div className="flex flex-col items-center justify-center w-14 flex-shrink-0 border-r border-[#4caf7d]/20">
-            <span className="text-[10px] font-mono text-[#6b7c6d] mb-1">Start</span>
-            <span className={`text-3xl transition-all duration-200 ${jumping ? '-translate-y-3' : ''} ${phase === 'idle' || (phase === 'playing' && lane === 0) ? '' : 'opacity-0'}`}>
-              🐔
-            </span>
+          {/* Start */}
+          <div className="flex flex-col items-center justify-center w-14 flex-shrink-0 border-r border-[#4caf7d]/15 gap-1">
+            <span className="text-[9px] font-mono text-[#6b7c6d] uppercase">Go</span>
+            <span className={`text-3xl ${jumping ? 'chicken-bounce' : ''} ${phase === 'idle' || (phase === 'playing' && lane === 0) ? '' : 'opacity-0'}`}>🐔</span>
           </div>
 
-          {/* Road lanes */}
+          {/* Lanes */}
           {Array.from({ length: CHICKEN_LANES }, (_, i) => {
-            const isPassed = lane > i + 1 || (phase !== 'playing' && lane > i);
+            const isPassed = (phase === 'playing' && lane > i + 1) || (phase !== 'playing' && phase !== 'idle' && lane > i);
             const isChickenHere = phase === 'playing' && lane === i + 1;
             const isHit = hitLane === i;
-            const hasCar = (phase === 'hit' || phase === 'won') && cars[i];
-            const isCurrent = phase === 'playing' && lane === i;
-            const isFinished = phase !== 'idle' && phase !== 'playing';
+            const hasCar = (phase === 'hit' || phase === 'won') && cars.length > 0 && cars[i];
+            const isNext = phase === 'playing' && lane === i;
+            // During play show danger shadow on upcoming lane
+            const isDanger = phase === 'playing' && i >= lane && !isPassed;
 
             return (
-              <div key={i} className={`flex-1 flex flex-col items-center justify-between py-3 border-r transition-all duration-300 relative
-                ${isHit ? 'bg-[#c0392b]/20' : isPassed ? 'bg-[#4caf7d]/8' : isCurrent ? 'bg-[#a8792a]/10' : ''}`}
-                style={{ borderColor: isHit ? 'rgba(192,57,43,0.4)' : isPassed ? 'rgba(76,175,125,0.2)' : 'rgba(29,74,54,0.3)' }}>
-                {/* Multiplier */}
-                <div className={`font-mono text-[10px] font-bold ${isPassed ? 'text-[#4caf7d]' : 'text-[#a8792a]'}`}>
+              <div key={i} className={`flex-1 flex flex-col items-center justify-between py-2 relative overflow-hidden transition-all duration-300
+                ${isHit ? 'bg-[#c0392b]/25' : isPassed ? 'bg-[#4caf7d]/6' : isNext ? 'bg-[#a8792a]/12' : ''}`}
+                style={{ borderRight: '1px solid rgba(76,175,125,0.08)' }}>
+
+                {/* Mult label */}
+                <div className={`font-mono text-[9px] font-bold z-10 ${isPassed ? 'text-[#4caf7d]' : 'text-[#a8792a]/80'}`}>
                   ×{CHICKEN_MULTS[i]}
                 </div>
 
-                {/* Center — car or chicken */}
-                <div className="flex items-center justify-center h-10 relative">
-                  {hasCar && <span className="text-xl">🚗</span>}
-                  {isHit && <span className="text-xl absolute">💥</span>}
+                {/* Animated car (danger lanes during play) */}
+                {isDanger && !isChickenHere && (
+                  <div className="absolute inset-0 flex items-center overflow-hidden pointer-events-none">
+                    <span className="car-drive text-base z-0"
+                      style={{ animationDuration: `${1.4 + i * 0.18}s`, animationDelay: `${i * 0.22}s` }}>🚗</span>
+                  </div>
+                )}
+
+                {/* Center content */}
+                <div className="flex items-center justify-center h-10 relative z-10">
+                  {hasCar && !isHit && <span className="text-xl">🚗</span>}
+                  {isHit && <span className="text-2xl">💥</span>}
                   {isChickenHere && (
-                    <span className={`text-3xl transition-all duration-200 ${jumping ? '-translate-y-3' : ''}`}>🐔</span>
+                    <span className={`text-3xl ${jumping ? 'chicken-bounce' : ''}`}>🐔</span>
                   )}
-                  {isPassed && !hasCar && <span className="text-base">✅</span>}
+                  {isPassed && !hasCar && !isHit && <span className="text-sm">✅</span>}
                 </div>
 
-                {/* Lane number */}
-                <div className="font-mono text-[9px] text-[#6b7c6d]">{i + 1}</div>
+                {/* Danger indicator */}
+                {isDanger && !isChickenHere && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 danger-pulse" style={{ background: '#c0392b' }} />
+                )}
+
+                <div className="font-mono text-[8px] text-[#6b7c6d] z-10">{i + 1}</div>
               </div>
             );
           })}
 
-          {/* Finish zone */}
-          <div className="flex flex-col items-center justify-center w-14 flex-shrink-0 border-l border-[#4caf7d]/20">
-            <span className="text-[10px] font-mono text-[#4caf7d] mb-1">×30</span>
+          {/* Finish */}
+          <div className="flex flex-col items-center justify-center w-14 flex-shrink-0 border-l border-[#4caf7d]/15 gap-1">
+            <span className="text-[9px] font-mono text-[#4caf7d] uppercase">×30</span>
             <span className="text-2xl">🏆</span>
           </div>
         </div>

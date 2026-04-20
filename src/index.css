@@ -285,6 +285,66 @@
   }
   .shake { animation: shake 0.4s ease forwards; }
 
+  /* ── Mines tile 3-D flip ─────────────────────────────────── */
+  .tile-wrap {
+    perspective: 500px;
+    width: 100%; aspect-ratio: 1;
+  }
+  .tile-inner {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.38s cubic-bezier(0.4,0,0.2,1);
+    border-radius: 12px;
+  }
+  .tile-inner.tile-flipped { transform: rotateY(180deg); }
+  .tile-face {
+    position: absolute; inset: 0;
+    border-radius: 12px;
+    backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; font-weight: 900;
+  }
+  .tile-front {
+    background: linear-gradient(135deg, #1d2e20, #162219);
+    border: 2px solid #2f4a37;
+  }
+  .tile-front:hover { border-color: #a8792a; transform: scale(1.05); }
+  .tile-back { transform: rotateY(180deg); }
+  .tile-back-gem {
+    background: linear-gradient(135deg, rgba(76,175,125,0.22), rgba(76,175,125,0.07));
+    border: 2px solid #4caf7d;
+    box-shadow: 0 0 14px rgba(76,175,125,0.45);
+  }
+  .tile-back-mine {
+    background: #c0392b;
+    border: 2px solid #e74c3c;
+    box-shadow: 0 0 14px rgba(192,57,43,0.6);
+  }
+  .tile-back-hidden-mine {
+    background: rgba(192,57,43,0.18);
+    border: 1px solid rgba(192,57,43,0.35);
+  }
+
+  /* ── Chicken Road car animation ──────────────────────────── */
+  @keyframes car-drive {
+    0%   { transform: translateX(110%); }
+    100% { transform: translateX(-110%); }
+  }
+  .car-drive { animation: car-drive linear infinite; }
+
+  @keyframes danger-pulse {
+    0%, 100% { opacity: 0.25; }
+    50%       { opacity: 0.7; }
+  }
+  .danger-pulse { animation: danger-pulse 0.9s ease-in-out infinite; }
+
+  @keyframes chicken-bounce {
+    0%, 100% { transform: translateY(0) scaleX(1); }
+    30%       { transform: translateY(-10px) scaleX(0.9); }
+    60%       { transform: translateY(-4px) scaleX(1.05); }
+  }
+  .chicken-bounce { animation: chicken-bounce 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
   @keyframes count-up {
     from { opacity: 0; transform: translateY(8px) scale(0.95); }
     to   { opacity: 1; transform: translateY(0) scale(1); }

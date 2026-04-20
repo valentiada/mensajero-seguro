@@ -1747,14 +1747,20 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void })
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // For registration: always prepend dial code
   const fullPhone = phone ? `${country.dialCode}${phone.replace(/^\+/, '').replace(/^0/, '')}` : '';
+  // For login: send as-is if email or already has +, else prepend dial code
+  const loginIdentity = phone.includes('@') ? phone
+    : phone.startsWith('+') ? phone
+    : phone ? `${country.dialCode}${phone.replace(/^0/, '')}` : '';
+
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setError(''); setLoading(true);
     const endpoint = tab === 'login' ? '/auth/login' : '/auth/register';
     const body = tab === 'login'
-      ? { identity: fullPhone || form.email, password: form.password }
+      ? { identity: loginIdentity, password: form.password }
       : { full_name: form.full_name, phone: fullPhone, email: form.email, password: form.password };
     const res = await api<{ token: string; user: User }>(endpoint, { method: 'POST', body: JSON.stringify(body) });
     setLoading(false);
@@ -1843,32 +1849,33 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void })
               </div>
             )}
 
-            {/* Country picker (register) */}
-            {tab === 'register' && (
-              <div>
-                <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.country}</label>
-                <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
-              </div>
-            )}
+            {/* Country picker (both tabs — needed for phone login too) */}
+            <div>
+              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.country}</label>
+              <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
+            </div>
 
-            {/* Phone */}
+            {/* Phone / Email */}
             <div>
               <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">
                 {tab === 'login' ? `${t.phone} / ${t.email}` : t.phone}
               </label>
               <div className="flex">
-                {tab === 'register' && (
-                  <div className="flex items-center gap-1.5 px-3 shrink-0 font-mono text-sm select-none"
-                    style={{ background: '#1d2e20', color: '#f1f5ee', border: '2px solid #1d2e20', borderRight: 'none' }}>
-                    <span>{country.flag}</span>
-                    <span className="text-[#a8792a]">{country.dialCode}</span>
-                  </div>
-                )}
-                <input className="u24-input flex-1" style={tab === 'register' ? { borderLeft: 'none' } : {}}
+                <div className="flex items-center gap-1.5 px-3 shrink-0 font-mono text-sm select-none"
+                  style={{ background: '#1d2e20', color: '#f1f5ee', border: '2px solid #1d2e20', borderRight: 'none' }}>
+                  <span>{country.flag}</span>
+                  <span className="text-[#a8792a]">{country.dialCode}</span>
+                </div>
+                <input className="u24-input flex-1" style={{ borderLeft: 'none' }}
                   placeholder={tab === 'login' ? `${t.phonePlaceholder} / ${t.emailPlaceholder}` : t.phonePlaceholder}
                   value={phone} onChange={e => setPhone(e.target.value)}
-                  required={tab === 'register'} inputMode="tel" autoComplete="tel" />
+                  required inputMode={phone.includes('@') ? 'email' : 'tel'} autoComplete={tab === 'login' ? 'username' : 'tel'} />
               </div>
+              {tab === 'login' && (
+                <div className="font-mono text-[9px] mt-1" style={{ color: '#6b7c6d' }}>
+                  Код країни застосовується якщо вводите телефон. Email вводьте повністю.
+                </div>
+              )}
             </div>
 
             {/* Email */}

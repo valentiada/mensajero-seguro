@@ -1786,18 +1786,18 @@ function CasinoLobby({ wallet, onSelectGame, notify }: {
         style={{ background: 'linear-gradient(180deg,#163524 0%,#112A1C 100%)' }}>
         <div className="absolute -top-10 -right-10 w-40 h-40 pointer-events-none"
           style={{ background: 'radial-gradient(circle, rgba(228,162,75,0.18) 0%, transparent 70%)' }} />
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-[#E8F2EA]/60 mb-1">Баланс</div>
-            <div className="text-[#E8F2EA] whitespace-nowrap" style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 28, letterSpacing: -0.5, lineHeight: 1 }}>
-              {fmtCoins(wallet.balance)}
-            </div>
+        <div className="relative flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-[#E8F2EA]/60">Баланс</div>
+            <button onClick={() => onSelectGame('deposit')}
+              className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer transition-all hover:brightness-110 active:scale-95"
+              style={{ background: '#E4A24B', color: '#1a1006' }}>
+              <Plus size={13} strokeWidth={2.5} /> Поповнити
+            </button>
           </div>
-          <button onClick={() => onSelectGame('deposit')}
-            className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer transition-all hover:brightness-110 active:scale-95"
-            style={{ background: '#E4A24B', color: '#1a1006' }}>
-            <Plus size={14} strokeWidth={2.5} /> Поповнити
-          </button>
+          <div className="text-[#E8F2EA]" style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, letterSpacing: -1, lineHeight: 1 }}>
+            {fmtCoins(wallet.balance)}
+          </div>
         </div>
         <div className="relative mt-4 flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-[#0B1A12] border border-white/5 flex items-center justify-center font-black text-sm text-[#E4A24B]">

@@ -65,6 +65,22 @@ def stats():
 
 # ── Users management ──────────────────────────────────────────────────────────
 
+@admin_bp.get('/users')
+@auth_required
+@role_required('admin', 'operator')
+def list_users():
+    limit = min(int(request.args.get('limit', 200)), 500)
+    rows = query_all(
+        '''SELECT u.id, u.full_name, u.phone, u.email, u.role,
+                  COALESCE(w.balance, 0) AS balance
+           FROM users u
+           LEFT JOIN casino_wallets w ON w.user_id = u.id
+           ORDER BY u.id DESC LIMIT ?''',
+        (limit,),
+    )
+    return jsonify({'ok': True, 'data': {'users': rows}})
+
+
 @admin_bp.put('/users/<int:user_id>/role')
 @auth_required
 @role_required('admin')

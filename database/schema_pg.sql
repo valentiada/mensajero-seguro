@@ -152,3 +152,15 @@ CREATE TABLE IF NOT EXISTS withdrawals (
 );
 CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
+
+-- ── Daily bonuses ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS daily_bonus_claims (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL,
+    streak_day  INTEGER NOT NULL DEFAULT 1,
+    amount      NUMERIC(12,2) NOT NULL,
+    claimed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_daily_bonus_user ON daily_bonus_claims(user_id);

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from datetime import date, datetime, timezone
 
 from flask import Blueprint, g, jsonify, request
 
@@ -234,6 +235,90 @@ def chicken_cashout():
         return jsonify({'ok': True, 'data': result})
     except ValueError as exc:
         return api_error(str(exc))
+
+
+# ── Daily bonus ───────────────────────────────────────────────────────────────
+
+_BONUS_AMOUNTS = [50, 100, 200, 300, 500, 750, 1000]  # day 1..7, then cycles at 1000
+
+
+def _daily_bonus_status(user_id: int) -> dict:
+    today = date.today().isoformat()
+    last = query_one(
+        'SELECT * FROM daily_bonus_claims WHERE user_id = ? ORDER BY id DESC LIMIT 1',
+        (user_id,),
+    )
+    if last:
+        last_date = last['claimed_at'][:10]
+        if last_date == today:
+            # Already claimed today
+            streak = last['streak_day']
+            next_day = min(streak + 1, len(_BONUS_AMOUNTS))
+            return {
+                'claimed_today': True,
+                'streak': streak,
+                'next_amount': _BONUS_AMOUNTS[next_day - 1],
+                'days': _build_days(streak),
+            }
+        from datetime import date as _d, timedelta
+        yesterday = (_d.today() - timedelta(days=1)).isoformat()
+        if last_date == yesterday:
+            streak = min(last['streak_day'] + 1, len(_BONUS_AMOUNTS))
+        else:
+            streak = 1  # streak broken
+    else:
+        streak = 1
+
+    amount = _BONUS_AMOUNTS[streak - 1]
+    return {
+        'claimed_today': False,
+        'streak': streak,
+        'next_amount': amount,
+        'days': _build_days(streak - 1),
+    }
+
+
+def _build_days(current_streak: int) -> list[dict]:
+    return [
+        {
+            'day': i + 1,
+            'amount': _BONUS_AMOUNTS[i],
+            'claimed': i < current_streak,
+            'today': i == current_streak,
+        }
+        for i in range(len(_BONUS_AMOUNTS))
+    ]
+
+
+@casino_bp.get('/daily-bonus')
+@auth_required
+def daily_bonus_status():
+    return jsonify({'ok': True, 'data': _daily_bonus_status(g.current_user['id'])})
+
+
+@casino_bp.post('/daily-bonus/claim')
+@auth_required
+@rate_limit(3, 86400, key_func=lambda: f'daily:{g.current_user["id"]}')
+def claim_daily_bonus():
+    user_id = g.current_user['id']
+    status = _daily_bonus_status(user_id)
+    if status['claimed_today']:
+        return api_error('Бонус вже отримано сьогодні.')
+    streak = status['streak']
+    amount = _BONUS_AMOUNTS[streak - 1]
+    execute(
+        'INSERT INTO daily_bonus_claims (user_id, streak_day, amount) VALUES (?, ?, ?)',
+        (user_id, streak, amount),
+    )
+    new_balance = casino_service.repo.update_balance(user_id, amount)
+    execute(
+        'INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)',
+        (user_id, 'daily_bonus', f'streak={streak} amount={amount}'),
+    )
+    return jsonify({'ok': True, 'data': {
+        'amount': amount, 'streak': streak, 'new_balance': new_balance,
+        **_daily_bonus_status(user_id),
+    }})
 
 
 # ── Recent wins (public feed) ─────────────────────────────────────────────────

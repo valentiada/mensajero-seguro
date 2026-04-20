@@ -2052,10 +2052,20 @@ export default function App() {
     { key: 'profile', icon: <Award size={16} />, label: 'Профіль' },
   ];
 
+  // On mobile: sidebarOpen = sidebar overlay; on desktop sidebar is always visible
+  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <div className="h-screen flex overflow-hidden bg-surface">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* ── Sidebar ───────────────────────────────────────────── */}
-      <aside className={`sidebar transition-all duration-300 z-20 ${sidebarOpen ? 'flex' : 'hidden md:flex'}`}>
+      <aside className={`sidebar z-50 transition-transform duration-300
+        md:relative md:translate-x-0 md:flex
+        ${sidebarOpen ? 'fixed inset-0 flex' : 'hidden md:flex'}`}>
         {/* Header */}
         <div className="px-4 py-3 border-b-2 border-[#2f4a37] flex items-center gap-2">
           <Shield size={16} className="text-[#a8792a] shrink-0" />
@@ -2185,7 +2195,7 @@ export default function App() {
                 </div>
               </div>
             )}
-            <button onClick={() => { setSidebarOpen(false); }} className="u24-button-outline w-full text-xs py-2">
+            <button onClick={() => { setSidebarOpen(false); setSidebarTab('profile'); }} className="u24-button-outline w-full text-xs py-2">
               <ChevronRight size={12} /> Відкрити профіль
             </button>
             <button onClick={() => setShowSupport(v => !v)} className="w-full flex items-center gap-2 px-3 py-2.5 font-black text-xs uppercase tracking-widest text-[#6b7c6d] hover:text-white hover:bg-[#243628] cursor-pointer transition-all">
@@ -2196,10 +2206,20 @@ export default function App() {
       </aside>
 
       {/* ── Main ──────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden pb-14 md:pb-0">
+        {/* Mobile top header — visible only when sidebar is closed on mobile */}
+        {!sidebarOpen && (
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 shrink-0" style={{ background: '#111d13', borderBottom: '2px solid #1d2e20' }}>
+            <Shield size={16} className="text-[#a8792a]" />
+            <span className="font-black text-sm uppercase tracking-tight flex-1 text-white">{APP_NAME}</span>
+            <div className="font-mono text-xs text-[#a8792a]">{fmtCoins(wallet.balance)}</div>
+            <button onClick={handleLogout} className="text-[#6b7c6d]" title="Вийти"><LogOut size={16} /></button>
+          </div>
+        )}
+
         {/* Casino views */}
         {sidebarTab === 'casino' && casinoView === 'lobby' && (
-          <CasinoLobby wallet={wallet} onSelectGame={v => { setCasinoView(v); }} notify={notify} />
+          <CasinoLobby wallet={wallet} onSelectGame={v => { setCasinoView(v); setSidebarOpen(false); }} notify={notify} />
         )}
         {sidebarTab === 'casino' && casinoView === 'roulette' && (
           <>
@@ -2425,6 +2445,41 @@ export default function App() {
           </div>
         </aside>
       )}
+
+      {/* ── Mobile bottom nav ─────────────────────────────────── */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 flex" style={{ background: '#111d13', borderTop: '2px solid #1d2e20' }}>
+        {([
+          { key: 'chats'   as SidebarTab, icon: <MessageCircle size={20} />, label: 'Чати',    badge: totalUnread },
+          { key: 'casino'  as SidebarTab, icon: <Zap size={20} />,           label: 'Казино',  badge: 0 },
+          { key: 'profile' as SidebarTab, icon: <Award size={20} />,         label: 'Профіль', badge: 0 },
+        ]).map(item => (
+          <button key={item.key}
+            onClick={() => { setSidebarTab(item.key); setSidebarOpen(false); }}
+            className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 relative cursor-pointer transition-all"
+            style={{ color: sidebarTab === item.key ? '#a8792a' : '#6b7c6d' }}>
+            {item.badge > 0 && (
+              <span className="absolute top-1.5 right-1/4 bg-[#c0392b] text-white font-black text-[9px] px-1 min-w-[16px] text-center rounded-none">
+                {item.badge}
+              </span>
+            )}
+            {item.icon}
+            <span className="font-black text-[9px] uppercase tracking-widest">{item.label}</span>
+            {sidebarTab === item.key && (
+              <div className="absolute top-0 inset-x-0 h-0.5 bg-[#a8792a]" />
+            )}
+          </button>
+        ))}
+        {/* Hamburger for sidebar details */}
+        <button onClick={() => setSidebarOpen(true)}
+          className="w-12 flex flex-col items-center justify-center py-2.5 gap-0.5 cursor-pointer transition-all"
+          style={{ color: '#6b7c6d', borderLeft: '1px solid #1d2e20' }}>
+          <div className="flex flex-col gap-1">
+            <div className="w-4 h-0.5 bg-current" />
+            <div className="w-4 h-0.5 bg-current" />
+            <div className="w-4 h-0.5 bg-current" />
+          </div>
+        </button>
+      </nav>
 
       {/* ── Call overlay ──────────────────────────────────────── */}
       {call && <CallOverlay call={call} onEnd={endCall} onMute={() => setCall(p => p ? { ...p, muted: !p.muted } : null)} onVideo={() => setCall(p => p ? { ...p, video_off: !p.video_off } : null)} />}

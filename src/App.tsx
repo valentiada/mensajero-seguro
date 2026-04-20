@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Send, Phone, Video, Search, Plus, Lock, Shield, Users,
   LogOut, Settings, Paperclip, Smile, Check, CheckCheck,

@@ -137,7 +137,7 @@ function guessCountryFromLang(lang: LangCode): Country {
 
 type Role = 'soldier' | 'operator' | 'admin';
 type SidebarTab = 'chats' | 'casino' | 'profile';
-type CasinoView = 'lobby' | 'roulette' | 'slots';
+type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'deposit';
 
 interface User {
   id: number;
@@ -838,6 +838,639 @@ function SlotsView({ wallet, onWalletUpdate, notify }: {
   );
 }
 
+// ─── Crash ────────────────────────────────────────────────────────────────────
+
+function CrashView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
+  const [bet, setBet] = useState(100);
+  const [phase, setPhase] = useState<'idle' | 'running' | 'cashed' | 'crashed'>('idle');
+  const [mult, setMult] = useState(1.00);
+  const [crashAt, setCrashAt] = useState(1.00);
+  const [autoCashout, setAutoCashout] = useState(2.0);
+  const [history, setHistory] = useState<number[]>([5.2, 1.3, 12.4, 2.1, 1.0, 3.7, 1.8]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function genCrash() {
+    const r = Math.random();
+    if (r < 0.05) return 1.00;
+    return Math.max(1.01, parseFloat((1 / (1 - Math.random() * 0.97)).toFixed(2)));
+  }
+
+  function start() {
+    if (bet > wallet.balance) { notify('Недостатньо коштів!'); return; }
+    const crash = genCrash();
+    setCrashAt(crash);
+    setMult(1.00);
+    setPhase('running');
+    onWalletUpdate({ balance: wallet.balance - bet });
+    let m = 1.00;
+    timerRef.current = setInterval(() => {
+      m = parseFloat((m * 1.04).toFixed(2));
+      setMult(m);
+      if (m >= autoCashout) { cashout(m, crash); return; }
+      if (m >= crash) {
+        clearInterval(timerRef.current!);
+        setMult(crash);
+        setPhase('crashed');
+        setHistory(h => [crash, ...h.slice(0, 9)]);
+        notify(`💥 Крах на ×${crash}!`);
+      }
+    }, 100);
+  }
+
+  function cashout(currentMult: number, crash: number) {
+    clearInterval(timerRef.current!);
+    if (currentMult >= crash) {
+      setPhase('crashed');
+      setHistory(h => [crash, ...h.slice(0, 9)]);
+      notify(`💥 Крах на ×${crash}!`);
+      return;
+    }
+    const win = parseFloat((bet * currentMult).toFixed(2));
+    onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
+    setPhase('cashed');
+    setHistory(h => [crash, ...h.slice(0, 9)]);
+    notify(`✅ Виплата ×${currentMult.toFixed(2)} = +${win}₮`);
+  }
+
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+
+  const color = phase === 'crashed' ? '#c0392b' : phase === 'cashed' ? '#4caf7d' : '#a8792a';
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      {/* History */}
+      <div className="flex gap-1.5 flex-wrap">
+        {history.map((v, i) => (
+          <span key={i} className={`font-mono text-xs px-2 py-0.5 border ${v < 1.5 ? 'border-[#c0392b] text-[#c0392b]' : v > 5 ? 'border-[#4caf7d] text-[#4caf7d]' : 'border-[#a8792a] text-[#a8792a]'}`}>
+            ×{v.toFixed(2)}
+          </span>
+        ))}
+      </div>
+
+      {/* Display */}
+      <div className="border-2 border-black bg-[#0d1f11] flex flex-col items-center justify-center py-10 relative overflow-hidden" style={{ minHeight: 180 }}>
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(0deg, #a8792a 0, #a8792a 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, #a8792a 0, #a8792a 1px, transparent 1px, transparent 40px)' }} />
+        {phase === 'crashed' && <div className="text-4xl mb-2">💥</div>}
+        {phase === 'cashed' && <div className="text-4xl mb-2">💸</div>}
+        {phase === 'idle' && <div className="text-5xl mb-2">🚀</div>}
+        <div className="font-black text-5xl tracking-tighter transition-all" style={{ color }}>
+          ×{mult.toFixed(2)}
+        </div>
+        {phase === 'crashed' && <div className="font-mono text-xs text-[#c0392b] mt-2 uppercase tracking-widest">CRASHED</div>}
+        {phase === 'cashed' && <div className="font-mono text-xs text-[#4caf7d] mt-2 uppercase tracking-widest">ВИПЛАЧЕНО</div>}
+        {phase === 'running' && (
+          <div className="absolute bottom-3 right-3 font-mono text-[10px] text-[#6b7c6d]">
+            Auto: ×{autoCashout}
+          </div>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5">Ставка ₮</label>
+          <input type="number" className="u24-input" value={bet} onChange={e => setBet(+e.target.value)} disabled={phase === 'running'} min={1} />
+        </div>
+        <div>
+          <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5">Auto Cash ×</label>
+          <input type="number" className="u24-input" value={autoCashout} onChange={e => setAutoCashout(+e.target.value)} disabled={phase === 'running'} min={1.01} step={0.1} />
+        </div>
+      </div>
+      <div className="flex gap-3">
+        {['idle', 'crashed', 'cashed'].includes(phase) ? (
+          <button className="u24-button flex-1" onClick={start} disabled={bet < 1}>
+            🚀 Запустити
+          </button>
+        ) : (
+          <button className="u24-button-gold flex-1 text-lg" onClick={() => cashout(mult, crashAt)}>
+            💸 ВИПЛАТА ×{mult.toFixed(2)}
+          </button>
+        )}
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        {[10, 50, 100, 500, 1000].map(v => (
+          <button key={v} onClick={() => setBet(v)} disabled={phase === 'running'}
+            className="font-mono text-xs border-2 border-[#1d2e20] px-3 py-1.5 hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer disabled:opacity-40">
+            {v}₮
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Mines ────────────────────────────────────────────────────────────────────
+
+function MinesView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
+  const GRID = 25;
+  const [bet, setBet] = useState(100);
+  const [mineCount, setMineCount] = useState(5);
+  const [phase, setPhase] = useState<'idle' | 'playing' | 'won' | 'lost'>('idle');
+  const [mines, setMines] = useState<Set<number>>(new Set());
+  const [revealed, setRevealed] = useState<Set<number>>(new Set());
+  const [mult, setMult] = useState(1.0);
+
+  function calcMult(gems: number, totalMines: number): number {
+    const safeTotal = GRID - totalMines;
+    let m = 1.0;
+    for (let i = 0; i < gems; i++) {
+      m *= (safeTotal - i) / (GRID - i);
+    }
+    return parseFloat((0.97 / m).toFixed(2));
+  }
+
+  function startGame() {
+    if (bet > wallet.balance) { notify('Недостатньо коштів!'); return; }
+    const mineSet = new Set<number>();
+    while (mineSet.size < mineCount) mineSet.add(Math.floor(Math.random() * GRID));
+    setMines(mineSet);
+    setRevealed(new Set());
+    setMult(1.0);
+    setPhase('playing');
+    onWalletUpdate({ balance: wallet.balance - bet });
+  }
+
+  function reveal(idx: number) {
+    if (phase !== 'playing' || revealed.has(idx)) return;
+    if (mines.has(idx)) {
+      setRevealed(new Set([...revealed, idx]));
+      setPhase('lost');
+      notify(`💣 Міна! Втрачено ${bet}₮`);
+      return;
+    }
+    const newRevealed = new Set([...revealed, idx]);
+    setRevealed(newRevealed);
+    const gems = newRevealed.size;
+    const newMult = calcMult(gems, mineCount);
+    setMult(newMult);
+  }
+
+  function cashout() {
+    if (phase !== 'playing' || revealed.size === 0) return;
+    const win = parseFloat((bet * mult).toFixed(2));
+    onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
+    setPhase('won');
+    notify(`💎 Виплата ×${mult} = +${win}₮`);
+  }
+
+  const gemCount = GRID - mineCount;
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-4">
+          <div className="text-center">
+            <div className="font-mono text-[10px] text-[#6b7c6d] uppercase mb-0.5">Мін</div>
+            <div className="font-black text-lg text-[#c0392b]">💣 {mineCount}</div>
+          </div>
+          <div className="text-center">
+            <div className="font-mono text-[10px] text-[#6b7c6d] uppercase mb-0.5">Gems</div>
+            <div className="font-black text-lg text-[#4caf7d]">💎 {gemCount}</div>
+          </div>
+          <div className="text-center">
+            <div className="font-mono text-[10px] text-[#6b7c6d] uppercase mb-0.5">Множник</div>
+            <div className="font-black text-lg text-[#a8792a]">×{mult.toFixed(2)}</div>
+          </div>
+        </div>
+        {phase === 'playing' && revealed.size > 0 && (
+          <button className="u24-button-gold text-sm px-4 py-2" onClick={cashout}>
+            💸 Забрати
+          </button>
+        )}
+      </div>
+
+      {/* Grid */}
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+        {Array.from({ length: GRID }, (_, i) => {
+          const isRevealed = revealed.has(i);
+          const isMine = mines.has(i);
+          const showMine = isRevealed && isMine;
+          const showGem = isRevealed && !isMine;
+          const showAllMines = (phase === 'lost' || phase === 'won') && isMine && !isRevealed;
+          return (
+            <button key={i} onClick={() => reveal(i)}
+              disabled={phase !== 'playing' || isRevealed}
+              className={`aspect-square border-2 flex items-center justify-center text-xl font-black transition-all cursor-pointer
+                ${showMine ? 'bg-[#c0392b] border-[#c0392b] text-white' :
+                  showGem ? 'bg-[#4caf7d20] border-[#4caf7d] text-[#4caf7d]' :
+                  showAllMines ? 'bg-[#c0392b20] border-[#c0392b30]' :
+                  phase === 'playing' ? 'bg-[#1d2e20] border-[#2f4a37] hover:border-[#a8792a] hover:bg-[#2f4a37]' :
+                  'bg-[#1d2e2050] border-[#2f4a3750]'}`}>
+              {showMine ? '💣' : showGem ? '💎' : showAllMines ? '💣' : phase === 'playing' ? '?' : ''}
+            </button>
+          );
+        })}
+      </div>
+
+      {['idle', 'won', 'lost'].includes(phase) && (
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5">Ставка ₮</label>
+              <input type="number" className="u24-input" value={bet} onChange={e => setBet(+e.target.value)} min={1} />
+            </div>
+            <div>
+              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5">Мін 💣</label>
+              <select className="u24-input" value={mineCount} onChange={e => setMineCount(+e.target.value)}>
+                {[1,2,3,5,8,10,15,20,24].map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+          </div>
+          <button className="u24-button" onClick={startGame} disabled={bet < 1}>
+            💣 Нова гра
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Chicken Road ─────────────────────────────────────────────────────────────
+
+const CHICKEN_LANES = 10;
+const CHICKEN_BASE_RISK = [0.05, 0.08, 0.10, 0.13, 0.16, 0.20, 0.24, 0.28, 0.33, 0.40];
+
+function ChickenRoadView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
+  const [bet, setBet] = useState(100);
+  const [phase, setPhase] = useState<'idle' | 'playing' | 'won' | 'hit'>('idle');
+  const [lane, setLane] = useState(0);
+  const [mult, setMult] = useState(1.0);
+  const [hitLane, setHitLane] = useState<number | null>(null);
+  const [cars, setCars] = useState<boolean[]>([]);
+
+  const MULTS = [1.5, 2.2, 3.0, 4.2, 5.8, 8.0, 11, 16, 22, 30];
+
+  function start() {
+    if (bet > wallet.balance) { notify('Недостатньо коштів!'); return; }
+    // Pre-generate which lanes have cars (hidden)
+    const carLanes = CHICKEN_BASE_RISK.map(risk => Math.random() < risk);
+    setCars(carLanes);
+    setLane(0);
+    setMult(1.0);
+    setHitLane(null);
+    setPhase('playing');
+    onWalletUpdate({ balance: wallet.balance - bet });
+  }
+
+  function jump() {
+    if (phase !== 'playing') return;
+    const nextLane = lane + 1;
+    if (cars[lane]) {
+      setHitLane(lane);
+      setPhase('hit');
+      notify(`🚗 Збила машина на доріжці ${lane + 1}! Втрата ${bet}₮`);
+      return;
+    }
+    setLane(nextLane);
+    setMult(MULTS[lane] ?? MULTS[MULTS.length - 1]);
+    if (nextLane >= CHICKEN_LANES) {
+      const win = parseFloat((bet * MULTS[CHICKEN_LANES - 1]).toFixed(2));
+      onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
+      setPhase('won');
+      notify(`🎉 Пройшла вся дорога! ×${MULTS[CHICKEN_LANES - 1]} = +${win}₮`);
+    }
+  }
+
+  function cashout() {
+    if (phase !== 'playing' || lane === 0) return;
+    const win = parseFloat((bet * mult).toFixed(2));
+    onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
+    setPhase('won');
+    notify(`💸 Курка втекла! ×${mult} = +${win}₮`);
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      {/* Road visual */}
+      <div className="border-2 border-[#1d2e20] bg-[#0a1a0a] p-3 relative overflow-hidden" style={{ minHeight: 200 }}>
+        <div className="absolute inset-0 flex flex-col justify-around opacity-20">
+          {Array.from({ length: CHICKEN_LANES }).map((_, i) => (
+            <div key={i} className="border-b border-dashed border-[#4caf7d]" />
+          ))}
+        </div>
+        <div className="relative flex flex-col-reverse gap-1">
+          {Array.from({ length: CHICKEN_LANES }, (_, i) => {
+            const isActive = phase === 'playing' && i === lane;
+            const isPassed = lane > i;
+            const isHit = hitLane === i;
+            const isNext = phase === 'playing' && i === lane;
+            return (
+              <div key={i} className={`flex items-center gap-2 px-2 py-1.5 border transition-all ${
+                isHit ? 'bg-[#c0392b20] border-[#c0392b]' :
+                isPassed ? 'bg-[#4caf7d10] border-[#4caf7d30]' :
+                isNext ? 'bg-[#a8792a15] border-[#a8792a] animate-pulse' :
+                'border-transparent'}`}>
+                <div className="w-6 text-center font-mono text-[10px] text-[#6b7c6d]">{i + 1}</div>
+                <div className="flex-1 h-6 relative flex items-center">
+                  {(phase === 'hit' || phase === 'won') && cars[i] && (
+                    <span className="text-lg absolute left-1/3">🚗</span>
+                  )}
+                  {isHit && <span className="text-lg absolute left-0">💥</span>}
+                </div>
+                <div className="font-mono text-xs text-[#a8792a] w-12 text-right">×{MULTS[i]}</div>
+                {i === lane && phase === 'playing' && <span className="text-xl">🐔</span>}
+                {isPassed && !isHit && <span className="text-lg">✅</span>}
+                {isHit && <span className="text-xl">🐔</span>}
+              </div>
+            );
+          })}
+        </div>
+        {phase === 'idle' && (
+          <div className="absolute inset-0 flex items-end justify-start p-4">
+            <span className="text-5xl">🐔</span>
+          </div>
+        )}
+      </div>
+
+      {/* Mult display */}
+      <div className="flex items-center justify-between border-2 border-[#1d2e20] bg-[#1d2e20] text-white px-4 py-3">
+        <div className="font-mono text-xs text-[#6b7c6d] uppercase">Поточний множник</div>
+        <div className="font-black text-2xl text-[#a8792a]">×{mult.toFixed(1)}</div>
+      </div>
+
+      {/* Buttons */}
+      {phase === 'idle' || phase === 'hit' || phase === 'won' ? (
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5">Ставка ₮</label>
+            <input type="number" className="u24-input" value={bet} onChange={e => setBet(+e.target.value)} min={1} />
+          </div>
+          <div className="flex gap-2">
+            {[10, 50, 100, 500].map(v => (
+              <button key={v} onClick={() => setBet(v)} className="font-mono text-xs border-2 border-[#1d2e20] px-3 py-1.5 hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer flex-1">
+                {v}₮
+              </button>
+            ))}
+          </div>
+          <button className="u24-button" onClick={start}>🐔 Старт</button>
+        </div>
+      ) : (
+        <div className="flex gap-3">
+          <button className="u24-button flex-1" onClick={jump}>
+            ⬆️ Стрибнути
+          </button>
+          {lane > 0 && (
+            <button className="u24-button-gold flex-1" onClick={cashout}>
+              💸 Забрати ×{mult}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Dice ─────────────────────────────────────────────────────────────────────
+
+function DiceView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
+  const [bet, setBet] = useState(100);
+  const [target, setTarget] = useState(50);
+  const [dir, setDir] = useState<'over' | 'under'>('over');
+  const [result, setResult] = useState<number | null>(null);
+  const [rolling, setRolling] = useState(false);
+  const [history, setHistory] = useState<{ val: number; won: boolean }[]>([]);
+
+  const winChance = dir === 'over' ? (100 - target) : target;
+  const payout = parseFloat((98 / winChance).toFixed(4));
+
+  async function roll() {
+    if (bet > wallet.balance) { notify('Недостатньо коштів!'); return; }
+    setRolling(true);
+    onWalletUpdate({ balance: wallet.balance - bet });
+    await new Promise(r => setTimeout(r, 600));
+    const val = Math.floor(Math.random() * 100) + 1;
+    const won = dir === 'over' ? val > target : val < target;
+    setResult(val);
+    setRolling(false);
+    setHistory(h => [{ val, won }, ...h.slice(0, 14)]);
+    if (won) {
+      const win = parseFloat((bet * payout).toFixed(2));
+      onWalletUpdate({ balance: wallet.balance - bet + win, total_won: wallet.total_won + win });
+      notify(`🎲 ${val} — Виграш! +${win}₮`);
+    } else {
+      notify(`🎲 ${val} — Програш!`);
+    }
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      {/* Result */}
+      <div className="border-2 border-black bg-[#1d2e20] flex items-center justify-center py-10" style={{ minHeight: 140 }}>
+        {rolling ? (
+          <div className="font-black text-6xl animate-blink">🎲</div>
+        ) : result !== null ? (
+          <div className="flex flex-col items-center gap-1">
+            <div className={`font-black text-7xl ${result !== null && (dir === 'over' ? result > target : result < target) ? 'text-[#4caf7d]' : 'text-[#c0392b]'}`}>
+              {result}
+            </div>
+            <div className="font-mono text-xs text-[#6b7c6d]">з 100</div>
+          </div>
+        ) : (
+          <div className="font-black text-6xl opacity-30">🎲</div>
+        )}
+      </div>
+
+      {/* Slider */}
+      <div>
+        <div className="flex justify-between font-mono text-xs text-[#6b7c6d] mb-2">
+          <span>Поріг: {target}</span>
+          <span>Шанс: {winChance}%</span>
+          <span>Виплата: ×{payout}</span>
+        </div>
+        <input type="range" min={2} max={97} value={target} onChange={e => setTarget(+e.target.value)}
+          className="w-full accent-[#a8792a]" />
+        <div className="flex gap-2 mt-2">
+          {(['over', 'under'] as const).map(d => (
+            <button key={d} onClick={() => setDir(d)}
+              className={`flex-1 py-2.5 font-black text-xs uppercase tracking-widest border-2 cursor-pointer transition-all ${dir === d ? 'bg-[#1d2e20] text-white border-[#1d2e20]' : 'border-[#1d2e20] text-[#1d2e20] hover:bg-[#1d2e2010]'}`}>
+              {d === 'over' ? `⬆ Більше ${target}` : `⬇ Менше ${target}`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Bet */}
+      <div>
+        <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5">Ставка ₮</label>
+        <input type="number" className="u24-input" value={bet} onChange={e => setBet(+e.target.value)} disabled={rolling} min={1} />
+        <div className="flex gap-1.5 mt-1.5">
+          {[10, 50, 100, 500, 1000].map(v => (
+            <button key={v} onClick={() => setBet(v)} disabled={rolling}
+              className="font-mono text-xs border border-[#1d2e20] px-2 py-1 hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer disabled:opacity-40 flex-1">
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <button className="u24-button" onClick={roll} disabled={rolling || bet < 1}>
+        {rolling ? <span className="animate-blink">Кидок…</span> : '🎲 Кинути'}
+      </button>
+
+      {/* History */}
+      {history.length > 0 && (
+        <div className="flex gap-1 flex-wrap">
+          {history.map((h, i) => (
+            <span key={i} className={`font-mono text-xs px-2 py-0.5 border ${h.won ? 'border-[#4caf7d] text-[#4caf7d]' : 'border-[#c0392b] text-[#c0392b]'}`}>
+              {h.val}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Crypto Deposit ────────────────────────────────────────────────────────────
+
+const CRYPTO_WALLETS = [
+  { coin: 'USDT', network: 'TRC20', icon: '💵', addr: 'TQn9Y2khEA95LHDuCz7Nm7qjmBfHKxGJBp', color: '#26a17b' },
+  { coin: 'TON',  network: 'TON',   icon: '💎', addr: 'UQD2NmD_lH5f5u1Kj3KfGyTvhZSX0Eg6reqaqURGhlkXiWUf', color: '#0098ea' },
+  { coin: 'BTC',  network: 'BTC',   icon: '₿',  addr: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', color: '#f7931a' },
+  { coin: 'ETH',  network: 'ERC20', icon: 'Ξ',  addr: '0x742d35Cc6634C0532925a3b8D4C9C2b08f0f5e3A', color: '#627eea' },
+  { coin: 'SOL',  network: 'SOL',   icon: '◎',  addr: '8ZUczUAUSsDmCnCqFLhSbxJ9XoJ7RaGc2eNbBHjUcorZ', color: '#9945ff' },
+];
+
+interface PendingDeposit { id: string; coin: string; amount: number; usdEquiv: number; confirmAt: number; credited: boolean; }
+
+function DepositView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
+  const [selected, setSelected] = useState(CRYPTO_WALLETS[0]);
+  const [amount, setAmount] = useState('');
+  const [pending, setPending] = useState<PendingDeposit[]>([]);
+  const [copied, setCopied] = useState('');
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setNow(Date.now());
+      setPending(prev => prev.map(p => {
+        if (!p.credited && Date.now() >= p.confirmAt) {
+          onWalletUpdate({ balance: wallet.balance + p.usdEquiv });
+          notify(`✅ Зараховано ${p.usdEquiv}₮ (${p.amount} ${p.coin})`);
+          return { ...p, credited: true };
+        }
+        return p;
+      }));
+    }, 1000);
+    return () => clearInterval(t);
+  });
+
+  function copyAddr() {
+    navigator.clipboard.writeText(selected.addr).catch(() => {});
+    setCopied(selected.coin);
+    setTimeout(() => setCopied(''), 2000);
+    notify(`📋 Адресу скопійовано!`);
+  }
+
+  const RATES: Record<string, number> = { USDT: 1, TON: 6.5, BTC: 97000, ETH: 3400, SOL: 170 };
+
+  function submitDeposit() {
+    const a = parseFloat(amount);
+    if (!a || a <= 0) return;
+    const usdEquiv = parseFloat((a * (RATES[selected.coin] ?? 1)).toFixed(2));
+    const dep: PendingDeposit = {
+      id: Math.random().toString(36).slice(2),
+      coin: selected.coin,
+      amount: a,
+      usdEquiv,
+      confirmAt: Date.now() + 30_000,
+      credited: false,
+    };
+    setPending(p => [dep, ...p]);
+    setAmount('');
+    notify(`⏳ Депозит ${a} ${selected.coin} на підтвердженні (30с)`);
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      <div className="border-2 border-[#a8792a] bg-[#1d2e20] text-white p-4 flex items-center justify-between">
+        <div>
+          <div className="font-mono text-[10px] text-[#6b7c6d] uppercase mb-0.5">Баланс</div>
+          <div className="font-black text-2xl text-[#a8792a]">{wallet.balance.toFixed(2)}₮</div>
+        </div>
+        <div className="text-3xl">💰</div>
+      </div>
+
+      {/* Coin selector */}
+      <div>
+        <div className="font-black text-[10px] uppercase tracking-widest mb-2">Оберіть валюту</div>
+        <div className="flex gap-2 flex-wrap">
+          {CRYPTO_WALLETS.map(w => (
+            <button key={w.coin} onClick={() => setSelected(w)}
+              className={`flex items-center gap-1.5 px-3 py-2 border-2 font-black text-xs cursor-pointer transition-all ${selected.coin === w.coin ? 'border-[#a8792a] bg-[#a8792a10]' : 'border-[#1d2e20] hover:border-[#a8792a40]'}`}>
+              <span style={{ color: w.color }}>{w.icon}</span>
+              <span>{w.coin}</span>
+              <span className="font-mono text-[9px] text-[#6b7c6d]">{w.network}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Address */}
+      <div>
+        <div className="font-black text-[10px] uppercase tracking-widest mb-1.5">
+          Адреса {selected.coin} ({selected.network})
+        </div>
+        <div className="border-2 border-[#1d2e20] bg-[#f8f9f5] p-3 flex items-center gap-2">
+          <div className="flex-1 font-mono text-xs break-all text-[#1d2e20] select-all">{selected.addr}</div>
+          <button onClick={copyAddr} className="shrink-0 border-2 border-[#1d2e20] px-3 py-1.5 font-black text-[10px] uppercase hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer">
+            {copied === selected.coin ? '✓' : '📋'}
+          </button>
+        </div>
+        <div className="font-mono text-[10px] text-[#6b7c6d] mt-1.5 flex items-center gap-1">
+          <span className="text-[#c0392b]">⚠</span>
+          Відправляйте тільки {selected.coin} мережею {selected.network}
+        </div>
+      </div>
+
+      {/* Simulate deposit */}
+      <div className="border-2 border-dashed border-[#2f4a37] p-4 bg-[#1d2e2008]">
+        <div className="font-black text-[10px] uppercase tracking-widest mb-3 flex items-center gap-2">
+          <span className="text-[#a8792a]">⚡</span> Тестовий депозит (авто-зарахування 30с)
+        </div>
+        <div className="flex gap-2">
+          <input type="number" className="u24-input flex-1" placeholder={`Сума ${selected.coin}`}
+            value={amount} onChange={e => setAmount(e.target.value)} min="0.001" step="0.001" />
+          <button onClick={submitDeposit} disabled={!amount || +amount <= 0} className="u24-button-gold shrink-0">
+            Надіслати
+          </button>
+        </div>
+        <div className="font-mono text-[10px] text-[#6b7c6d] mt-1.5">
+          ≈ {amount ? (parseFloat(amount) * (RATES[selected.coin] ?? 1)).toFixed(2) : '0'}₮ за курсом
+        </div>
+      </div>
+
+      {/* Pending */}
+      {pending.length > 0 && (
+        <div>
+          <div className="font-black text-[10px] uppercase tracking-widest mb-2">Транзакції</div>
+          <div className="flex flex-col gap-2">
+            {pending.map(p => {
+              const left = Math.max(0, Math.ceil((p.confirmAt - now) / 1000));
+              return (
+                <div key={p.id} className={`border-2 p-3 flex items-center gap-3 ${p.credited ? 'border-[#4caf7d] bg-[#4caf7d08]' : 'border-[#a8792a] bg-[#a8792a08]'}`}>
+                  <div className="text-xl">{p.credited ? '✅' : '⏳'}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black text-xs">{p.amount} {p.coin} → +{p.usdEquiv}₮</div>
+                    <div className="font-mono text-[10px] text-[#6b7c6d]">
+                      {p.credited ? 'Зараховано' : `Підтвердження через ${left}с…`}
+                    </div>
+                  </div>
+                  {!p.credited && (
+                    <div className="w-8 h-8 border-2 border-[#a8792a] flex items-center justify-center font-mono text-xs text-[#a8792a]">
+                      {left}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Casino Lobby ─────────────────────────────────────────────────────────────
 
 function CasinoLobby({ wallet, onSelectGame, notify }: {
@@ -849,8 +1482,12 @@ function CasinoLobby({ wallet, onSelectGame, notify }: {
   const xpPct = Math.min(100, Math.round((wallet.xp % xpToNext) / xpToNext * 100));
 
   const GAMES = [
-    { key: 'roulette' as CasinoView, icon: '🎡', label: 'Рулетка', desc: 'Європейська · 37 чисел · До ×35', hot: true },
-    { key: 'slots' as CasinoView, icon: '🎰', label: 'Слоти', desc: '3 барабани · Джекпот ×50', hot: false },
+    { key: 'chicken' as CasinoView, icon: '🐔', label: 'Chicken Road', desc: 'Перейди дорогу · До ×30', hot: true, new: true },
+    { key: 'crash'   as CasinoView, icon: '🚀', label: 'Crash',        desc: 'Забери до краху · Без ліміту', hot: true, new: false },
+    { key: 'mines'   as CasinoView, icon: '💣', label: 'Mines',        desc: '5×5 мінне поле · До ×1000', hot: false, new: true },
+    { key: 'dice'    as CasinoView, icon: '🎲', label: 'Dice',         desc: 'Більше / менше · До ×49', hot: false, new: false },
+    { key: 'roulette' as CasinoView, icon: '🎡', label: 'Рулетка', desc: 'Європейська · До ×35', hot: false, new: false },
+    { key: 'slots'    as CasinoView, icon: '🎰', label: 'Слоти',    desc: 'Джекпот ×50', hot: false, new: false },
   ];
 
   const ACHIEVEMENTS = [
@@ -862,6 +1499,12 @@ function CasinoLobby({ wallet, onSelectGame, notify }: {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      {/* Deposit button */}
+      <button onClick={() => onSelectGame('deposit')}
+        className="u24-button-gold w-full flex items-center gap-2 justify-center">
+        <Coins size={14} /> Поповнити через крипто
+      </button>
+
       {/* Wallet card */}
       <div className="border-2 border-black bg-[#1d2e20] text-white p-4">
         <div className="flex items-center justify-between mb-3">
@@ -902,8 +1545,11 @@ function CasinoLobby({ wallet, onSelectGame, notify }: {
           {GAMES.map(g => (
             <button key={g.key} onClick={() => onSelectGame(g.key)}
               className="u24-card p-4 text-left group relative cursor-pointer">
-              {g.hot && (
+              {g.hot && !g.new && (
                 <span className="absolute top-2 right-2 bg-[#c0392b] text-white font-black text-[9px] px-1.5 py-0.5 uppercase tracking-widest">HOT</span>
+              )}
+              {g.new && (
+                <span className="absolute top-2 right-2 bg-[#4caf7d] text-white font-black text-[9px] px-1.5 py-0.5 uppercase tracking-widest">NEW</span>
               )}
               <div className="text-4xl mb-2">{g.icon}</div>
               <div className="font-black text-sm uppercase tracking-tight">{g.label}</div>
@@ -1119,80 +1765,117 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void })
   const LANG_FLAGS: Record<LangCode, string> = { en: '🇬🇧', uk: '🇺🇦', ru: '🇷🇺', es: '🇪🇸', it: '🇮🇹', de: '🇩🇪' };
 
   return (
-    <div className="min-h-screen bg-[#111d13] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #0a120c 0%, #111d13 40%, #1a2e1e 70%, #0d1a10 100%)' }}>
+      {/* Ambient glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #a8792a, transparent)' }} />
+        <div className="absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full opacity-8" style={{ background: 'radial-gradient(circle, #1d4636, transparent)' }} />
+      </div>
 
+      <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
-        <div className="mb-6 text-center">
-          <div className="inline-flex flex-col items-center gap-1">
-            <div className="w-14 h-14 bg-[#1d4636] border-2 border-[#a8792a] flex items-center justify-center shadow-[4px_4px_0_0_#a8792a]">
-              <Shield size={28} className="text-[#a8792a]" />
+        <div className="mb-7 text-center">
+          <div className="inline-flex flex-col items-center gap-3">
+            <div className="relative">
+              <div className="w-16 h-16 flex items-center justify-center" style={{
+                background: 'linear-gradient(135deg, #1d4636, #2f4a37)',
+                border: '2px solid #a8792a',
+                boxShadow: '0 0 32px rgba(168,121,42,0.35), 0 4px 0 0 #7d5a1e',
+              }}>
+                <Shield size={30} className="text-[#a8792a]" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#4caf7d] border-2 border-[#0d1a10] animate-pulse" />
             </div>
-            <div className="font-black text-3xl text-white tracking-tighter uppercase mt-2">{APP_NAME}</div>
-            <div className="font-mono text-[10px] text-[#a8792a] tracking-widest uppercase">{t.tagline}</div>
+            <div>
+              <div className="font-black text-4xl tracking-tighter" style={{ color: '#f1f5ee', textShadow: '0 0 24px rgba(168,121,42,0.4)' }}>
+                {APP_NAME}
+              </div>
+              <div className="font-mono text-[10px] tracking-[0.25em] uppercase mt-0.5" style={{ color: '#a8792a' }}>
+                {t.tagline}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Lang switcher */}
-        <div className="flex justify-center gap-1 mb-4">
+        <div className="flex justify-center gap-2 mb-5">
           {(Object.keys(I18N) as LangCode[]).map(l => (
-            <button key={l} type="button" onClick={() => setLang(l)}
-              title={l.toUpperCase()}
-              className={`w-8 h-6 text-base leading-none flex items-center justify-center border-2 cursor-pointer transition-all ${lang === l ? 'border-[#a8792a] scale-110' : 'border-transparent opacity-50 hover:opacity-80'}`}>
-              {LANG_FLAGS[l]}
+            <button key={l} type="button" onClick={() => setLang(l)} title={l.toUpperCase()}
+              className="relative cursor-pointer transition-all"
+              style={{ transform: lang === l ? 'scale(1.15)' : 'scale(1)', opacity: lang === l ? 1 : 0.45 }}>
+              <span className="text-xl">{LANG_FLAGS[l]}</span>
+              {lang === l && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#a8792a]" />}
             </button>
           ))}
         </div>
 
         {/* Card */}
-        <div className="bg-[#f1f5ee] border-2 border-[#1d2e20] shadow-[6px_6px_0_0_#a8792a]">
+        <div style={{
+          background: 'rgba(241,245,238,0.97)',
+          border: '2px solid #1d2e20',
+          boxShadow: '8px 8px 0 0 rgba(168,121,42,0.6)',
+        }}>
           {/* Tabs */}
-          <div className="grid grid-cols-2 border-b-2 border-[#1d2e20]">
+          <div className="grid grid-cols-2" style={{ borderBottom: '2px solid #1d2e20' }}>
             {(['login', 'register'] as const).map(tab_ => (
               <button key={tab_} type="button" onClick={() => { setTab(tab_); setError(''); }}
-                className={`py-3.5 font-black uppercase tracking-widest text-xs transition-all cursor-pointer ${tab === tab_ ? 'bg-[#1d2e20] text-white' : 'bg-transparent text-[#1d2e20] hover:bg-[#1d2e2012]'}`}>
+                className="relative py-4 font-black uppercase tracking-widest text-[11px] transition-all cursor-pointer overflow-hidden"
+                style={{
+                  background: tab === tab_ ? '#1d2e20' : 'transparent',
+                  color: tab === tab_ ? '#f1f5ee' : '#1d2e20',
+                  borderRight: tab_ === 'login' ? '1px solid #1d2e2030' : 'none',
+                }}>
+                {tab === tab_ && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#a8792a]" />
+                )}
                 {tab_ === 'login' ? t.login : t.register}
               </button>
             ))}
           </div>
 
-          <form onSubmit={submit} className="p-5 flex flex-col gap-3.5">
-
-            {/* Name (register only) */}
+          <form onSubmit={submit} className="p-6 flex flex-col gap-4">
+            {/* Name */}
             {tab === 'register' && (
               <div>
                 <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.fullName}</label>
-                <input className="u24-input" placeholder={t.namePlaceholder} value={form.full_name} onChange={set('full_name')} required />
+                <input className="u24-input" placeholder={t.namePlaceholder} value={form.full_name} onChange={set('full_name')} required autoFocus />
               </div>
             )}
 
-            {/* Country + Phone */}
+            {/* Country picker (register) */}
+            {tab === 'register' && (
+              <div>
+                <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.country}</label>
+                <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
+              </div>
+            )}
+
+            {/* Phone */}
             <div>
               <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">
                 {tab === 'login' ? `${t.phone} / ${t.email}` : t.phone}
               </label>
-              {tab === 'register' && (
-                <div className="mb-1.5">
-                  <CountryPicker value={country} onChange={c => { setCountry(c); }} t={t} />
-                </div>
-              )}
-              <div className={tab === 'register' ? 'flex gap-0' : ''}>
+              <div className="flex">
                 {tab === 'register' && (
-                  <div className="border-2 border-r-0 border-[#1d2e20] bg-[#1d2e20] text-white font-mono text-sm px-3 flex items-center shrink-0 select-none">
-                    {country.flag} {country.dialCode}
+                  <div className="flex items-center gap-1.5 px-3 shrink-0 font-mono text-sm select-none"
+                    style={{ background: '#1d2e20', color: '#f1f5ee', border: '2px solid #1d2e20', borderRight: 'none' }}>
+                    <span>{country.flag}</span>
+                    <span className="text-[#a8792a]">{country.dialCode}</span>
                   </div>
                 )}
-                <input className="u24-input flex-1" placeholder={tab === 'login' ? `${t.phonePlaceholder} / ${t.emailPlaceholder}` : t.phonePlaceholder}
+                <input className="u24-input flex-1" style={tab === 'register' ? { borderLeft: 'none' } : {}}
+                  placeholder={tab === 'login' ? `${t.phonePlaceholder} / ${t.emailPlaceholder}` : t.phonePlaceholder}
                   value={phone} onChange={e => setPhone(e.target.value)}
                   required={tab === 'register'} inputMode="tel" autoComplete="tel" />
               </div>
             </div>
 
-            {/* Email (register only) */}
+            {/* Email */}
             {tab === 'register' && (
               <div>
                 <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#1d2e20]">{t.email}</label>
-                <input className="u24-input" type="email" placeholder={t.emailPlaceholder} value={form.email} onChange={set('email')} required />
+                <input className="u24-input" type="email" placeholder={t.emailPlaceholder} value={form.email} onChange={set('email')} required autoComplete="email" />
               </div>
             )}
 
@@ -1203,19 +1886,24 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void })
             </div>
 
             {error && (
-              <div className="border-2 border-[#c0392b] bg-[#c0392b10] px-3 py-2.5 font-mono text-xs text-[#c0392b]">{error}</div>
+              <div className="flex items-center gap-2 px-3 py-2.5 font-mono text-xs"
+                style={{ border: '2px solid #c0392b', background: 'rgba(192,57,43,0.07)', color: '#c0392b' }}>
+                <span>⚠</span> {error}
+              </div>
             )}
 
-            <button type="submit" disabled={loading} className="u24-button mt-1">
+            <button type="submit" disabled={loading}
+              className="u24-button w-full mt-1 justify-center text-sm py-3"
+              style={loading ? {} : { boxShadow: '4px 4px 0 0 rgba(168,121,42,0.5)' }}>
               {loading
                 ? <span className="animate-blink">{t.loading}</span>
-                : <><Lock size={13} />{tab === 'login' ? t.loginBtn : t.registerBtn}</>}
+                : <><Lock size={14} />{tab === 'login' ? t.loginBtn : t.registerBtn}</>}
             </button>
           </form>
 
-          <div className="border-t-2 border-[#1d2e20] px-5 py-2.5 flex items-center gap-2">
-            <Lock size={9} className="text-[#6b7c6d] shrink-0" />
-            <span className="font-mono text-[9px] text-[#6b7c6d] uppercase tracking-widest">{t.e2e} · {APP_NAME}</span>
+          <div className="flex items-center gap-2 px-6 py-3" style={{ borderTop: '1px solid #1d2e2025' }}>
+            <Lock size={9} className="shrink-0" style={{ color: '#6b7c6d' }} />
+            <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: '#6b7c6d' }}>{t.e2e} · {APP_NAME}</span>
           </div>
         </div>
       </div>
@@ -1451,11 +2139,20 @@ export default function App() {
           <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col">
             <div className="p-3 border-b-2 border-[#2f4a37]">
               <div className="font-black text-[10px] uppercase tracking-widest text-[#a8792a] mb-2">Ігри</div>
-              {(['lobby', 'roulette', 'slots'] as CasinoView[]).map(v => (
+              {([
+                { v: 'lobby',    icon: <Coins size={14} />, label: 'Лобі' },
+                { v: 'chicken',  icon: '🐔', label: 'Chicken Road' },
+                { v: 'crash',    icon: '🚀', label: 'Crash' },
+                { v: 'mines',    icon: '💣', label: 'Mines' },
+                { v: 'dice',     icon: '🎲', label: 'Dice' },
+                { v: 'roulette', icon: '🎡', label: 'Рулетка' },
+                { v: 'slots',    icon: '🎰', label: 'Слоти' },
+                { v: 'deposit',  icon: <Coins size={14} className="text-[#a8792a]" />, label: '+ Поповнити' },
+              ] as { v: CasinoView; icon: React.ReactNode; label: string }[]).map(({ v, icon, label }) => (
                 <button key={v} onClick={() => { setCasinoView(v); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 mb-1 font-black text-xs uppercase tracking-widest transition-all cursor-pointer ${casinoView === v ? 'bg-[#a8792a] text-white' : 'text-[#6b7c6d] hover:text-white hover:bg-[#243628]'}`}>
-                  {v === 'lobby' ? <Coins size={14} /> : v === 'roulette' ? <span>🎡</span> : <span>🎰</span>}
-                  {v === 'lobby' ? 'Лобі' : v === 'roulette' ? 'Рулетка' : 'Слоти'}
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 mb-0.5 font-black text-xs uppercase tracking-widest transition-all cursor-pointer ${casinoView === v ? 'bg-[#a8792a] text-white' : v === 'deposit' ? 'text-[#a8792a] hover:bg-[#a8792a20]' : 'text-[#6b7c6d] hover:text-white hover:bg-[#243628]'}`}>
+                  <span className="text-base leading-none w-4 flex items-center">{icon}</span>
+                  {label}
                 </button>
               ))}
             </div>
@@ -1515,6 +2212,56 @@ export default function App() {
               <div><div className="font-black text-sm uppercase">Слоти</div><div className="font-mono text-[10px] text-[#6b7c6d]">3 барабани · Джекпот ×50</div></div>
             </div>
             <SlotsView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'crash' && (
+          <>
+            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
+              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
+              <span className="text-2xl">🚀</span>
+              <div><div className="font-black text-sm uppercase">Crash</div><div className="font-mono text-[10px] text-[#6b7c6d]">Забери до краху</div></div>
+            </div>
+            <CrashView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'mines' && (
+          <>
+            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
+              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
+              <span className="text-2xl">💣</span>
+              <div><div className="font-black text-sm uppercase">Mines</div><div className="font-mono text-[10px] text-[#6b7c6d]">5×5 мінне поле</div></div>
+            </div>
+            <MinesView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'chicken' && (
+          <>
+            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
+              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
+              <span className="text-2xl">🐔</span>
+              <div><div className="font-black text-sm uppercase">Chicken Road</div><div className="font-mono text-[10px] text-[#6b7c6d]">Перейди дорогу · До ×30</div></div>
+            </div>
+            <ChickenRoadView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'dice' && (
+          <>
+            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
+              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
+              <span className="text-2xl">🎲</span>
+              <div><div className="font-black text-sm uppercase">Dice</div><div className="font-mono text-[10px] text-[#6b7c6d]">Більше / менше</div></div>
+            </div>
+            <DiceView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'deposit' && (
+          <>
+            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
+              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
+              <Coins size={20} className="text-[#a8792a]" />
+              <div><div className="font-black text-sm uppercase">Поповнення</div><div className="font-mono text-[10px] text-[#6b7c6d]">BTC · ETH · USDT · TON · SOL</div></div>
+            </div>
+            <DepositView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
           </>
         )}
 

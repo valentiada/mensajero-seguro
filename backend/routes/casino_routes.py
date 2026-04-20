@@ -1,8 +1,11 @@
 """Маршрути казино."""
 from __future__ import annotations
 
+import re
+
 from flask import Blueprint, g, jsonify, request
 
+from ..database import execute, query_all, query_one
 from ..services.casino_service import CasinoService
 from .helpers import api_error, auth_required, rate_limit
 
@@ -220,3 +223,74 @@ def chicken_cashout():
         return jsonify({'ok': True, 'data': result})
     except ValueError as exc:
         return api_error(str(exc))
+
+
+# ── Recent wins (public feed) ─────────────────────────────────────────────────
+
+@casino_bp.get('/recent-wins')
+def recent_wins():
+    rows = query_all(
+        '''SELECT g.game_type, g.win_amount, g.bet_amount,
+                  u.full_name AS user_name
+           FROM casino_games g
+           JOIN users u ON u.id = g.user_id
+           WHERE g.win_amount > 0
+           ORDER BY g.id DESC LIMIT 40''',
+    )
+    return jsonify({'ok': True, 'data': rows})
+
+
+# ── Withdrawals ───────────────────────────────────────────────────────────────
+
+_BSC_ADDR_RE = re.compile(r'^0x[0-9a-fA-F]{40}$')
+WITHDRAW_MIN = 5.0
+WITHDRAW_FEE = 1.0   # flat USDT network fee
+
+
+@casino_bp.post('/withdraw')
+@auth_required
+@rate_limit(3, 60, key_func=_casino_rate_key)
+def withdraw():
+    data = request.get_json(force=True) or {}
+    try:
+        amount = float(data.get('amount', 0))
+    except (TypeError, ValueError):
+        return api_error('Невірна сума.')
+    address = (data.get('address') or '').strip()
+
+    if amount < WITHDRAW_MIN:
+        return api_error(f'Мінімальний вивід: {WITHDRAW_MIN} USDT.')
+    if not _BSC_ADDR_RE.match(address):
+        return api_error('Невірний BSC-адрес (0x…, 42 символи).')
+
+    wallet = casino_service.repo.ensure_wallet(g.current_user['id'])
+    total = amount + WITHDRAW_FEE
+    if wallet['balance'] < total:
+        return api_error(f'Недостатньо коштів. Потрібно {total} (сума + {WITHDRAW_FEE} комісія).')
+
+    new_balance = casino_service.repo.update_balance(g.current_user['id'], -total)
+    execute(
+        'INSERT INTO withdrawals (user_id, amount_usdt, address, network) VALUES (?, ?, ?, ?)',
+        (g.current_user['id'], amount, address, 'BSC'),
+    )
+    execute(
+        'INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)',
+        (g.current_user['id'], 'withdraw_request',
+         f'amount={amount} fee={WITHDRAW_FEE} address={address}'),
+    )
+    return jsonify({'ok': True, 'data': {
+        'amount': amount, 'fee': WITHDRAW_FEE,
+        'net': amount, 'new_balance': new_balance,
+        'status': 'pending',
+        'message': 'Заявка прийнята. Обробка 1-24 год.',
+    }})
+
+
+@casino_bp.get('/withdrawals')
+@auth_required
+def list_withdrawals():
+    rows = query_all(
+        'SELECT * FROM withdrawals WHERE user_id = ? ORDER BY id DESC LIMIT 20',
+        (g.current_user['id'],),
+    )
+    return jsonify({'ok': True, 'data': rows})

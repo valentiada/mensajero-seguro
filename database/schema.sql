@@ -221,3 +221,20 @@ CREATE TABLE IF NOT EXISTS crypto_deposits (
 CREATE INDEX IF NOT EXISTS idx_crypto_deposits_user   ON crypto_deposits(user_id);
 CREATE INDEX IF NOT EXISTS idx_crypto_deposits_status ON crypto_deposits(status);
 CREATE INDEX IF NOT EXISTS idx_crypto_addr_address    ON crypto_deposit_addresses(address);
+
+-- ── Withdrawals ───────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS withdrawals (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    amount_usdt     REAL    NOT NULL,
+    address         TEXT    NOT NULL,
+    network         TEXT    NOT NULL DEFAULT 'BSC',
+    status          TEXT    NOT NULL DEFAULT 'pending',
+    tx_hash         TEXT,
+    created_at      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processed_at    TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);

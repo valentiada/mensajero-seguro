@@ -137,3 +137,18 @@ CREATE INDEX IF NOT EXISTS idx_messages_sender   ON messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_msg_reads_msg     ON message_reads(message_id);
 CREATE INDEX IF NOT EXISTS idx_msg_reads_user    ON message_reads(user_id);
 CREATE INDEX IF NOT EXISTS idx_calls_chat        ON calls(chat_id);
+
+CREATE TABLE IF NOT EXISTS withdrawals (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER NOT NULL,
+    amount_usdt     NUMERIC(18,6) NOT NULL,
+    address         TEXT    NOT NULL,
+    network         TEXT    NOT NULL DEFAULT 'BSC',
+    status          TEXT    NOT NULL DEFAULT 'pending',
+    tx_hash         TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at    TIMESTAMPTZ,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);

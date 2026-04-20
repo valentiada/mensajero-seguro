@@ -2087,18 +2087,17 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
   const [lang, setLang] = useState<LangCode>(detectLang);
   const t = I18N[lang];
   const [tab, setTab] = useState<'login' | 'register'>('login');
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [country, setCountry] = useState<Country>(() => guessCountryFromLang(detectLang()));
   const [phone, setPhone] = useState('');
-  const [form, setForm] = useState({ full_name: '', email: '', password: '' });
+  const [form, setForm] = useState({ full_name: '', email: '', login_email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // For registration: always prepend dial code
   const fullPhone = phone ? `${country.dialCode}${phone.replace(/^\+/, '').replace(/^0/, '')}` : '';
-  // For login: send as-is if email or already has +, else prepend dial code
-  const loginIdentity = phone.includes('@') ? phone
-    : phone.startsWith('+') ? phone
-    : phone ? `${country.dialCode}${phone.replace(/^0/, '')}` : '';
+  const loginIdentity = loginMethod === 'email'
+    ? form.login_email.trim().toLowerCase()
+    : phone.startsWith('+') ? phone.trim() : phone ? `${country.dialCode}${phone.replace(/^0/, '')}` : '';
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -2110,177 +2109,203 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
       : { full_name: form.full_name, phone: fullPhone, email: form.email, password: form.password };
     const res = await api<{ token: string; user: User }>(endpoint, { method: 'POST', body: JSON.stringify(body) });
     setLoading(false);
-    if (res.ok && res.data) onAuth(res.data.user, res.data.token, tab === 'register');
-    else setError(res.error || t.errorDefault);
+    if (res.ok && (res as any).data) onAuth((res as any).data.user, (res as any).data.token, tab === 'register');
+    else setError((res as any).error || t.errorDefault);
   }
 
   const LANG_FLAGS: Record<LangCode, string> = { en: '🇬🇧', uk: '🇺🇦', ru: '🇷🇺', es: '🇪🇸', it: '🇮🇹', de: '🇩🇪' };
 
+  // Design tokens (dark theme)
+  const bg0 = '#0B1A12', bg1 = '#112A1C', bg2 = '#163524';
+  const hairline = 'rgba(255,255,255,0.09)';
+  const textDim = 'rgba(232,242,234,0.62)';
+  const amber = '#E4A24B';
+  const mint = '#5BBE8A';
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '11px 14px',
+    background: bg0, border: `1px solid ${hairline}`,
+    borderRadius: 12, color: '#E8F2EA',
+    fontSize: 14, fontFamily: 'inherit', outline: 'none',
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, #071a0c 0%, #0f2415 35%, #1a3320 65%, #0a1a0e 100%)' }}>
+      style={{ background: `radial-gradient(ellipse 80% 60% at 20% 10%, rgba(91,190,138,0.07) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 90%, rgba(228,162,75,0.06) 0%, transparent 60%), ${bg0}` }}>
 
-      {/* Animated background particles */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="absolute rounded-full opacity-[0.07]"
-            style={{
-              width: `${80 + i * 40}px`, height: `${80 + i * 40}px`,
-              background: 'radial-gradient(circle, #a8792a, transparent)',
-              left: `${10 + i * 15}%`, top: `${5 + i * 12}%`,
-              animation: `float-coin ${3 + i * 0.7}s ease-in-out ${i * 0.5}s infinite alternate`,
-              animationName: 'hb-hover',
-            }} />
-        ))}
-      </div>
+      {/* Subtle grid */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        style={{ backgroundImage: 'repeating-linear-gradient(0deg,#5BBE8A 0,#5BBE8A 1px,transparent 1px,transparent 48px),repeating-linear-gradient(90deg,#5BBE8A 0,#5BBE8A 1px,transparent 1px,transparent 48px)' }} />
 
-      <div className="w-full max-w-[380px] relative z-10">
+      <div className="w-full max-w-[400px] relative z-10 flex flex-col gap-6">
 
         {/* Logo */}
-        <div className="mb-8 flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3">
           <div className="relative">
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center hb-hover"
-              style={{
-                background: 'linear-gradient(135deg, #1a4a2e 0%, #0f2415 100%)',
-                boxShadow: '0 8px 32px rgba(168,121,42,0.4), 0 0 0 1px rgba(168,121,42,0.3)',
-              }}>
-              <HummingbirdLogo size={52} />
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center hb-hover"
+              style={{ background: bg2, border: `1px solid rgba(228,162,75,0.3)`, boxShadow: `0 8px 32px rgba(228,162,75,0.2)` }}>
+              <HummingbirdLogo size={42} />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#4caf7d] border-2 border-[#071a0c]"
-              style={{ boxShadow: '0 0 8px #4caf7d' }} />
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2"
+              style={{ background: mint, borderColor: bg0, boxShadow: `0 0 8px ${mint}` }} />
           </div>
           <div className="text-center">
-            <h1 className="font-black text-4xl tracking-tight text-white"
-              style={{ textShadow: '0 0 30px rgba(168,121,42,0.5)' }}>
-              {APP_NAME}
-            </h1>
-            <p className="text-xs tracking-[0.2em] uppercase mt-1" style={{ color: '#a8792a' }}>
+            <div style={{ fontFamily: '"Space Grotesk", system-ui', fontWeight: 700, fontSize: 22, letterSpacing: 3, color: '#E8F2EA' }}>
+              {APP_NAME.toUpperCase()}
+            </div>
+            <div style={{ fontSize: 11, color: textDim, letterSpacing: 2, textTransform: 'uppercase', marginTop: 3 }}>
               {t.tagline}
-            </p>
+            </div>
           </div>
         </div>
 
         {/* Lang flags */}
-        <div className="flex justify-center gap-2.5 mb-6">
+        <div className="flex justify-center gap-3">
           {(Object.keys(I18N) as LangCode[]).map(l => (
-            <button key={l} type="button" onClick={() => setLang(l)}
-              className="transition-all duration-200 cursor-pointer"
-              style={{ transform: lang === l ? 'scale(1.25)' : 'scale(1)', opacity: lang === l ? 1 : 0.4, filter: lang === l ? 'drop-shadow(0 2px 4px rgba(168,121,42,0.6))' : 'none' }}>
+            <button key={l} type="button" onClick={() => setLang(l)} className="cursor-pointer transition-all duration-200"
+              style={{ transform: lang === l ? 'scale(1.2)' : 'scale(1)', opacity: lang === l ? 1 : 0.35, filter: lang === l ? `drop-shadow(0 0 6px ${amber})` : 'none' }}>
               <span className="text-2xl">{LANG_FLAGS[l]}</span>
             </button>
           ))}
         </div>
 
         {/* Card */}
-        <div className="overflow-hidden"
-          style={{
-            background: 'rgba(255,255,255,0.96)',
-            borderRadius: '24px',
-            boxShadow: '0 24px 64px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1)',
-          }}>
+        <div style={{ background: bg1, border: `1px solid ${hairline}`, borderRadius: 24, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.5)' }}>
 
-          {/* Tabs */}
-          <div className="flex p-1.5 gap-1.5" style={{ background: 'rgba(0,0,0,0.04)' }}>
+          {/* Main tabs */}
+          <div className="flex p-1.5 gap-1.5" style={{ background: bg0 }}>
             {(['login', 'register'] as const).map(tab_ => (
               <button key={tab_} type="button"
                 onClick={() => { setTab(tab_); setError(''); }}
                 className="flex-1 py-3 font-bold text-sm cursor-pointer transition-all duration-200 rounded-xl"
                 style={{
-                  background: tab === tab_ ? 'white' : 'transparent',
-                  color: tab === tab_ ? '#1d2e20' : '#6b7c6d',
-                  boxShadow: tab === tab_ ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
-                  fontWeight: tab === tab_ ? 800 : 600,
+                  background: tab === tab_ ? bg2 : 'transparent',
+                  color: tab === tab_ ? '#E8F2EA' : textDim,
+                  border: `1px solid ${tab === tab_ ? hairline : 'transparent'}`,
                 }}>
                 {tab_ === 'login' ? t.login : t.register}
               </button>
             ))}
           </div>
 
-          <form onSubmit={submit} className="p-6 flex flex-col gap-4">
+          <form onSubmit={submit} style={{ padding: '20px 20px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            {tab === 'register' && (
+            {/* ── REGISTER fields ── */}
+            {tab === 'register' && (<>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>{t.fullName}</label>
-                <input className="u24-input" placeholder={t.namePlaceholder}
-                  value={form.full_name} onChange={set('full_name')} required autoFocus />
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.fullName}</label>
+                <input style={inputStyle} placeholder={t.namePlaceholder} value={form.full_name} onChange={set('full_name')} required autoFocus
+                  onFocus={e => e.target.style.borderColor = amber} onBlur={e => e.target.style.borderColor = hairline} />
               </div>
-            )}
-
-            {/* Country */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>{t.country}</label>
-              <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
-            </div>
-
-            {/* Phone/Email */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>
-                {tab === 'login' ? `${t.phone} / ${t.email}` : t.phone}
-              </label>
-              <div className="flex rounded-xl overflow-hidden" style={{ border: '1.5px solid rgba(0,0,0,0.12)' }}>
-                <div className="flex items-center gap-1.5 px-3 shrink-0 select-none text-sm font-bold"
-                  style={{ background: '#1d2e20', color: '#f1f5ee', minWidth: 80 }}>
-                  <span>{country.flag}</span>
-                  <span style={{ color: '#a8792a' }}>{country.dialCode}</span>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.country}</label>
+                <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.phone}</label>
+                <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: `1px solid ${hairline}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', background: bg2, flexShrink: 0 }}>
+                    <span style={{ fontSize: 18 }}>{country.flag}</span>
+                    <span style={{ fontFamily: '"Space Grotesk",system-ui', fontSize: 13, fontWeight: 600, color: amber }}>{country.dialCode}</span>
+                  </div>
+                  <input style={{ ...inputStyle, borderRadius: 0, border: 'none', borderLeft: `1px solid ${hairline}`, flex: 1 }}
+                    placeholder={t.phonePlaceholder} value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" />
                 </div>
-                <input style={{ border: 'none', borderRadius: 0, background: 'white' }}
-                  className="u24-input rounded-none flex-1 focus:ring-0"
-                  placeholder={tab === 'login' ? `${t.phonePlaceholder} / ${t.emailPlaceholder}` : t.phonePlaceholder}
-                  value={phone} onChange={e => setPhone(e.target.value)}
-                  required={tab === 'register'} inputMode={phone.includes('@') ? 'email' : 'tel'} />
               </div>
-              {tab === 'login' && (
-                <p className="text-[10px] mt-1" style={{ color: '#9b9b9b' }}>
-                  Введіть email повністю або цифри телефону
-                </p>
-              )}
-            </div>
-
-            {tab === 'register' && (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>{t.email}</label>
-                <input className="u24-input" type="email" placeholder={t.emailPlaceholder}
-                  value={form.email} onChange={set('email')} required autoComplete="email" />
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.email}</label>
+                <input style={inputStyle} type="email" placeholder={t.emailPlaceholder} value={form.email} onChange={set('email')} required autoComplete="email"
+                  onFocus={e => e.target.style.borderColor = amber} onBlur={e => e.target.style.borderColor = hairline} />
               </div>
-            )}
+            </>)}
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: '#6b7c6d' }}>{t.password}</label>
-              <input className="u24-input" type="password" placeholder="••••••••"
-                value={form.password} onChange={set('password')} required
-                autoComplete={tab === 'login' ? 'current-password' : 'new-password'} />
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium rounded-xl"
-                style={{ background: 'rgba(192,57,43,0.08)', color: '#c0392b', border: '1px solid rgba(192,57,43,0.2)' }}>
-                <span className="text-base">⚠️</span> {error}
+            {/* ── LOGIN fields ── */}
+            {tab === 'login' && (<>
+              {/* Method switcher */}
+              <div style={{ display: 'flex', gap: 6, background: bg0, borderRadius: 10, padding: 4 }}>
+                {(['email', 'phone'] as const).map(m => (
+                  <button key={m} type="button" onClick={() => { setLoginMethod(m); setError(''); }}
+                    className="flex-1 cursor-pointer transition-all duration-200"
+                    style={{ padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, border: 'none',
+                      background: loginMethod === m ? bg2 : 'transparent',
+                      color: loginMethod === m ? '#E8F2EA' : textDim }}>
+                    {m === 'email' ? '✉️ Email' : '📱 ' + t.phone}
+                  </button>
+                ))}
               </div>
-            )}
 
-            {tab === 'register' && (
-              <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl"
-                style={{ background: 'rgba(168,121,42,0.08)', border: '1px solid rgba(168,121,42,0.2)' }}>
-                <span className="text-xl">🎁</span>
+              {loginMethod === 'email' ? (
                 <div>
-                  <div className="font-bold text-sm" style={{ color: '#a8792a' }}>Бонус при реєстрації</div>
-                  <div className="text-xs" style={{ color: '#6b7c6d' }}>+200₮ на баланс одразу після входу</div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.email}</label>
+                  <input style={inputStyle} type="email" placeholder={t.emailPlaceholder}
+                    value={form.login_email} onChange={set('login_email')} required autoFocus autoComplete="email"
+                    onFocus={e => e.target.style.borderColor = amber} onBlur={e => e.target.style.borderColor = hairline} />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.country}</label>
+                    <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.phone}</label>
+                    <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: `1px solid ${hairline}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', background: bg2, flexShrink: 0 }}>
+                        <span style={{ fontSize: 18 }}>{country.flag}</span>
+                        <span style={{ fontFamily: '"Space Grotesk",system-ui', fontSize: 13, fontWeight: 600, color: amber }}>{country.dialCode}</span>
+                      </div>
+                      <input style={{ ...inputStyle, borderRadius: 0, border: 'none', borderLeft: `1px solid ${hairline}`, flex: 1 }}
+                        placeholder={t.phonePlaceholder} value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" autoFocus />
+                    </div>
+                  </div>
+                </>
+              )}
+            </>)}
+
+            {/* Password */}
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.password}</label>
+              <input style={inputStyle} type="password" placeholder="••••••••" value={form.password} onChange={set('password')} required
+                autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
+                onFocus={e => e.target.style.borderColor = amber} onBlur={e => e.target.style.borderColor = hairline} />
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(229,75,94,0.1)', border: '1px solid rgba(229,75,94,0.3)', fontSize: 13, color: '#E54B5E' }}>
+                <span>⚠️</span> {error}
+              </div>
+            )}
+
+            {/* Register bonus banner */}
+            {tab === 'register' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(228,162,75,0.1)', border: `1px solid rgba(228,162,75,0.25)` }}>
+                <span style={{ fontSize: 20 }}>🎁</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: amber }}>Бонус при реєстрації</div>
+                  <div style={{ fontSize: 11, color: textDim, marginTop: 1 }}>+200₮ на баланс одразу після входу</div>
                 </div>
               </div>
             )}
 
+            {/* Submit button */}
             <button type="submit" disabled={loading}
-              className="u24-button-gold w-full justify-center py-4 text-base font-black rounded-2xl mt-1">
+              style={{ width: '100%', padding: '13px', borderRadius: 14, border: 'none', cursor: loading ? 'default' : 'pointer',
+                background: loading ? bg2 : `linear-gradient(135deg, #c9962e 0%, ${amber} 100%)`,
+                color: loading ? textDim : '#1a1006',
+                fontSize: 15, fontWeight: 700, letterSpacing: 0.3,
+                boxShadow: loading ? 'none' : '0 4px 20px rgba(228,162,75,0.35)',
+                transition: 'all 0.2s', marginTop: 2 }}>
               {loading
-                ? <span className="animate-blink">{t.loading}</span>
-                : <>{tab === 'login' ? '🔐' : '🚀'} {tab === 'login' ? t.loginBtn : t.registerBtn}</>}
+                ? t.loading
+                : tab === 'login' ? `${t.loginBtn} →` : `${t.registerBtn} →`}
             </button>
           </form>
 
-          <div className="flex items-center justify-center gap-2 py-3 mx-6 mb-4 rounded-xl"
-            style={{ background: 'rgba(0,0,0,0.04)' }}>
-            <span className="text-xs">🔒</span>
-            <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: '#9b9b9b' }}>
+          {/* Footer */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, padding: '0 20px 16px' }}>
+            <span style={{ fontSize: 11 }}>🔒</span>
+            <span style={{ fontSize: 10, color: textDim, textTransform: 'uppercase', letterSpacing: 1.2 }}>
               {t.e2e} · {APP_NAME}
             </span>
           </div>

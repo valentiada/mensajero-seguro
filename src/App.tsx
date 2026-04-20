@@ -1943,102 +1943,88 @@ function CasinoLobby({ wallet, onSelectGame, notify }: {
 
 // ─── Player Profile ───────────────────────────────────────────────────────────
 
-function ProfileView({ user, wallet, tickets, notify }: {
+function ProfileView({ user, wallet, notify, onLogout }: {
   user: User;
   wallet: CasinoWallet;
-  tickets: SupportTicket[];
+  tickets?: SupportTicket[];
   notify: (m: string) => void;
+  onLogout?: () => void;
 }) {
   const winRate = wallet.total_bet > 0 ? Math.round((wallet.total_won / wallet.total_bet) * 100) : 0;
+  const initial = (user.full_name || 'U')[0].toUpperCase();
+  const handle = user.phone || user.email || 'user';
 
-  const STATUS_COLOR: Record<string, string> = {
-    open: '#a8792a', in_progress: '#1a73e8', resolved: '#4caf7d', closed: '#6b7c6d',
+  const T = {
+    bg0: '#0B1A12', bg1: '#112A1C', bg2: '#163524',
+    hairline: 'rgba(255,255,255,0.09)',
+    text: '#E8F2EA', textDim: 'rgba(232,242,234,0.62)', textMute: 'rgba(232,242,234,0.38)',
+    amber: '#E4A24B', coral: '#E06E4A', mint: '#5BBE8A', ruby: '#E54B5E',
   };
-  const STATUS_LABEL: Record<string, string> = {
-    open: 'Відкрито', in_progress: 'В обробці', resolved: 'Вирішено', closed: 'Закрито',
-  };
+
+  const settingsItems = [
+    { icon: <Coins size={15} />, label: 'Поповнення', detail: '', onClick: () => notify('Перейдіть до Казино → Поповнення') },
+    { icon: <BarChart2 size={15} />, label: 'Транзакції', detail: '', onClick: () => notify('Транзакції — в розробці') },
+    { icon: <Trophy size={15} />, label: 'Досягнення', detail: '7/24', onClick: () => notify('Досягнення — в розробці') },
+    { icon: <LifeBuoy size={15} />, label: 'Підтримка', detail: '', onClick: () => notify('Перейдіть до чату підтримки') },
+    { icon: <LogOut size={15} />, label: 'Вийти', detail: '', onClick: onLogout || (() => notify('Виходимо…')), danger: true },
+  ];
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-      {/* Avatar card */}
-      <div className="border-2 border-black p-5 flex items-center gap-4">
-        <Avatar name={user.full_name} size={64} online />
-        <div className="flex-1 min-w-0">
-          <div className="font-black text-lg uppercase tracking-tight truncate">{user.full_name}</div>
-          <div className="font-mono text-xs text-[#6b7c6d] uppercase tracking-widest">{user.role} · Рівень {wallet.level}</div>
-          <div className="font-mono text-xs text-[#a8792a] mt-1">{user.phone}</div>
-        </div>
-        <button onClick={() => notify('Редагування профілю — в розробці')} className="w-9 h-9 border-2 border-black flex items-center justify-center hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer">
-          <Edit3 size={15} />
-        </button>
-      </div>
+    <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ background: T.bg0 }}>
+      <div className="p-4 flex flex-col gap-4 max-w-lg mx-auto">
 
-      {/* Stats */}
-      <div>
-        <div className="font-black text-xs uppercase tracking-widest text-[#6b7c6d] mb-2">Статистика казино</div>
-        <div className="grid grid-cols-2 gap-2">
+        {/* Avatar card */}
+        <div style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 20 }} className="p-5 flex flex-col items-center gap-2">
+          <div style={{
+            width: 72, height: 72, borderRadius: 20,
+            background: `linear-gradient(135deg, ${T.amber} 0%, ${T.coral} 100%)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 28, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-grotesk)',
+          }}>
+            {initial}
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: T.text, textAlign: 'center' }}>{user.full_name}</div>
+          <div style={{ fontSize: 13, color: T.textDim, textAlign: 'center' }}>{handle} · Level {wallet.level}</div>
+        </div>
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-3 gap-2">
           {[
-            { icon: <Coins size={14} />, label: 'Баланс', val: fmtCoins(wallet.balance), color: '#a8792a' },
-            { icon: <Trophy size={14} />, label: 'Рівень', val: `${wallet.level} lvl`, color: '#1d4636' },
-            { icon: <TrendingUp size={14} />, label: 'Відсоток виграшу', val: `${winRate}%`, color: '#1a73e8' },
-            { icon: <BarChart2 size={14} />, label: 'Всього виграно', val: fmtCoins(wallet.total_won), color: '#4caf7d' },
+            { label: 'Ігор зіграно', val: wallet.total_bet > 0 ? String(Math.round(wallet.total_bet / 100)) : '0' },
+            { label: 'Найбільший виграш', val: fmtCoins(wallet.total_won) },
+            { label: 'Рейтинг перемог', val: `${winRate}%` },
           ].map(s => (
-            <div key={s.label} className="border-2 border-black p-3">
-              <div className="flex items-center gap-1.5 mb-1" style={{ color: s.color }}>
-                {s.icon}
-                <span className="font-mono text-[10px] uppercase tracking-widest">{s.label}</span>
-              </div>
-              <div className="font-black text-lg">{s.val}</div>
+            <div key={s.label} style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 12 }} className="p-3 flex flex-col gap-1">
+              <div className="font-grotesk" style={{ fontSize: 17, fontWeight: 600, color: T.text }}>{s.val}</div>
+              <div style={{ fontSize: 10, color: T.textDim, textTransform: 'uppercase', letterSpacing: '0.6px' }}>{s.label}</div>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Support tickets */}
-      <div>
-        <div className="font-black text-xs uppercase tracking-widest text-[#6b7c6d] mb-2 flex items-center gap-2">
-          <LifeBuoy size={12} /> Мої звернення ({tickets.length})
-        </div>
-        {tickets.length === 0 ? (
-          <div className="border-2 border-dashed border-[#6b7c6d] p-4 text-center font-mono text-xs text-[#6b7c6d]">
-            Звернень немає
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {tickets.map(t => (
-              <div key={t.id} className="border-2 border-black p-3 flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: STATUS_COLOR[t.status] || '#6b7c6d' }} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm truncate">{t.subject}</div>
-                  <div className="font-mono text-[10px] text-[#6b7c6d] mt-0.5">{STATUS_LABEL[t.status] || t.status} · {fmtTime(t.created_at)}</div>
+        {/* Settings list */}
+        <div style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 14, overflow: 'hidden' }}>
+          {settingsItems.map((item, i) => (
+            <div key={item.label}>
+              {i > 0 && <div style={{ height: 1, background: T.hairline }} />}
+              <button onClick={item.onClick} className="w-full flex items-center gap-3 cursor-pointer transition-all"
+                style={{ padding: '13px 16px', background: 'transparent' }}
+                onMouseEnter={e => (e.currentTarget.style.background = T.bg2)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <div style={{ width: 30, height: 30, background: T.bg2, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: item.danger ? T.ruby : T.amber, flexShrink: 0 }}>
+                  {item.icon}
                 </div>
-                <span className={`font-black text-[10px] px-1.5 py-0.5 uppercase border`} style={{ color: STATUS_COLOR[t.status], borderColor: STATUS_COLOR[t.status] }}>
-                  {t.priority}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-        <button onClick={() => notify('Перейдіть до чату підтримки (кнопка 🛡 знизу)')} className="u24-button-outline w-full mt-2 text-xs py-2">
-          <Plus size={12} /> Нове звернення
-        </button>
-      </div>
-
-      {/* Account */}
-      <div>
-        <div className="font-black text-xs uppercase tracking-widest text-[#6b7c6d] mb-2">Обліковий запис</div>
-        <div className="flex flex-col gap-1">
-          {[
-            { label: 'Email', val: user.email },
-            { label: 'Телефон', val: user.phone },
-            { label: 'Роль', val: user.role },
-          ].map(r => (
-            <div key={r.label} className="border-2 border-black px-3 py-2 flex items-center justify-between">
-              <span className="font-mono text-[10px] text-[#6b7c6d] uppercase tracking-widest">{r.label}</span>
-              <span className="font-bold text-sm">{r.val}</span>
+                <span style={{ flex: 1, textAlign: 'left', fontSize: 15, color: item.danger ? T.ruby : T.text }}>{item.label}</span>
+                {item.detail && <span style={{ fontSize: 13, color: T.textDim }}>{item.detail}</span>}
+                {!item.danger && (
+                  <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
+                    <path d="M2 2 L7 7 L2 12" stroke="rgba(232,242,234,0.38)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </button>
             </div>
           ))}
         </div>
+
       </div>
     </div>
   );
@@ -2442,311 +2428,274 @@ export default function App() {
 
   if (screen === 'auth') return <AuthScreen onAuth={handleAuth} />;
 
-  const NAV_TABS: { key: SidebarTab; icon: React.ReactNode; label: string; badge?: number }[] = [
-    { key: 'chats', icon: <MessageCircle size={16} />, label: 'Чати', badge: totalUnread || undefined },
-    { key: 'casino', icon: <Zap size={16} />, label: 'Казино' },
-    { key: 'profile', icon: <Award size={16} />, label: 'Профіль' },
-  ];
+  // ── Design tokens ─────────────────────────────────────────
+  const T = {
+    bg0: '#0B1A12', bg1: '#112A1C', bg2: '#163524',
+    hairline: 'rgba(255,255,255,0.09)',
+    text: '#E8F2EA', textDim: 'rgba(232,242,234,0.62)', textMute: 'rgba(232,242,234,0.38)',
+    amber: '#E4A24B', coral: '#E06E4A', mint: '#5BBE8A', ruby: '#E54B5E', sky: '#6DB5D4',
+  };
 
-  // On mobile: sidebarOpen = sidebar overlay; on desktop sidebar is always visible
-  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768;
-
-  return (
-    <div className="h-screen flex overflow-hidden bg-surface">
-      {/* Mobile backdrop */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* ── Sidebar ───────────────────────────────────────────── */}
-      <aside className={`sidebar z-50 transition-transform duration-300
-        md:relative md:translate-x-0 md:flex
-        ${sidebarOpen ? 'fixed inset-0 flex' : 'hidden md:flex'}`}>
-        {/* Header */}
-        <div className="px-4 py-3 border-b-2 border-[#2f4a37] flex items-center gap-2">
-          <HummingbirdLogo size={22} />
-          <span className="font-black text-sm uppercase tracking-tight flex-1">Колібрі</span>
-          <button onClick={() => setShowSupport(v => !v)} className="text-[#6b7c6d] hover:text-[#a8792a] transition-colors cursor-pointer" title="Підтримка">
-            <LifeBuoy size={15} />
+  // ── AppHeader ─────────────────────────────────────────────
+  const AppHeader = () => (
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      padding: '6px 18px 14px',
+      borderBottom: `1px solid ${T.hairline}`,
+      background: T.bg0,
+      flexShrink: 0,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+        <HummingbirdLogo size={20} />
+        <span style={{
+          fontFamily: 'var(--font-grotesk)', fontWeight: 700,
+          letterSpacing: '2.2px', fontSize: 17, color: T.text,
+        }}>КОЛІБРІ</span>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {[
+          { icon: <LifeBuoy size={17} />, onClick: () => setShowSupport(v => !v), title: 'Підтримка' },
+          { icon: <LogOut size={17} />, onClick: handleLogout, title: 'Вийти' },
+        ].map((btn, i) => (
+          <button key={i} onClick={btn.onClick} title={btn.title} style={{
+            width: 36, height: 36,
+            background: 'rgba(255,255,255,0.04)',
+            border: `1px solid ${T.hairline}`,
+            borderRadius: 10,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: T.textDim, cursor: 'pointer',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = T.amber)}
+          onMouseLeave={e => (e.currentTarget.style.color = T.textDim)}>
+            {btn.icon}
           </button>
-          <button onClick={handleLogout} className="text-[#6b7c6d] hover:text-[#c0392b] transition-colors cursor-pointer" title="Вийти">
-            <LogOut size={15} />
-          </button>
-        </div>
+        ))}
+      </div>
+    </div>
+  );
 
-        {/* User */}
-        <div className="px-4 py-2.5 border-b-2 border-[#2f4a37] flex items-center gap-2.5">
-          <Avatar name={user?.full_name || 'User'} size={34} online />
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm truncate">{user?.full_name}</div>
-            <div className="font-mono text-[10px] text-[#a8792a]">Lvl {wallet.level} · {fmtCoins(wallet.balance)}</div>
-          </div>
-        </div>
-
-        {/* Nav tabs */}
-        <div className="grid grid-cols-3 border-b-2 border-[#2f4a37]">
-          {NAV_TABS.map(t => (
-            <button key={t.key} onClick={() => setSidebarTab(t.key)}
-              className={`py-2.5 flex flex-col items-center gap-0.5 relative transition-all cursor-pointer text-[10px] font-black uppercase tracking-widest ${sidebarTab === t.key ? 'bg-[#2f4a37] text-[#a8792a]' : 'text-[#6b7c6d] hover:text-white'}`}>
-              {t.icon}
-              {t.label}
-              {t.badge ? (
-                <span className="absolute top-1 right-2 bg-[#c0392b] text-white font-black text-[9px] px-1 min-w-[14px] text-center">
-                  {t.badge}
+  // ── AppTabBar ─────────────────────────────────────────────
+  const AppTabBar = () => {
+    const tabs = [
+      { key: 'chats' as SidebarTab, icon: <MessageCircle size={17} />, label: 'Чати', badge: totalUnread },
+      { key: 'casino' as SidebarTab, icon: <Zap size={17} />, label: 'Казино', badge: 0 },
+      { key: 'profile' as SidebarTab, icon: <Award size={17} />, label: 'Профіль', badge: 0 },
+    ];
+    return (
+      <div style={{
+        display: 'flex', gap: 6, padding: '10px 18px 4px',
+        background: T.bg0, borderBottom: `1px solid ${T.hairline}`,
+        flexShrink: 0,
+      }}>
+        {tabs.map(tab => {
+          const active = sidebarTab === tab.key;
+          return (
+            <button key={tab.key} onClick={() => setSidebarTab(tab.key)}
+              style={{
+                flex: 1, height: 42, borderRadius: 12,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                fontSize: 13, fontWeight: 500,
+                background: active ? T.bg2 : 'transparent',
+                border: `1px solid ${active ? T.hairline : 'transparent'}`,
+                color: active ? T.amber : T.textDim,
+                cursor: 'pointer', position: 'relative',
+                transition: 'all 0.15s',
+              }}>
+              {tab.badge > 0 && (
+                <span style={{
+                  position: 'absolute', top: 4, right: 10,
+                  minWidth: 18, height: 18,
+                  background: T.coral, color: '#1a0c06',
+                  fontFamily: 'var(--font-grotesk)', fontSize: 11, fontWeight: 700,
+                  borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 4px',
+                }}>
+                  {tab.badge}
                 </span>
-              ) : null}
+              )}
+              {tab.icon}
+              {tab.label}
             </button>
-          ))}
-        </div>
+          );
+        })}
+      </div>
+    );
+  };
 
-        {/* Tab content */}
-        {sidebarTab === 'chats' && (
-          <>
-            <div className="px-3 py-2 border-b-2 border-[#2f4a37]">
-              <div className="flex items-center gap-2 border border-[#2f4a37] bg-[#162219] px-3 py-1.5">
-                <Search size={13} className="text-[#6b7c6d] shrink-0" />
-                <input className="flex-1 bg-transparent text-white font-mono text-xs placeholder:text-[#6b7c6d] outline-none" placeholder="Пошук…" value={search} onChange={e => setSearch(e.target.value)} />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto scrollbar-hide">
-              {filteredChats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).map(chat => (
-                <button key={chat.id} onClick={() => selectChat(chat)}
-                  className={`w-full px-4 py-3 flex items-center gap-3 border-b border-[#2f4a37] transition-all cursor-pointer text-left ${activeChat?.id === chat.id ? 'bg-[#2f4a37] border-l-4 border-l-[#a8792a]' : 'hover:bg-[#243628]'}`}>
-                  <div className="shrink-0">
-                    {chat.is_support ? (
-                      <div className="w-10 h-10 border-2 border-[#a8792a] bg-[#1d4636] flex items-center justify-center">
-                        <LifeBuoy size={16} className="text-[#a8792a]" />
-                      </div>
-                    ) : chat.is_group ? (
-                      <div className="w-10 h-10 border-2 border-[#2f4a37] bg-[#1d4636] flex items-center justify-center">
-                        <Users size={16} className="text-[#a8792a]" />
-                      </div>
-                    ) : (
-                      <Avatar name={chat.title} size={40} online={chat.id % 2 === 0} />
+  // ── Chat list (no active chat) ────────────────────────────
+  const ChatListPanel = () => (
+    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: T.bg0 }}>
+      {/* Search */}
+      <div style={{ padding: '12px 18px 8px' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: T.bg1, border: `1px solid ${T.hairline}`,
+          borderRadius: 12, padding: '10px 12px',
+        }}>
+          <Search size={15} style={{ color: T.textMute, flexShrink: 0 }} />
+          <input
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: T.text, fontSize: 14 }}
+            placeholder="Пошук…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+      {/* Chat rows */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ padding: '4px 18px' }}>
+        {filteredChats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).map((chat, idx, arr) => {
+          const isOnline = chat.id % 2 === 0;
+          return (
+            <div key={chat.id}>
+              <button onClick={() => selectChat(chat)} className="w-full text-left cursor-pointer"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 0', background: 'transparent',
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
+                {/* Avatar */}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  {chat.is_support ? (
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: T.bg2, border: `1px solid ${T.amber}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <LifeBuoy size={20} style={{ color: T.amber }} />
+                    </div>
+                  ) : chat.is_group ? (
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: T.bg2, border: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Users size={20} style={{ color: T.amber }} />
+                    </div>
+                  ) : (
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: T.bg2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: T.amber }}>
+                      {(chat.title || '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                  {isOnline && !chat.is_support && !chat.is_group && (
+                    <div style={{ position: 'absolute', bottom: 1, right: 1, width: 12, height: 12, borderRadius: '50%', background: T.mint, border: `2.5px solid ${T.bg0}` }} />
+                  )}
+                </div>
+                {/* Text */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {chat.pinned ? '📌 ' : ''}{chat.title}
+                    </span>
+                    <span style={{ fontSize: 11, color: T.textMute, flexShrink: 0 }}>
+                      {chat.last_message ? fmtTime(chat.last_message.created_at) : ''}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, marginTop: 2 }}>
+                    <span style={{ fontSize: 12, color: T.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {chat.last_message?.body || '—'}
+                    </span>
+                    {chat.unread_count > 0 && (
+                      <span style={{
+                        minWidth: 18, height: 18, flexShrink: 0,
+                        background: T.amber, color: '#1a1006',
+                        fontFamily: 'var(--font-grotesk)', fontSize: 11, fontWeight: 700,
+                        borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '0 5px',
+                      }}>
+                        {chat.unread_count}
+                      </span>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="font-bold text-sm truncate">
-                        {chat.pinned && <span className="text-[#a8792a] mr-1">📌</span>}
-                        {chat.title}
-                      </span>
-                      <span className="font-mono text-[10px] text-[#6b7c6d] shrink-0">{chat.last_message ? fmtTime(chat.last_message.created_at) : ''}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-1 mt-0.5">
-                      <span className="font-mono text-xs text-[#6b7c6d] truncate">{chat.last_message?.body || '—'}</span>
-                      {chat.unread_count > 0 && (
-                        <span className="shrink-0 min-w-[18px] h-[18px] flex items-center justify-center font-black text-[10px] px-1 bg-[#a8792a] text-white">
-                          {chat.unread_count}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {sidebarTab === 'casino' && (
-          <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col">
-            <div className="p-3 border-b-2 border-[#2f4a37]">
-              <div className="font-black text-[10px] uppercase tracking-widest text-[#a8792a] mb-2">Ігри</div>
-              {([
-                { v: 'lobby',    icon: <Coins size={14} />, label: 'Лобі' },
-                { v: 'chicken',  icon: '🐔', label: 'Chicken Road' },
-                { v: 'crash',    icon: '🚀', label: 'Crash' },
-                { v: 'mines',    icon: '💣', label: 'Mines' },
-                { v: 'dice',     icon: '🎲', label: 'Dice' },
-                { v: 'roulette', icon: '🎡', label: 'Рулетка' },
-                { v: 'slots',    icon: '🎰', label: 'Слоти' },
-                { v: 'deposit',  icon: <Coins size={14} className="text-[#a8792a]" />, label: '+ Поповнити' },
-              ] as { v: CasinoView; icon: React.ReactNode; label: string }[]).map(({ v, icon, label }) => (
-                <button key={v} onClick={() => { setCasinoView(v); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 mb-0.5 font-black text-xs uppercase tracking-widest transition-all cursor-pointer ${casinoView === v ? 'bg-[#a8792a] text-white' : v === 'deposit' ? 'text-[#a8792a] hover:bg-[#a8792a20]' : 'text-[#6b7c6d] hover:text-white hover:bg-[#243628]'}`}>
-                  <span className="text-base leading-none w-4 flex items-center">{icon}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="p-3">
-              <div className="font-black text-[10px] uppercase tracking-widest text-[#6b7c6d] mb-2">Мій баланс</div>
-              <div className="border-2 border-[#2f4a37] p-3 text-center">
-                <div className="font-black text-xl text-[#a8792a]">{fmtCoins(wallet.balance)}</div>
-                <div className="font-mono text-[10px] text-[#6b7c6d] mt-1">Рівень {wallet.level} · {wallet.xp} XP</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {sidebarTab === 'profile' && (
-          <div className="flex-1 flex flex-col overflow-y-auto scrollbar-hide p-3 gap-2">
-            <div className="font-black text-[10px] uppercase tracking-widest text-[#a8792a] mb-1">Профіль</div>
-            {user && (
-              <div className="flex items-center gap-2 border-2 border-[#2f4a37] p-2">
-                <Avatar name={user.full_name} size={36} online />
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-xs truncate">{user.full_name}</div>
-                  <div className="font-mono text-[10px] text-[#6b7c6d]">{user.role}</div>
                 </div>
-              </div>
-            )}
-            <button onClick={() => { setSidebarOpen(false); setSidebarTab('profile'); }} className="u24-button-outline w-full text-xs py-2">
-              <ChevronRight size={12} /> Відкрити профіль
-            </button>
-            <button onClick={() => setShowSupport(v => !v)} className="w-full flex items-center gap-2 px-3 py-2.5 font-black text-xs uppercase tracking-widest text-[#6b7c6d] hover:text-white hover:bg-[#243628] cursor-pointer transition-all">
-              <LifeBuoy size={14} /> Підтримка
-            </button>
-          </div>
-        )}
-      </aside>
+              </button>
+              {idx < arr.length - 1 && <div style={{ height: 1, background: T.hairline }} />}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
-      {/* ── Main ──────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden pb-14 md:pb-0">
-        {/* Mobile top header — visible only when sidebar is closed on mobile */}
-        {!sidebarOpen && (
-          <div className="md:hidden flex items-center gap-3 px-4 py-3 shrink-0" style={{ background: '#111d13', borderBottom: '2px solid #1d2e20' }}>
-            <HummingbirdLogo size={20} />
-            <span className="font-black text-sm uppercase tracking-tight flex-1 text-white">{APP_NAME}</span>
-            <div className="font-mono text-xs text-[#a8792a]">{fmtCoins(wallet.balance)}</div>
-            <button onClick={handleLogout} className="text-[#6b7c6d]" title="Вийти"><LogOut size={16} /></button>
-          </div>
-        )}
+  // ── Game sub-view header ──────────────────────────────────
+  const GameHeader = ({ emoji, title, sub }: { emoji: string; title: string; sub: string }) => (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 18px', borderBottom: `1px solid ${T.hairline}`,
+      background: T.bg0, flexShrink: 0,
+    }}>
+      <button onClick={() => setCasinoView('lobby')}
+        style={{ color: T.amber, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+        <ChevronLeft size={22} />
+      </button>
+      <span style={{ fontSize: 22 }}>{emoji}</span>
+      <div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{title}</div>
+        <div style={{ fontSize: 11, color: T.textDim }}>{sub}</div>
+      </div>
+    </div>
+  );
 
-        {/* Casino views */}
-        {sidebarTab === 'casino' && casinoView === 'lobby' && (
-          <CasinoLobby wallet={wallet} onSelectGame={v => { setCasinoView(v); setSidebarOpen(false); }} notify={notify} />
-        )}
-        {sidebarTab === 'casino' && casinoView === 'roulette' && (
-          <>
-            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
-              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
-              <span className="text-2xl">🎡</span>
-              <div><div className="font-black text-sm uppercase">Рулетка</div><div className="font-mono text-[10px] text-[#6b7c6d]">Європейська · До ×35</div></div>
-            </div>
-            <RouletteView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
-          </>
-        )}
-        {sidebarTab === 'casino' && casinoView === 'slots' && (
-          <>
-            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
-              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
-              <span className="text-2xl">🎰</span>
-              <div><div className="font-black text-sm uppercase">Слоти</div><div className="font-mono text-[10px] text-[#6b7c6d]">3 барабани · Джекпот ×50</div></div>
-            </div>
-            <SlotsView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
-          </>
-        )}
-        {sidebarTab === 'casino' && casinoView === 'crash' && (
-          <>
-            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
-              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
-              <span className="text-2xl">🚀</span>
-              <div><div className="font-black text-sm uppercase">Crash</div><div className="font-mono text-[10px] text-[#6b7c6d]">Забери до краху</div></div>
-            </div>
-            <CrashView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
-          </>
-        )}
-        {sidebarTab === 'casino' && casinoView === 'mines' && (
-          <>
-            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
-              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
-              <span className="text-2xl">💣</span>
-              <div><div className="font-black text-sm uppercase">Mines</div><div className="font-mono text-[10px] text-[#6b7c6d]">5×5 мінне поле</div></div>
-            </div>
-            <MinesView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
-          </>
-        )}
-        {sidebarTab === 'casino' && casinoView === 'chicken' && (
-          <>
-            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
-              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
-              <span className="text-2xl">🐔</span>
-              <div><div className="font-black text-sm uppercase">Chicken Road</div><div className="font-mono text-[10px] text-[#6b7c6d]">Перейди дорогу · До ×30</div></div>
-            </div>
-            <ChickenRoadView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
-          </>
-        )}
-        {sidebarTab === 'casino' && casinoView === 'dice' && (
-          <>
-            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
-              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
-              <span className="text-2xl">🎲</span>
-              <div><div className="font-black text-sm uppercase">Dice</div><div className="font-mono text-[10px] text-[#6b7c6d]">Більше / менше</div></div>
-            </div>
-            <DiceView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
-          </>
-        )}
-        {sidebarTab === 'casino' && casinoView === 'deposit' && (
-          <>
-            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
-              <button onClick={() => setCasinoView('lobby')} className="cursor-pointer hover:text-[#a8792a] transition-colors"><ChevronLeft size={20} /></button>
-              <Coins size={20} className="text-[#a8792a]" />
-              <div><div className="font-black text-sm uppercase">Поповнення</div><div className="font-mono text-[10px] text-[#6b7c6d]">BTC · ETH · USDT · TON · SOL</div></div>
-            </div>
-            <DepositView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
-          </>
-        )}
+  return (
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: T.bg0, color: T.text, overflow: 'hidden' }}>
 
-        {/* Profile view */}
-        {sidebarTab === 'profile' && user && (
-          <>
-            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
-              <Award size={18} className="text-[#a8792a]" />
-              <div className="font-black text-sm uppercase tracking-tight">Мій профіль</div>
-            </div>
-            <ProfileView user={user} wallet={wallet} tickets={tickets} notify={notify} />
-          </>
-        )}
+      {/* ── AppHeader ────────────────────────────────────── */}
+      <AppHeader />
 
-        {/* Chat view */}
+      {/* ── AppTabBar ────────────────────────────────────── */}
+      <AppTabBar />
+
+      {/* ── Content ──────────────────────────────────────── */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+        {/* CHATS TAB */}
+        {sidebarTab === 'chats' && !activeChat && <ChatListPanel />}
+
         {sidebarTab === 'chats' && activeChat && (
-          <>
-            <div className="border-b-2 border-black px-4 py-3 flex items-center gap-3 bg-surface shrink-0">
-              <button className="md:hidden cursor-pointer hover:text-[#a8792a]" onClick={() => { setSidebarOpen(true); setActiveChat(null); }}>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Chat header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderBottom: `1px solid ${T.hairline}`, background: T.bg0, flexShrink: 0 }}>
+              <button onClick={() => setActiveChat(null)} style={{ color: T.amber, cursor: 'pointer', display: 'flex' }}>
                 <ArrowLeft size={20} />
               </button>
-              <div className="cursor-pointer" onClick={() => setShowChatInfo(v => !v)}>
+              <div style={{ cursor: 'pointer' }} onClick={() => setShowChatInfo(v => !v)}>
                 {activeChat.is_support ? (
-                  <div className="w-10 h-10 border-2 border-[#a8792a] bg-[#1d4636] flex items-center justify-center">
-                    <LifeBuoy size={18} className="text-[#a8792a]" />
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: T.bg2, border: `1px solid ${T.amber}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <LifeBuoy size={18} style={{ color: T.amber }} />
                   </div>
                 ) : activeChat.is_group ? (
-                  <div className="w-10 h-10 border-2 border-black bg-[#1d4636] flex items-center justify-center">
-                    <Users size={18} className="text-[#a8792a]" />
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: T.bg2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Users size={18} style={{ color: T.amber }} />
                   </div>
                 ) : (
-                  <Avatar name={activeChat.title} size={40} online />
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: T.bg2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: T.amber }}>
+                    {(activeChat.title || '?')[0].toUpperCase()}
+                  </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-black text-sm uppercase tracking-tight truncate">{activeChat.title}</div>
-                <div className="font-mono text-[10px] text-[#6b7c6d]">
-                  {activeChat.is_support ? <span className="text-[#a8792a]">🛡 Служба підтримки</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeChat.title}</div>
+                <div style={{ fontSize: 11, color: T.textDim }}>
+                  {activeChat.is_support ? <span style={{ color: T.amber }}>Служба підтримки</span>
                     : activeChat.is_group ? 'Груповий чат'
-                    : <span className="text-[#4caf7d]">● Онлайн</span>}
+                    : <span style={{ color: T.mint }}>● Онлайн</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div style={{ display: 'flex', gap: 6 }}>
                 {!activeChat.is_support && <>
-                  <button onClick={() => startCall('audio')} className="w-9 h-9 border-2 border-black flex items-center justify-center hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer"><Phone size={15} /></button>
-                  <button onClick={() => startCall('video')} className="w-9 h-9 border-2 border-black flex items-center justify-center hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer"><Video size={15} /></button>
+                  <button onClick={() => startCall('audio')} style={{ width: 36, height: 36, borderRadius: 10, background: T.bg2, border: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.textDim, cursor: 'pointer' }}><Phone size={15} /></button>
+                  <button onClick={() => startCall('video')} style={{ width: 36, height: 36, borderRadius: 10, background: T.bg2, border: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.textDim, cursor: 'pointer' }}><Video size={15} /></button>
                 </>}
-                <button onClick={() => setShowChatInfo(v => !v)} className="w-9 h-9 border-2 border-black flex items-center justify-center hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer"><Info size={15} /></button>
+                <button onClick={() => setShowChatInfo(v => !v)} style={{ width: 36, height: 36, borderRadius: 10, background: T.bg2, border: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.textDim, cursor: 'pointer' }}><Info size={15} /></button>
               </div>
             </div>
 
-            <div className="bg-[#1d4636] border-b-2 border-black px-4 py-1 flex items-center gap-2">
-              <Lock size={10} className="text-[#a8792a]" />
-              <span className="font-mono text-[10px] text-[#a8792a] uppercase tracking-widest">E2E Encrypted · Nexus</span>
+            {/* E2E bar */}
+            <div style={{ background: T.bg2, borderBottom: `1px solid ${T.hairline}`, padding: '5px 18px', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <Lock size={10} style={{ color: T.amber }} />
+              <span style={{ fontSize: 10, color: T.amber, letterSpacing: '0.8px', textTransform: 'uppercase' }}>E2E Encrypted · Nexus</span>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12, background: T.bg0 }}>
               {chatMessages.length === 0 && (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center border-2 border-dashed border-[#6b7c6d] px-8 py-6">
-                    <Lock size={24} className="text-[#6b7c6d] mx-auto mb-2" />
-                    <div className="font-black text-sm uppercase">Повідомлень немає</div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ textAlign: 'center', border: `1px dashed ${T.hairline}`, borderRadius: 16, padding: '32px 40px' }}>
+                    <Lock size={24} style={{ color: T.textMute, margin: '0 auto 8px' }} />
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.textDim }}>Повідомлень немає</div>
                   </div>
                 </div>
               )}
@@ -2754,15 +2703,19 @@ export default function App() {
                 const isOwn = msg.sender_id === (user?.id || 1) || msg.sender_name === 'Ви';
                 return (
                   <div key={msg.id} className={`flex gap-2 animate-slide-up ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-                    {!isOwn && <Avatar name={msg.sender_name} size={32} />}
+                    {!isOwn && (
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: T.bg2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: T.amber, flexShrink: 0 }}>
+                        {(msg.sender_name || '?')[0].toUpperCase()}
+                      </div>
+                    )}
                     <div className={`max-w-[65%] flex flex-col gap-1 ${isOwn ? 'items-end' : 'items-start'}`}>
                       {!isOwn && activeChat.is_group && (
-                        <span className="font-black text-[10px] uppercase text-[#a8792a] px-1">{msg.sender_name}</span>
+                        <span style={{ fontSize: 10, color: T.amber, paddingLeft: 4 }}>{msg.sender_name}</span>
                       )}
-                      <div className={`px-4 py-2.5 text-sm font-mono leading-relaxed ${isOwn ? 'bubble-out' : 'bubble-in'}`}>{msg.body}</div>
+                      <div className={`px-4 py-2.5 text-sm leading-relaxed ${isOwn ? 'bubble-out' : 'bubble-in'}`}>{msg.body}</div>
                       <div className="flex items-center gap-1 px-1">
-                        <span className="font-mono text-[10px] text-[#6b7c6d]">{fmtTime(msg.created_at)}</span>
-                        {isOwn && (msg.read_by.length > 1 ? <CheckCheck size={12} className="text-[#4caf7d]" /> : <Check size={12} className="text-[#6b7c6d]" />)}
+                        <span style={{ fontSize: 10, color: T.textMute }}>{fmtTime(msg.created_at)}</span>
+                        {isOwn && (msg.read_by.length > 1 ? <CheckCheck size={12} style={{ color: T.mint }} /> : <Check size={12} style={{ color: T.textMute }} />)}
                       </div>
                     </div>
                   </div>
@@ -2771,119 +2724,124 @@ export default function App() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="border-t-2 border-black px-3 py-3 flex items-end gap-2 bg-surface shrink-0">
-              <button className="w-9 h-9 border-2 border-black flex items-center justify-center hover:bg-[#1d2e20] hover:text-white cursor-pointer shrink-0"><Paperclip size={15} /></button>
-              <div className="flex-1 border-2 border-black flex items-end">
+            {/* Input bar */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 18px', borderTop: `1px solid ${T.hairline}`, background: T.bg0, flexShrink: 0 }}>
+              <button style={{ width: 36, height: 36, borderRadius: 10, background: T.bg2, border: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.textDim, cursor: 'pointer', flexShrink: 0 }}><Paperclip size={15} /></button>
+              <div style={{ flex: 1, background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 12, display: 'flex', alignItems: 'flex-end' }}>
                 <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
-                  rows={1} placeholder="Повідомлення… (Enter — надіслати)"
-                  className="flex-1 resize-none bg-transparent px-3 py-2.5 font-mono text-sm outline-none placeholder:text-[#6b7c6d] max-h-32" />
-                <button className="px-2 py-2.5 text-[#6b7c6d] hover:text-[#a8792a] cursor-pointer"><Smile size={15} /></button>
+                  rows={1} placeholder="Повідомлення…"
+                  style={{ flex: 1, resize: 'none', background: 'transparent', padding: '10px 12px', fontSize: 14, color: T.text, outline: 'none', maxHeight: 120 }}
+                  className="placeholder:text-[rgba(232,242,234,0.38)]" />
+                <button style={{ padding: '10px 10px', color: T.textDim, cursor: 'pointer' }}><Smile size={15} /></button>
               </div>
               <button onClick={sendMessage} disabled={!input.trim()}
-                className="w-9 h-9 border-2 border-black bg-[#1d2e20] text-white flex items-center justify-center hover:bg-[#a8792a] transition-colors cursor-pointer shrink-0 disabled:opacity-40">
+                style={{ width: 36, height: 36, borderRadius: 10, background: T.amber, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1a1006', cursor: 'pointer', flexShrink: 0, opacity: input.trim() ? 1 : 0.4 }}>
                 <Send size={15} />
               </button>
             </div>
-          </>
-        )}
-
-        {/* Empty state */}
-        {sidebarTab === 'chats' && !activeChat && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
-            <div className="border-2 border-black p-8 bg-surface shadow-[8px_8px_0px_0px_#1d2e20] text-center max-w-sm">
-              <div className="text-5xl mb-4">🎰</div>
-              <h2 className="font-black text-xl uppercase tracking-tight mb-2">Nexus</h2>
-              <p className="font-mono text-sm text-[#6b7c6d] mb-6">Месенджер · Казино · Підтримка</p>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { icon: <Lock size={12} />, t: 'E2E шифрування' },
-                  { icon: <span className="text-sm">🎡</span>, t: 'Рулетка' },
-                  { icon: <span className="text-sm">🎰</span>, t: 'Слоти' },
-                  { icon: <LifeBuoy size={12} />, t: 'Підтримка' },
-                ].map(f => (
-                  <div key={f.t} className="border-2 border-black px-3 py-2 flex items-center gap-2">
-                    <span className="text-[#a8792a]">{f.icon}</span>
-                    <span className="font-mono text-[10px] uppercase tracking-widest">{f.t}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
-      </main>
 
-      {/* ── Chat info panel ───────────────────────────────────── */}
+        {/* CASINO TAB */}
+        {sidebarTab === 'casino' && casinoView === 'lobby' && (
+          <CasinoLobby wallet={wallet} onSelectGame={v => setCasinoView(v)} notify={notify} />
+        )}
+        {sidebarTab === 'casino' && casinoView === 'roulette' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🎡" title="Рулетка" sub="Європейська · До ×35" />
+            <RouletteView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'slots' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🎰" title="Слоти" sub="3 барабани · Джекпот ×50" />
+            <SlotsView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'crash' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🚀" title="Crash" sub="Забери до краху" />
+            <CrashView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'mines' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="💣" title="Mines" sub="5×5 мінне поле" />
+            <MinesView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'chicken' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🐔" title="Chicken Road" sub="Перейди дорогу · До ×30" />
+            <ChickenRoadView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'dice' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🎲" title="Dice" sub="Більше / менше" />
+            <DiceView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'deposit' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="💰" title="Поповнення" sub="BTC · ETH · USDT · TON · SOL" />
+            <DepositView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+          </div>
+        )}
+
+        {/* PROFILE TAB */}
+        {sidebarTab === 'profile' && user && (
+          <ProfileView user={user} wallet={wallet} tickets={tickets} notify={notify} onLogout={handleLogout} />
+        )}
+
+      </div>
+
+      {/* ── Chat info panel ───────────────────────────────── */}
       {showChatInfo && activeChat && (
-        <aside className="w-64 border-l-2 border-black flex flex-col bg-surface shrink-0 animate-slide-up overflow-y-auto">
-          <div className="px-4 py-3 border-b-2 border-black flex items-center justify-between">
-            <span className="font-black text-xs uppercase tracking-widest">Інформація</span>
-            <button onClick={() => setShowChatInfo(false)} className="cursor-pointer hover:text-[#c0392b]"><X size={14} /></button>
+        <div style={{
+          position: 'fixed', right: 0, top: 0, bottom: 0, width: 280, zIndex: 50,
+          background: T.bg1, borderLeft: `1px solid ${T.hairline}`,
+          display: 'flex', flexDirection: 'column',
+        }} className="animate-slide-up">
+          <div style={{ padding: '16px 18px', borderBottom: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Інформація</span>
+            <button onClick={() => setShowChatInfo(false)} style={{ color: T.textDim, cursor: 'pointer' }}><X size={16} /></button>
           </div>
-          <div className="p-4 flex flex-col items-center gap-2 border-b-2 border-black">
-            {activeChat.is_support
-              ? <div className="w-16 h-16 border-2 border-[#a8792a] bg-[#1d4636] flex items-center justify-center"><LifeBuoy size={28} className="text-[#a8792a]" /></div>
-              : <Avatar name={activeChat.title} size={64} online />}
-            <div className="font-black text-base uppercase tracking-tight text-center">{activeChat.title}</div>
+          <div style={{ padding: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, borderBottom: `1px solid ${T.hairline}` }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: T.bg2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: T.amber }}>
+              {activeChat.is_support ? <LifeBuoy size={28} style={{ color: T.amber }} /> : (activeChat.title || '?')[0].toUpperCase()}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.text, textAlign: 'center' }}>{activeChat.title}</div>
           </div>
-          <div className="p-4 flex flex-col gap-2">
+          <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
               { l: 'Тип', v: activeChat.is_support ? 'Підтримка' : activeChat.is_group ? 'Група' : 'Особистий' },
               { l: 'Шифрування', v: 'E2E · Fernet' },
             ].map(r => (
-              <div key={r.l} className="border-2 border-black px-3 py-2">
-                <div className="font-mono text-[10px] text-[#6b7c6d] uppercase">{r.l}</div>
-                <div className="font-bold text-sm mt-0.5">{r.v}</div>
+              <div key={r.l} style={{ background: T.bg2, borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ fontSize: 10, color: T.textMute, textTransform: 'uppercase', letterSpacing: '0.6px' }}>{r.l}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginTop: 2 }}>{r.v}</div>
               </div>
             ))}
-            <button onClick={() => notify('Видалити чат — в розробці')} className="u24-button-danger w-full text-xs mt-2">
-              <Trash2 size={12} /> Видалити чат
+            <button onClick={() => notify('Видалити чат — в розробці')} style={{
+              padding: '10px 0', borderRadius: 10, background: 'transparent',
+              border: `1px solid rgba(229,75,94,0.4)`, color: '#E54B5E',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4,
+            }}>
+              <Trash2 size={14} /> Видалити чат
             </button>
           </div>
-        </aside>
+        </div>
       )}
 
-      {/* ── Mobile bottom nav ─────────────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 flex" style={{ background: '#111d13', borderTop: '2px solid #1d2e20' }}>
-        {([
-          { key: 'chats'   as SidebarTab, icon: <MessageCircle size={20} />, label: 'Чати',    badge: totalUnread },
-          { key: 'casino'  as SidebarTab, icon: <Zap size={20} />,           label: 'Казино',  badge: 0 },
-          { key: 'profile' as SidebarTab, icon: <Award size={20} />,         label: 'Профіль', badge: 0 },
-        ]).map(item => (
-          <button key={item.key}
-            onClick={() => { setSidebarTab(item.key); setSidebarOpen(false); }}
-            className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 relative cursor-pointer transition-all"
-            style={{ color: sidebarTab === item.key ? '#a8792a' : '#6b7c6d' }}>
-            {item.badge > 0 && (
-              <span className="absolute top-1.5 right-1/4 bg-[#c0392b] text-white font-black text-[9px] px-1 min-w-[16px] text-center rounded-none">
-                {item.badge}
-              </span>
-            )}
-            {item.icon}
-            <span className="font-black text-[9px] uppercase tracking-widest">{item.label}</span>
-            {sidebarTab === item.key && (
-              <div className="absolute top-0 inset-x-0 h-0.5 bg-[#a8792a]" />
-            )}
-          </button>
-        ))}
-        {/* Hamburger for sidebar details */}
-        <button onClick={() => setSidebarOpen(true)}
-          className="w-12 flex flex-col items-center justify-center py-2.5 gap-0.5 cursor-pointer transition-all"
-          style={{ color: '#6b7c6d', borderLeft: '1px solid #1d2e20' }}>
-          <div className="flex flex-col gap-1">
-            <div className="w-4 h-0.5 bg-current" />
-            <div className="w-4 h-0.5 bg-current" />
-            <div className="w-4 h-0.5 bg-current" />
-          </div>
-        </button>
-      </nav>
-
-      {/* ── Call overlay ──────────────────────────────────────── */}
+      {/* ── Call overlay ──────────────────────────────────── */}
       {call && <CallOverlay call={call} onEnd={endCall} onMute={() => setCall(p => p ? { ...p, muted: !p.muted } : null)} onVideo={() => setCall(p => p ? { ...p, video_off: !p.video_off } : null)} />}
 
-      {/* ── Support widget ────────────────────────────────────── */}
+      {/* ── Support widget ────────────────────────────────── */}
       {showSupport && <SupportWidget onOpenChat={openSupportChat} onClose={() => setShowSupport(false)} />}
 
-      {/* ── Toast ─────────────────────────────────────────────── */}
+      {/* ── Toast ─────────────────────────────────────────── */}
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
     </div>
   );

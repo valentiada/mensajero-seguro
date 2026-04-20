@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-grotesk: "Space Grotesk", system-ui, sans-serif;
 
   --color-ink:         #1d2e20;
   --color-brand:       #1d4636;
@@ -24,8 +25,8 @@
   body {
     @apply antialiased overflow-hidden;
     font-family: var(--font-sans);
-    background: var(--color-surface);
-    color: var(--color-ink);
+    background: #0B1A12;
+    color: #E8F2EA;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -121,6 +122,9 @@
            hover:border-[--color-accent]/60 hover:shadow-[0_0_24px_rgba(168,121,42,0.3)];
   }
 
+  /* Font grotesk utility */
+  .font-grotesk { font-family: var(--font-grotesk); }
+
   /* Sidebar */
   .sidebar {
     display: flex; flex-direction: column;
@@ -135,16 +139,18 @@
 
   /* Chat bubbles */
   .bubble-out {
-    background: linear-gradient(135deg, #1d4636 0%, #2f4a37 100%);
-    color: #f1f5ee;
+    background: linear-gradient(135deg, #163524 0%, #1c3f2c 100%);
+    color: #E8F2EA;
     border-radius: 18px 18px 4px 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    border: 1px solid rgba(91,190,138,0.15);
   }
   .bubble-in {
-    background: #ffffff;
-    color: #1d2e20;
+    background: #112A1C;
+    color: #E8F2EA;
     border-radius: 18px 18px 18px 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.09);
   }
 
   /* Online dot */

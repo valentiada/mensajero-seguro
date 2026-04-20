@@ -1593,147 +1593,196 @@ function DiceView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; on
 
 // ─── Crypto Deposit ────────────────────────────────────────────────────────────
 
-const CRYPTO_WALLETS = [
-  { coin: 'USDT', network: 'TRC20', icon: '💵', addr: 'TQn9Y2khEA95LHDuCz7Nm7qjmBfHKxGJBp', color: '#26a17b' },
-  { coin: 'TON',  network: 'TON',   icon: '💎', addr: 'UQD2NmD_lH5f5u1Kj3KfGyTvhZSX0Eg6reqaqURGhlkXiWUf', color: '#0098ea' },
-  { coin: 'BTC',  network: 'BTC',   icon: '₿',  addr: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', color: '#f7931a' },
-  { coin: 'ETH',  network: 'ERC20', icon: 'Ξ',  addr: '0x742d35Cc6634C0532925a3b8D4C9C2b08f0f5e3A', color: '#627eea' },
-  { coin: 'SOL',  network: 'SOL',   icon: '◎',  addr: '8ZUczUAUSsDmCnCqFLhSbxJ9XoJ7RaGc2eNbBHjUcorZ', color: '#9945ff' },
-];
+interface CryptoDeposit {
+  id: number;
+  tx_hash: string;
+  token: string;
+  amount_usdt: number;
+  confirmations: number;
+  status: 'pending' | 'confirmed' | 'failed';
+  block_number: number;
+  credited_at: string | null;
+  confirmed_at: string | null;
+  created_at: string;
+}
 
-interface PendingDeposit { id: string; coin: string; amount: number; usdEquiv: number; confirmAt: number; credited: boolean; }
+function DepositView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet;
+  onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string;
+  notify: (m: string) => void;
+}) {
+  const [address, setAddress] = useState<string>('');
+  const [addrLoading, setAddrLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(false);
+  const [deposits, setDeposits] = useState<CryptoDeposit[]>([]);
+  const [copied, setCopied] = useState(false);
 
-function DepositView({ wallet, onWalletUpdate, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; notify: (m: string) => void }) {
-  const [selected, setSelected] = useState(CRYPTO_WALLETS[0]);
-  const [amount, setAmount] = useState('');
-  const [pending, setPending] = useState<PendingDeposit[]>([]);
-  const [copied, setCopied] = useState('');
-  const [now, setNow] = useState(Date.now());
-
+  // Load deposit address + history on mount
   useEffect(() => {
-    const t = setInterval(() => {
-      setNow(Date.now());
-      setPending(prev => prev.map(p => {
-        if (!p.credited && Date.now() >= p.confirmAt) {
-          onWalletUpdate({ balance: wallet.balance + p.usdEquiv });
-          notify(`✅ Зараховано ${p.usdEquiv}₮ (${p.amount} ${p.coin})`);
-          return { ...p, credited: true };
+    const headers = { Authorization: `Bearer ${token}` };
+
+    fetch('/api/crypto/deposit-address', { headers })
+      .then(r => r.json())
+      .then(j => {
+        if (j.ok) {
+          setAddress(j.data.address);
+          setIsDemo(!!j.data.demo);
         }
-        return p;
-      }));
-    }, 1000);
-    return () => clearInterval(t);
-  });
+      })
+      .catch(() => {})
+      .finally(() => setAddrLoading(false));
+
+    fetch('/api/crypto/deposits', { headers })
+      .then(r => r.json())
+      .then(j => { if (j.ok) setDeposits(j.data); })
+      .catch(() => {});
+  }, [token]);
+
+  // SSE: listen for real-time deposit credits
+  useEffect(() => {
+    const url = `/api/crypto/events?t=${encodeURIComponent(token)}`;
+    const src = new EventSource(url);
+
+    src.addEventListener('deposit_credited', (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        onWalletUpdate({ balance: data.new_balance });
+        notify(`✅ Зараховано ${data.amount_usdt.toFixed(2)} USDT`);
+        // Reload deposit history
+        fetch('/api/crypto/deposits', { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(j => { if (j.ok) setDeposits(j.data); })
+          .catch(() => {});
+      } catch {}
+    });
+
+    return () => src.close();
+  }, [token]);
 
   function copyAddr() {
-    navigator.clipboard.writeText(selected.addr).catch(() => {});
-    setCopied(selected.coin);
-    setTimeout(() => setCopied(''), 2000);
-    notify(`📋 Адресу скопійовано!`);
+    if (!address) return;
+    navigator.clipboard.writeText(address).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    notify('📋 Адресу скопійовано!');
   }
 
-  const RATES: Record<string, number> = { USDT: 1, TON: 6.5, BTC: 97000, ETH: 3400, SOL: 170 };
-
-  function submitDeposit() {
-    const a = parseFloat(amount);
-    if (!a || a <= 0) return;
-    const usdEquiv = parseFloat((a * (RATES[selected.coin] ?? 1)).toFixed(2));
-    const dep: PendingDeposit = {
-      id: Math.random().toString(36).slice(2),
-      coin: selected.coin,
-      amount: a,
-      usdEquiv,
-      confirmAt: Date.now() + 30_000,
-      credited: false,
-    };
-    setPending(p => [dep, ...p]);
-    setAmount('');
-    notify(`⏳ Депозит ${a} ${selected.coin} на підтвердженні (30с)`);
-  }
+  const shortTx = (hash: string) => `${hash.slice(0, 8)}…${hash.slice(-6)}`;
 
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      {/* Balance */}
       <div className="border-2 border-[#a8792a] bg-[#1d2e20] text-white p-4 flex items-center justify-between">
         <div>
           <div className="font-mono text-[10px] text-[#6b7c6d] uppercase mb-0.5">Баланс</div>
-          <div className="font-black text-2xl text-[#a8792a]">{wallet.balance.toFixed(2)}₮</div>
+          <div className="font-black text-2xl text-[#a8792a]">{wallet.balance.toFixed(2)} USDT</div>
         </div>
-        <div className="text-3xl">💰</div>
+        <div className="text-3xl">💵</div>
       </div>
 
-      {/* Coin selector */}
-      <div>
-        <div className="font-black text-[10px] uppercase tracking-widest mb-2">Оберіть валюту</div>
-        <div className="flex gap-2 flex-wrap">
-          {CRYPTO_WALLETS.map(w => (
-            <button key={w.coin} onClick={() => setSelected(w)}
-              className={`flex items-center gap-1.5 px-3 py-2 border-2 font-black text-xs cursor-pointer transition-all ${selected.coin === w.coin ? 'border-[#a8792a] bg-[#a8792a10]' : 'border-[#1d2e20] hover:border-[#a8792a40]'}`}>
-              <span style={{ color: w.color }}>{w.icon}</span>
-              <span>{w.coin}</span>
-              <span className="font-mono text-[9px] text-[#6b7c6d]">{w.network}</span>
-            </button>
-          ))}
-        </div>
+      {/* Network badge */}
+      <div className="flex items-center gap-2 px-3 py-2 border border-[#26a17b40] bg-[#26a17b0a] rounded">
+        <span className="w-2 h-2 rounded-full bg-[#26a17b] shrink-0" />
+        <span className="font-mono text-[11px] text-[#26a17b] font-bold">USDT · BEP-20 · Binance Smart Chain</span>
+        <span className="ml-auto font-mono text-[10px] text-[#6b7c6d]">~3 сек/блок</span>
       </div>
 
-      {/* Address */}
+      {/* Deposit address */}
       <div>
-        <div className="font-black text-[10px] uppercase tracking-widest mb-1.5">
-          Адреса {selected.coin} ({selected.network})
+        <div className="font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#e8f2ea]">
+          Ваша адреса для поповнення
         </div>
-        <div className="border-2 border-[#1d2e20] bg-[#f8f9f5] p-3 flex items-center gap-2">
-          <div className="flex-1 font-mono text-xs break-all text-[#1d2e20] select-all">{selected.addr}</div>
-          <button onClick={copyAddr} className="shrink-0 border-2 border-[#1d2e20] px-3 py-1.5 font-black text-[10px] uppercase hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer">
-            {copied === selected.coin ? '✓' : '📋'}
+        <div className="border-2 border-[#2f4a37] bg-[#0d1f14] p-3 flex items-center gap-2 rounded">
+          {addrLoading ? (
+            <div className="flex-1 font-mono text-xs text-[#6b7c6d] animate-pulse">Генерую адресу…</div>
+          ) : (
+            <div className="flex-1 font-mono text-xs break-all text-[#e8f2ea] select-all">{address || '—'}</div>
+          )}
+          <button
+            onClick={copyAddr}
+            disabled={!address}
+            className="shrink-0 border-2 border-[#2f4a37] px-3 py-1.5 font-black text-[10px] uppercase hover:border-[#a8792a] hover:text-[#a8792a] transition-all cursor-pointer disabled:opacity-40"
+          >
+            {copied ? '✓' : '📋'}
           </button>
         </div>
-        <div className="font-mono text-[10px] text-[#6b7c6d] mt-1.5 flex items-center gap-1">
-          <span className="text-[#c0392b]">⚠</span>
-          Відправляйте тільки {selected.coin} мережею {selected.network}
+        <div className="font-mono text-[10px] text-[#6b7c6d] mt-1.5 flex items-center gap-1.5">
+          <span className="text-[#e4a24b]">⚡</span>
+          Зарахування після <span className="text-[#e8f2ea] font-bold">1 підтвердження</span> (≈5 сек) · Виведення після 15 конф.
+        </div>
+        {isDemo && (
+          <div className="mt-2 font-mono text-[10px] text-[#e4a24b] border border-[#e4a24b40] bg-[#e4a24b0a] px-3 py-2 rounded">
+            ⚠ Demo-режим: BSC_MASTER_MNEMONIC не задано. Реальні депозити не зараховуються.
+          </div>
+        )}
+      </div>
+
+      {/* Instructions */}
+      <div className="border border-[#2f4a37] rounded p-3 flex flex-col gap-1.5">
+        <div className="font-black text-[10px] uppercase tracking-widest text-[#e8f2ea] mb-0.5">Як поповнити</div>
+        {[
+          'Скопіюйте адресу вище',
+          'Відкрийте гаманець (Trust Wallet, MetaMask, Binance)',
+          'Надішліть USDT BEP-20 на цю адресу',
+          'Кошти зʼявляться автоматично через ~5 сек',
+        ].map((step, i) => (
+          <div key={i} className="flex items-start gap-2 font-mono text-[11px] text-[#6b7c6d]">
+            <span className="shrink-0 w-4 h-4 border border-[#a8792a] flex items-center justify-center text-[#a8792a] font-black text-[9px]">{i + 1}</span>
+            {step}
+          </div>
+        ))}
+        <div className="mt-1 font-mono text-[10px] text-[#c0392b] flex items-center gap-1">
+          <span>⚠</span> Відправляйте тільки USDT мережею BEP-20 (BSC). Інші токени/мережі — втрата коштів.
         </div>
       </div>
 
-      {/* Simulate deposit */}
-      <div className="border-2 border-dashed border-[#2f4a37] p-4 bg-[#1d2e2008]">
-        <div className="font-black text-[10px] uppercase tracking-widest mb-3 flex items-center gap-2">
-          <span className="text-[#a8792a]">⚡</span> Тестовий депозит (авто-зарахування 30с)
-        </div>
-        <div className="flex gap-2">
-          <input type="number" className="u24-input flex-1" placeholder={`Сума ${selected.coin}`}
-            value={amount} onChange={e => setAmount(e.target.value)} min="0.001" step="0.001" />
-          <button onClick={submitDeposit} disabled={!amount || +amount <= 0} className="u24-button-gold shrink-0">
-            Надіслати
-          </button>
-        </div>
-        <div className="font-mono text-[10px] text-[#6b7c6d] mt-1.5">
-          ≈ {amount ? (parseFloat(amount) * (RATES[selected.coin] ?? 1)).toFixed(2) : '0'}₮ за курсом
-        </div>
-      </div>
-
-      {/* Pending */}
-      {pending.length > 0 && (
+      {/* Deposit history */}
+      {deposits.length > 0 && (
         <div>
-          <div className="font-black text-[10px] uppercase tracking-widest mb-2">Транзакції</div>
+          <div className="font-black text-[10px] uppercase tracking-widest mb-2 text-[#e8f2ea]">Транзакції</div>
           <div className="flex flex-col gap-2">
-            {pending.map(p => {
-              const left = Math.max(0, Math.ceil((p.confirmAt - now) / 1000));
-              return (
-                <div key={p.id} className={`border-2 p-3 flex items-center gap-3 ${p.credited ? 'border-[#4caf7d] bg-[#4caf7d08]' : 'border-[#a8792a] bg-[#a8792a08]'}`}>
-                  <div className="text-xl">{p.credited ? '✅' : '⏳'}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-black text-xs">{p.amount} {p.coin} → +{p.usdEquiv}₮</div>
-                    <div className="font-mono text-[10px] text-[#6b7c6d]">
-                      {p.credited ? 'Зараховано' : `Підтвердження через ${left}с…`}
-                    </div>
-                  </div>
-                  {!p.credited && (
-                    <div className="w-8 h-8 border-2 border-[#a8792a] flex items-center justify-center font-mono text-xs text-[#a8792a]">
-                      {left}
-                    </div>
-                  )}
+            {deposits.map(d => (
+              <div
+                key={d.id}
+                className={`border p-3 flex items-center gap-3 rounded ${
+                  d.status === 'confirmed'
+                    ? 'border-[#4caf7d40] bg-[#4caf7d06]'
+                    : d.status === 'failed'
+                    ? 'border-[#c0392b40] bg-[#c0392b06]'
+                    : 'border-[#a8792a40] bg-[#a8792a06]'
+                }`}
+              >
+                <div className="text-lg">
+                  {d.status === 'confirmed' ? '✅' : d.status === 'failed' ? '❌' : '⏳'}
                 </div>
-              );
-            })}
+                <div className="flex-1 min-w-0">
+                  <div className="font-black text-xs text-[#e8f2ea]">+{d.amount_usdt.toFixed(2)} USDT</div>
+                  <div className="font-mono text-[10px] text-[#6b7c6d] flex gap-2">
+                    <span>{shortTx(d.tx_hash)}</span>
+                    <span>·</span>
+                    <span>{d.confirmations} конф.</span>
+                    <span>·</span>
+                    <span className={
+                      d.status === 'confirmed' ? 'text-[#4caf7d]' :
+                      d.status === 'failed' ? 'text-[#c0392b]' : 'text-[#e4a24b]'
+                    }>
+                      {d.status === 'confirmed' ? 'Підтверджено' : d.status === 'failed' ? 'Помилка' : 'В обробці'}
+                    </span>
+                  </div>
+                </div>
+                {d.status === 'pending' && (
+                  <a
+                    href={`https://bscscan.com/tx/${d.tx_hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 font-mono text-[10px] text-[#6b7c6d] hover:text-[#a8792a] transition-colors"
+                  >
+                    BSCScan ↗
+                  </a>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -2810,7 +2859,7 @@ export default function App() {
         {sidebarTab === 'casino' && casinoView === 'deposit' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="💰" title="Поповнення" sub="BTC · ETH · USDT · TON · SOL" />
-            <DepositView wallet={wallet} onWalletUpdate={updateWallet} notify={notify} />
+            <DepositView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
 

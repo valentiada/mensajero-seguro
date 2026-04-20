@@ -78,3 +78,27 @@ MAX_ATTACHMENT_BYTES = int(os.getenv('MAX_ATTACHMENT_BYTES', str(10 * 1024 * 102
 VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '').strip()
 VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY', '').strip()
 VAPID_CLAIMS_EMAIL = os.getenv('VAPID_CLAIMS_EMAIL', 'admin@example.com').strip()
+
+# ── Crypto / BSC payments ─────────────────────────────────────────────────────
+# Set CRYPTO_MONITOR_ENABLED=1 in production to start the BSC block watcher
+CRYPTO_MONITOR_ENABLED = os.getenv('CRYPTO_MONITOR_ENABLED', '0') == '1'
+
+# BIP-44 mnemonic for HD wallet derivation (12 or 24 words).
+# REQUIRED for real deposits — keep this secret!
+BSC_MASTER_MNEMONIC = os.getenv('BSC_MASTER_MNEMONIC', '').strip()
+
+# Public BSC RPC (override with a paid node for production)
+BSC_RPC_URL = os.getenv('BSC_RPC_URL', 'https://bsc-dataseed.binance.org/').strip()
+
+# USDT BEP-20 contract on BSC mainnet
+USDT_BEP20_CONTRACT = os.getenv(
+    'USDT_BEP20_CONTRACT',
+    '0x55d398326f99059fF775485246999027B3197955',
+).strip()
+
+# Credit wallet after this many confirmations (1 = ~3 sec on BSC)
+DEPOSIT_CREDIT_CONFIRMATIONS = int(os.getenv('DEPOSIT_CREDIT_CONFIRMATIONS', '1'))
+# Mark deposit as fully confirmed after this many confirmations
+DEPOSIT_FULL_CONFIRMATIONS = int(os.getenv('DEPOSIT_FULL_CONFIRMATIONS', '15'))
+# Maximum amount (USDT) credited on 1 confirmation without extra checks
+DEPOSIT_INSTANT_LIMIT_USDT = float(os.getenv('DEPOSIT_INSTANT_LIMIT_USDT', '500'))

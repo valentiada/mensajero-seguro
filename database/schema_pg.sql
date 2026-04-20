@@ -98,6 +98,35 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- ── Crypto deposits ───────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS crypto_deposit_addresses (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER     NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    address     TEXT        NOT NULL UNIQUE,
+    deriv_index INTEGER     NOT NULL UNIQUE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS crypto_deposits (
+    id            SERIAL PRIMARY KEY,
+    user_id       INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tx_hash       TEXT        NOT NULL UNIQUE,
+    token         TEXT        NOT NULL DEFAULT 'USDT',
+    amount_raw    TEXT        NOT NULL,
+    amount_usdt   NUMERIC(20,6) NOT NULL,
+    confirmations INTEGER     NOT NULL DEFAULT 0,
+    status        TEXT        NOT NULL DEFAULT 'pending',
+    block_number  INTEGER     NOT NULL,
+    credited_at   TIMESTAMPTZ DEFAULT NULL,
+    confirmed_at  TIMESTAMPTZ DEFAULT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_crypto_deposits_user   ON crypto_deposits(user_id);
+CREATE INDEX IF NOT EXISTS idx_crypto_deposits_status ON crypto_deposits(status);
+CREATE INDEX IF NOT EXISTS idx_crypto_addr_address    ON crypto_deposit_addresses(address);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_sessions_token    ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_user     ON sessions(user_id);

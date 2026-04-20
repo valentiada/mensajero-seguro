@@ -185,3 +185,39 @@ CREATE INDEX IF NOT EXISTS idx_messages_sender      ON messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_message_reads_msg    ON message_reads(message_id);
 CREATE INDEX IF NOT EXISTS idx_message_reads_user   ON message_reads(user_id);
 CREATE INDEX IF NOT EXISTS idx_calls_chat           ON calls(chat_id);
+
+-- ── Crypto deposits ───────────────────────────────────────────────────────────
+
+-- One unique BSC deposit address per user (derived from master HD wallet)
+CREATE TABLE IF NOT EXISTS crypto_deposit_addresses (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL UNIQUE,
+    address         TEXT    NOT NULL UNIQUE,   -- 0x... BSC address (checksummed)
+    deriv_index     INTEGER NOT NULL UNIQUE,   -- BIP-44 index m/44'/60'/0'/0/{index}
+    created_at      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Every incoming on-chain deposit transaction
+CREATE TABLE IF NOT EXISTS crypto_deposits (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    tx_hash         TEXT    NOT NULL UNIQUE,   -- 0x... transaction hash
+    token           TEXT    NOT NULL DEFAULT 'USDT',  -- USDT | BNB
+    amount_raw      TEXT    NOT NULL,          -- raw integer string (wei / 1e18)
+    amount_usdt     REAL    NOT NULL,          -- converted USDT value credited
+    confirmations   INTEGER NOT NULL DEFAULT 0,
+    -- pending  → credited to wallet but withdrawal locked
+    -- confirmed → >= DEPOSIT_FULL_CONFIRMATIONS
+    -- failed   → reorg detected (rare, refund manually)
+    status          TEXT    NOT NULL DEFAULT 'pending',
+    block_number    INTEGER NOT NULL,
+    credited_at     TEXT    DEFAULT NULL,      -- when balance was updated
+    confirmed_at    TEXT    DEFAULT NULL,
+    created_at      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_crypto_deposits_user   ON crypto_deposits(user_id);
+CREATE INDEX IF NOT EXISTS idx_crypto_deposits_status ON crypto_deposits(status);
+CREATE INDEX IF NOT EXISTS idx_crypto_addr_address    ON crypto_deposit_addresses(address);

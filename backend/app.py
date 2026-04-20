@@ -14,6 +14,7 @@ from .routes.auth_routes import auth_bp
 from .routes.call_routes import call_bp
 from .routes.casino_routes import casino_bp
 from .routes.chat_routes import chat_bp
+from .routes.crypto_routes import crypto_bp
 from .routes.message_routes import msg_bp
 from .routes.support_routes import support_bp
 from .routes.user_routes import user_bp
@@ -108,8 +109,14 @@ def _headers(response):
 
 
 # ── Blueprints ────────────────────────────────────────────────────────────────
-for bp in (auth_bp, chat_bp, msg_bp, call_bp, user_bp, support_bp, casino_bp):
+for bp in (auth_bp, chat_bp, msg_bp, call_bp, user_bp, support_bp, casino_bp, crypto_bp):
     app.register_blueprint(bp)
+
+# Start BSC deposit monitor (only when enabled via env var)
+from .config import CRYPTO_MONITOR_ENABLED  # noqa: E402
+if CRYPTO_MONITOR_ENABLED:
+    from .services.crypto_service import CryptoService as _CS
+    _CS().start_monitor()
 
 
 # ── Ping / keep-alive ─────────────────────────────────────────────────────────

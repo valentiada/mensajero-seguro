@@ -26,5 +26,5 @@ ENV PORT=8000
 EXPOSE $PORT
 
 CMD gunicorn backend.app:app \
-    --workers 2 --threads 4 --worker-class gthread \
+    --worker-class eventlet -w 1 \
     --bind 0.0.0.0:$PORT --timeout 120 --log-level info

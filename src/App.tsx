@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { io, Socket } from 'socket.io-client';
 import {
   Send, Phone, Video, Search, Plus, Lock, Shield, Users,
   LogOut, Settings, Paperclip, Smile, Check, CheckCheck,
@@ -967,149 +968,239 @@ function CrashCanvas({ points, phase }: { points: number[]; phase: 'idle' | 'run
 }
 
 function CrashView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void; token: string; notify: (m: string) => void }) {
-  const [bet, setBet] = useState(100);
-  const [phase, setPhase] = useState<'idle' | 'running' | 'cashed' | 'crashed'>('idle');
+  // ── Socket state ────────────────────────────────────────────────────────────
+  const [connected, setConnected] = useState(false);
+  const [serverPhase, setServerPhase] = useState<'waiting' | 'flying' | 'crashed'>('waiting');
   const [mult, setMult] = useState(1.00);
-  const [autoCashout, setAutoCashout] = useState(2.0);
-  const [history, setHistory] = useState<number[]>([5.2, 1.3, 12.4, 2.1, 1.0, 3.7, 1.8]);
+  const [waitingUntil, setWaitingUntil] = useState(0);
+  const [countdown, setCountdown] = useState(0);
+  const [history, setHistory] = useState<number[]>([]);
   const [chartPoints, setChartPoints] = useState<number[]>([1]);
-  const [loading, setLoading] = useState(false);
-  const sessionRef = useRef<string>('');
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const multRef = useRef(1.00);
+  const [players, setPlayers] = useState<{ name: string; amount: number }[]>([]);
+  const [cashouts, setCashouts] = useState<{ name: string; mult: number; win: number }[]>([]);
+
+  // ── Local bet state ──────────────────────────────────────────────────────────
+  const [bet, setBet] = useState(100);
+  const [autoCashout, setAutoCashout] = useState(2.0);
+  const [betPlaced, setBetPlaced] = useState(false);
+  const [cashedOut, setCashedOut] = useState(false);
+  const [myWin, setMyWin] = useState(0);
+
+  const socketRef = useRef<Socket | null>(null);
   const autoCashoutRef = useRef(autoCashout);
   useEffect(() => { autoCashoutRef.current = autoCashout; }, [autoCashout]);
 
-  async function start() {
-    if (loading || phase === 'running') return;
-    setLoading(true);
-    const res = await api<{ session_id: string; new_balance: number }>('/casino/crash/start', {
-      method: 'POST', body: JSON.stringify({ bet }),
-    }, token);
-    setLoading(false);
-    if (!res.ok) { notify(res.error || 'Помилка старту.'); return; }
-    sessionRef.current = res.data!.session_id;
-    onWalletUpdate({ balance: res.data!.new_balance });
-    multRef.current = 1.00;
-    setMult(1.00);
-    setChartPoints([1]);
-    setPhase('running');
-    timerRef.current = setInterval(() => {
-      multRef.current = parseFloat((multRef.current * 1.04).toFixed(2));
-      const m = multRef.current;
-      setMult(m);
-      setChartPoints(prev => [...prev.slice(-80), m]);
-      if (m >= autoCashoutRef.current) { cashout(m); }
-    }, 100);
+  // ── Connect to /crash namespace ──────────────────────────────────────────────
+  useEffect(() => {
+    const url = window.location.origin;
+    const socket = io(`${url}/crash`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => setConnected(true));
+    socket.on('disconnect', () => setConnected(false));
+
+    socket.on('state', (s: { phase: 'waiting' | 'flying' | 'crashed'; mult: number; waiting_until: number; bets: { name: string; amount: number }[]; cashouts: { name: string; mult: number; win: number }[] }) => {
+      setServerPhase(s.phase);
+      setMult(s.mult ?? 1);
+      setWaitingUntil(s.waiting_until * 1000);
+      setPlayers(s.bets ?? []);
+      setCashouts(s.cashouts ?? []);
+      if (s.phase === 'flying') setChartPoints([1, s.mult]);
+    });
+
+    socket.on('phase', (d: { phase: 'waiting' | 'flying' | 'crashed'; waiting_until?: number; round_id?: number }) => {
+      setServerPhase(d.phase);
+      if (d.phase === 'waiting') {
+        setMult(1.0);
+        setChartPoints([1]);
+        setPlayers([]);
+        setCashouts([]);
+        setBetPlaced(false);
+        setCashedOut(false);
+        setMyWin(0);
+        setWaitingUntil((d.waiting_until ?? 0) * 1000);
+      }
+      if (d.phase === 'flying') setChartPoints([1]);
+    });
+
+    socket.on('tick', (d: { mult: number }) => {
+      setMult(d.mult);
+      setChartPoints(prev => [...prev.slice(-120), d.mult]);
+      if (autoCashoutRef.current > 1 && d.mult >= autoCashoutRef.current) {
+        socket.emit('cashout', { token });
+      }
+    });
+
+    socket.on('crashed', (d: { crash_at: number; cashouts: typeof cashouts; round_id: number }) => {
+      setMult(d.crash_at);
+      setHistory(h => [d.crash_at, ...h.slice(0, 9)]);
+      setCashouts(d.cashouts ?? []);
+    });
+
+    socket.on('bet_placed', (d: { name: string; amount: number }) => {
+      setPlayers(prev => [...prev, d]);
+    });
+
+    socket.on('player_cashed_out', (d: { name: string; mult: number; win: number }) => {
+      setCashouts(prev => [...prev, d]);
+    });
+
+    socket.on('cashed_out', (d: { mult: number; win: number; new_balance: number }) => {
+      setCashedOut(true);
+      setMyWin(d.win);
+      onWalletUpdate({ balance: d.new_balance, total_won: wallet.total_won + d.win });
+      notify(`✅ Виплата ×${d.mult.toFixed(2)} = +${fmtCoins(d.win)}`);
+    });
+
+    socket.on('error', (d: { msg: string }) => notify(d.msg));
+
+    return () => { socket.disconnect(); };
+  }, [token]);
+
+  // ── Countdown timer ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (serverPhase !== 'waiting') { setCountdown(0); return; }
+    const id = setInterval(() => {
+      setCountdown(Math.max(0, Math.ceil((waitingUntil - Date.now()) / 1000)));
+    }, 200);
+    return () => clearInterval(id);
+  }, [serverPhase, waitingUntil]);
+
+  function placeBet() {
+    if (bet < 1 || bet > wallet.balance) { notify('Невірна ставка або недостатньо коштів.'); return; }
+    socketRef.current?.emit('place_bet', { token, amount: bet });
+    setBetPlaced(true);
   }
 
-  async function cashout(currentMult?: number) {
-    if (phase !== 'running') return;
-    clearInterval(timerRef.current!);
-    timerRef.current = null;
-    const m = currentMult ?? multRef.current;
-    const res = await api<{ crashed: boolean; crash_at: number; cashed_at: number; win: number; new_balance: number }>(
-      '/casino/crash/cashout', { method: 'POST', body: JSON.stringify({ session_id: sessionRef.current, mult: m }) }, token,
-    );
-    if (!res.ok) { setPhase('idle'); notify(res.error || 'Помилка виплати.'); return; }
-    const { crashed, crash_at, cashed_at, win, new_balance } = res.data!;
-    setHistory(h => [crash_at, ...h.slice(0, 9)]);
-    if (crashed) {
-      setMult(crash_at);
-      setChartPoints(prev => [...prev, crash_at]);
-      setPhase('crashed');
-      notify(`💥 Крах на ×${crash_at}!`);
-    } else {
-      setMult(cashed_at);
-      onWalletUpdate({ balance: new_balance, total_won: wallet.total_won + win });
-      setPhase('cashed');
-      notify(`✅ Виплата ×${cashed_at.toFixed(2)} = +${win}₮`);
-    }
+  function doCashout() {
+    if (!betPlaced || cashedOut) return;
+    socketRef.current?.emit('cashout', { token });
   }
 
-  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
-
-  const multColor = phase === 'crashed' ? '#c0392b' : phase === 'cashed' ? '#4caf7d' : '#a8792a';
+  const multColor = serverPhase === 'crashed' ? '#c0392b' : cashedOut ? '#4caf7d' : '#E4A24B';
+  const canvasPhase = serverPhase === 'crashed' ? 'crashed' : cashedOut ? 'cashed' : serverPhase === 'flying' ? 'running' : 'idle';
 
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-      {/* History pills */}
-      <div className="flex gap-1.5 flex-wrap">
-        {history.map((v, i) => (
-          <span key={i} className={`font-mono text-xs px-2 py-0.5 rounded-full border font-bold ${v < 1.5 ? 'border-[#c0392b] text-[#c0392b] bg-[#c0392b10]' : v > 5 ? 'border-[#4caf7d] text-[#4caf7d] bg-[#4caf7d10]' : 'border-[#a8792a] text-[#a8792a] bg-[#a8792a10]'}`}>
-            ×{v.toFixed(2)}
-          </span>
-        ))}
+      {/* Connection indicator + history */}
+      <div className="flex items-center gap-2">
+        <span className={`w-2 h-2 rounded-full ${connected ? 'bg-[#5BBE8A] animate-pulse' : 'bg-[#E54B5E]'}`} />
+        <span className="font-mono text-[10px] text-[#E8F2EA]/40">{connected ? 'LIVE' : 'З\'єднання…'}</span>
+        <div className="flex gap-1 ml-auto flex-wrap justify-end">
+          {history.map((v, i) => (
+            <span key={i} className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${v < 1.5 ? 'text-[#E54B5E] bg-[#E54B5E10]' : v > 5 ? 'text-[#5BBE8A] bg-[#5BBE8A10]' : 'text-[#E4A24B] bg-[#E4A24B10]'}`}>
+              ×{v.toFixed(2)}
+            </span>
+          ))}
+        </div>
       </div>
 
-      {/* Chart area */}
-      <div className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(180deg, #0d1f11 0%, #111d13 100%)', border: '1.5px solid rgba(168,121,42,0.3)' }}>
-        {/* Multiplier overlay */}
-        <div className="absolute top-3 left-0 right-0 flex justify-center z-10">
-          <div className={`font-black text-5xl tracking-tighter transition-all px-6 py-1 rounded-xl`}
-            style={{ color: multColor, textShadow: `0 0 20px ${multColor}80` }}>
-            ×{mult.toFixed(2)}
-          </div>
+      {/* Chart */}
+      <div className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(180deg, #0d1f11 0%, #111d13 100%)', border: '1.5px solid rgba(228,162,75,0.25)' }}>
+        <div className="absolute top-3 left-0 right-0 flex flex-col items-center z-10">
+          {serverPhase === 'waiting' ? (
+            <>
+              <div className="font-black text-2xl text-[#E8F2EA]/40 uppercase tracking-widest">Приймаємо ставки</div>
+              <div className="font-black text-5xl text-[#E4A24B] mt-1">{countdown}с</div>
+            </>
+          ) : (
+            <div className="font-black text-5xl tracking-tighter"
+              style={{ color: multColor, textShadow: `0 0 24px ${multColor}60` }}>
+              ×{mult.toFixed(2)}
+            </div>
+          )}
         </div>
-        {phase === 'crashed' && (
+        {serverPhase === 'crashed' && (
           <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-            <div className="font-black text-lg text-[#c0392b] uppercase tracking-widest animate-fade-in bg-[#0d1f11]/80 px-4 py-2 rounded-xl">
+            <div className="font-black text-xl text-[#E54B5E] uppercase tracking-widest animate-fade-in bg-[#0d1f11]/80 px-5 py-2 rounded-xl mt-16">
               💥 КРАХ!
             </div>
           </div>
         )}
-        {phase === 'cashed' && (
+        {cashedOut && serverPhase === 'flying' && (
           <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-            <div className="font-black text-lg text-[#4caf7d] uppercase tracking-widest animate-fade-in bg-[#0d1f11]/80 px-4 py-2 rounded-xl">
-              💸 ВИПЛАЧЕНО!
+            <div className="font-black text-xl text-[#5BBE8A] uppercase tracking-widest animate-fade-in bg-[#0d1f11]/80 px-5 py-2 rounded-xl mt-16">
+              💸 +{fmtCoins(myWin)}
             </div>
           </div>
         )}
-        {phase === 'idle' && (
-          <div className="absolute inset-0 flex items-end justify-start pb-5 pl-5 z-10 pointer-events-none">
-            <span className="text-5xl hb-hover" style={{ filter: 'drop-shadow(0 0 10px #a8792a)' }}>🚀</span>
-          </div>
-        )}
-        <div style={{ height: 180, position: 'relative' }}>
-          <CrashCanvas points={chartPoints} phase={phase} />
+        <div style={{ height: 180 }}>
+          <CrashCanvas points={chartPoints} phase={canvasPhase} />
         </div>
-        {phase === 'running' && (
-          <div className="absolute bottom-2 right-3 font-mono text-[10px] text-[#6b7c6d]">
-            Auto ×{autoCashout}
-          </div>
-        )}
       </div>
 
-      {/* Controls */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#6b7c6d]">Ставка ₮</label>
-          <input type="number" className="u24-input" value={bet} onChange={e => setBet(+e.target.value)} disabled={phase === 'running'} min={1} />
+      {/* Players list */}
+      {players.length > 0 && (
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="font-mono text-[9px] uppercase tracking-widest text-[#E8F2EA]/30 px-3 py-2 bg-[#0B1A12]">
+            {players.length} гравців · {cashouts.length} виплат
+          </div>
+          <div className="max-h-28 overflow-y-auto">
+            {players.map((p, i) => {
+              const co = cashouts.find(c => c.name === p.name);
+              return (
+                <div key={i} className="flex items-center justify-between px-3 py-1.5 border-t border-white/5">
+                  <div className="font-mono text-xs text-[#E8F2EA]/60 truncate max-w-[120px]">{p.name}</div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-mono text-[10px] text-[#E8F2EA]/40">{fmtCoins(p.amount)}</span>
+                    {co && <span className="font-black text-[10px] text-[#5BBE8A]">×{co.mult.toFixed(2)}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <div>
-          <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#6b7c6d]">Auto Cash ×</label>
-          <input type="number" className="u24-input" value={autoCashout} onChange={e => setAutoCashout(+e.target.value)} disabled={phase === 'running'} min={1.01} step={0.1} />
+      )}
+
+      {/* Bet controls */}
+      {serverPhase === 'waiting' && !betPlaced && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-mono text-[10px] text-[#E8F2EA]/40 uppercase mb-1.5">Ставка ₮</label>
+              <input type="number" className="u24-input" value={bet} onChange={e => setBet(+e.target.value)} min={1} />
+            </div>
+            <div>
+              <label className="block font-mono text-[10px] text-[#E8F2EA]/40 uppercase mb-1.5">Auto Cash ×</label>
+              <input type="number" className="u24-input" value={autoCashout} onChange={e => setAutoCashout(+e.target.value)} min={1.01} step={0.1} />
+            </div>
+          </div>
+          <div className="flex gap-1.5">
+            {[10, 50, 100, 500, 1000].map(v => (
+              <button key={v} onClick={() => setBet(v)}
+                className="flex-1 font-mono text-xs border border-[#1d2e20]/40 rounded-lg py-1.5 hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer">
+                {v}
+              </button>
+            ))}
+          </div>
+          <button className="u24-button py-4 text-base" onClick={placeBet} disabled={!connected || bet < 1}>
+            🚀 Поставити {fmtCoins(bet)}₮
+          </button>
+        </>
+      )}
+
+      {serverPhase === 'waiting' && betPlaced && (
+        <div className="rounded-xl px-4 py-3 text-center font-black text-sm text-[#5BBE8A]"
+          style={{ background: 'rgba(91,190,138,0.08)', border: '1px solid rgba(91,190,138,0.2)' }}>
+          ✅ Ставка {fmtCoins(bet)}₮ прийнята — чекаємо старту!
         </div>
-      </div>
-      <div className="flex gap-2 flex-wrap">
-        {[10, 50, 100, 500, 1000].map(v => (
-          <button key={v} onClick={() => setBet(v)} disabled={phase === 'running'}
-            className="font-mono text-xs border border-[#1d2e20]/40 rounded-lg px-3 py-1.5 hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer disabled:opacity-40 flex-1">
-            {v}₮
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-3">
-        {['idle', 'crashed', 'cashed'].includes(phase) ? (
-          <button className="u24-button flex-1 py-4 text-base" onClick={start} disabled={bet < 1 || loading}>
-            {loading ? '⏳ Старт…' : `🚀 Запустити (${fmtCoins(bet)})`}
-          </button>
-        ) : (
-          <button className="u24-button-gold flex-1 py-4 text-lg animate-gold-pulse" onClick={() => cashout()}>
-            💸 ВИПЛАТА ×{mult.toFixed(2)} = {fmtCoins(parseFloat((bet * mult).toFixed(2)))}
-          </button>
-        )}
-      </div>
+      )}
+
+      {serverPhase === 'flying' && betPlaced && !cashedOut && (
+        <button className="u24-button-gold py-4 text-lg animate-gold-pulse" onClick={doCashout}>
+          💸 ВИПЛАТА ×{mult.toFixed(2)} = {fmtCoins(parseFloat((bet * mult).toFixed(2)))}
+        </button>
+      )}
+
+      {serverPhase === 'flying' && !betPlaced && (
+        <div className="rounded-xl px-4 py-3 text-center font-mono text-xs text-[#E8F2EA]/40"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+          Ставки приймаються тільки під час відліку
+        </div>
+      )}
     </div>
   );
 }

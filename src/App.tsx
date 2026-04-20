@@ -1748,105 +1748,195 @@ function CasinoLobby({ wallet, onSelectGame, notify }: {
   onSelectGame: (g: CasinoView) => void;
   notify: (m: string) => void;
 }) {
-  const xpToNext = (wallet.level * 500);
+  const xpToNext = wallet.level * 500;
   const xpPct = Math.min(100, Math.round((wallet.xp % xpToNext) / xpToNext * 100));
 
-  const GAMES = [
-    { key: 'chicken' as CasinoView, icon: '🐔', label: 'Chicken Road', desc: 'Перейди дорогу · До ×30', hot: true, new: true },
-    { key: 'crash'   as CasinoView, icon: '🚀', label: 'Crash',        desc: 'Забери до краху · Без ліміту', hot: true, new: false },
-    { key: 'mines'   as CasinoView, icon: '💣', label: 'Mines',        desc: '5×5 мінне поле · До ×1000', hot: false, new: true },
-    { key: 'dice'    as CasinoView, icon: '🎲', label: 'Dice',         desc: 'Більше / менше · До ×49', hot: false, new: false },
-    { key: 'roulette' as CasinoView, icon: '🎡', label: 'Рулетка', desc: 'Європейська · До ×35', hot: false, new: false },
-    { key: 'slots'    as CasinoView, icon: '🎰', label: 'Слоти',    desc: 'Джекпот ×50', hot: false, new: false },
+  const GAMES: { key: CasinoView; label: string; tag: string; hint: string; accent: string; live?: boolean }[] = [
+    { key: 'crash',    label: 'Crash',        tag: 'Arcade',  hint: 'LIVE',  accent: '#E06E4A', live: true },
+    { key: 'chicken',  label: 'Chicken Road', tag: 'Arcade',  hint: '×30',   accent: '#E4A24B' },
+    { key: 'mines',    label: 'Mines',        tag: 'Instant', hint: '×1000', accent: '#E4A24B' },
+    { key: 'dice',     label: 'Dice',         tag: 'Classic', hint: '×49',   accent: '#6DB5D4' },
+    { key: 'roulette', label: 'Roulette',     tag: 'Table',   hint: 'LIVE',  accent: '#E54B5E', live: true },
+    { key: 'slots',    label: 'Slots',        tag: 'Jackpot', hint: '×50',   accent: '#5BBE8A' },
   ];
 
-  const ACHIEVEMENTS = [
-    { key: 'roulette_zero', icon: '0️⃣', label: 'Зеро!', desc: 'Випало нуль на рулетці' },
-    { key: 'slots_jackpot', icon: '7️⃣', label: 'Джекпот!', desc: 'Три сімки на слотах' },
-    { key: 'big_winner', icon: '💰', label: 'Великий виграш', desc: 'Виграш від 5 000₮' },
-    { key: 'roulette_straight_win', icon: '🎯', label: 'Ставка на число', desc: 'Перемога у Straight bet' },
+  const WINS = [
+    { user: 'Sofía',   game: 'Crash',    amount: 8450 },
+    { user: 'Kwame',   game: 'Mines',    amount: 2100 },
+    { user: 'Lucía',   game: 'Roulette', amount: 14200 },
+    { user: 'Túndé',   game: 'Dice',     amount: 3870 },
+    { user: 'Diego',   game: 'Slots',    amount: 1200 },
+    { user: 'Amara',   game: 'Chicken',  amount: 560 },
+    { user: 'Paolo',   game: 'Crash',    amount: 920 },
+    { user: 'Zainab',  game: 'Mines',    amount: 4400 },
+  ];
+
+  const BONUSES = [
+    { day: 1, amount: 50,  claimed: true },
+    { day: 2, amount: 100, claimed: false },
+    { day: 3, amount: 200, claimed: false },
+    { day: 4, amount: 300, claimed: false },
+    { day: 5, amount: 500, claimed: false },
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-      {/* Deposit button */}
-      <button onClick={() => onSelectGame('deposit')}
-        className="u24-button-gold w-full flex items-center gap-2 justify-center">
-        <Coins size={14} /> Поповнити через крипто
-      </button>
-
-      {/* Wallet card */}
-      <div className="border-2 border-black bg-[#1d2e20] text-white p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Coins size={18} className="text-[#a8792a]" />
-            <span className="font-black text-xs uppercase tracking-widest">Мій гаманець</span>
-          </div>
-          <div className="font-black text-xl text-[#a8792a]">{fmtCoins(wallet.balance)}</div>
-        </div>
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {[
-            { label: 'Рівень', val: wallet.level },
-            { label: 'Всього ставок', val: fmtCoins(wallet.total_bet) },
-            { label: 'Всього виграно', val: fmtCoins(wallet.total_won) },
-          ].map(s => (
-            <div key={s.label} className="border border-[#2f4a37] px-2 py-1.5 text-center">
-              <div className="font-mono text-[10px] text-[#6b7c6d] uppercase">{s.label}</div>
-              <div className="font-black text-sm mt-0.5">{s.val}</div>
+    <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4 bg-[#0B1A12]">
+      {/* Hero balance */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/5 p-4"
+        style={{ background: 'linear-gradient(180deg,#163524 0%,#112A1C 100%)' }}>
+        <div className="absolute -top-10 -right-10 w-40 h-40 pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(228,162,75,0.18) 0%, transparent 70%)' }} />
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-[#E8F2EA]/60 mb-1">Баланс</div>
+            <div className="text-[#E8F2EA] whitespace-nowrap" style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 28, letterSpacing: -0.5, lineHeight: 1 }}>
+              {fmtCoins(wallet.balance)}
             </div>
-          ))}
-        </div>
-        {/* XP bar */}
-        <div>
-          <div className="flex justify-between font-mono text-[10px] text-[#6b7c6d] mb-1">
-            <span>Рівень {wallet.level}</span>
-            <span>{wallet.xp % xpToNext} / {xpToNext} XP</span>
           </div>
-          <div className="h-2 bg-[#2f4a37] border border-[#2f4a37]">
-            <div className="h-full bg-[#a8792a] transition-all duration-500" style={{ width: `${xpPct}%` }} />
+          <button onClick={() => onSelectGame('deposit')}
+            className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer transition-all hover:brightness-110 active:scale-95"
+            style={{ background: '#E4A24B', color: '#1a1006' }}>
+            <Plus size={14} strokeWidth={2.5} /> Поповнити
+          </button>
+        </div>
+        <div className="relative mt-4 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-[#0B1A12] border border-white/5 flex items-center justify-center font-black text-sm text-[#E4A24B]">
+            {wallet.level}
+          </div>
+          <div className="flex-1">
+            <div className="flex justify-between font-mono text-[10px] text-[#E8F2EA]/60 mb-1 uppercase tracking-widest">
+              <span>Рівень {wallet.level}</span>
+              <span>{wallet.xp % xpToNext} / {xpToNext} XP</span>
+            </div>
+            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${xpPct}%`, background: 'linear-gradient(90deg,#5BBE8A,#E4A24B)' }} />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Games */}
+      {/* Daily bonuses */}
       <div>
-        <div className="font-black text-xs uppercase tracking-widest text-[#6b7c6d] mb-2">Ігри</div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="font-black text-[10px] uppercase tracking-widest text-[#E8F2EA]/50 mb-2 px-1">Щоденні бонуси</div>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1">
+          {BONUSES.map(b => (
+            <button key={b.day} disabled={b.claimed}
+              onClick={() => !b.claimed && notify(`+${b.amount} ₮ отримано`)}
+              className="shrink-0 w-[142px] rounded-xl p-3 text-left cursor-pointer disabled:cursor-default transition-all"
+              style={{
+                background: b.claimed ? '#112A1C' : '#163524',
+                border: `1px solid ${b.claimed ? 'rgba(255,255,255,0.06)' : 'rgba(228,162,75,0.3)'}`,
+                opacity: b.claimed ? 0.5 : 1,
+              }}>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                  style={{ background: b.claimed ? '#163524' : 'rgba(228,162,75,0.2)' }}>
+                  <Gift size={14} style={{ color: b.claimed ? '#6b7c6d' : '#E4A24B' }} />
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-[#E8F2EA]/60">День {b.day}</div>
+              </div>
+              <div className="mt-2 font-black text-base" style={{ color: b.claimed ? '#6b7c6d' : '#E4A24B' }}>
+                +{b.amount} ₮
+              </div>
+              <div className="font-mono text-[10px] text-[#E8F2EA]/40 mt-0.5">{b.claimed ? 'Отримано' : 'Забрати'}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Live wins ticker */}
+      <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl overflow-hidden"
+        style={{ background: 'rgba(91,190,138,0.06)', border: '1px solid rgba(91,190,138,0.16)' }}>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+            style={{ background: '#5BBE8A', boxShadow: '0 0 0 3px rgba(91,190,138,0.16)' }} />
+          <span className="font-black text-[10px] uppercase tracking-widest" style={{ color: '#5BBE8A' }}>LIVE</span>
+        </div>
+        <div className="flex-1 flex overflow-hidden"
+          style={{
+            maskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)',
+            WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)',
+          }}>
+          <div className="flex gap-5 animate-ticker shrink-0">
+            {[...WINS, ...WINS].map((w, i) => (
+              <div key={i} className="flex items-center gap-1.5 shrink-0 font-mono text-xs text-[#E8F2EA]/60 whitespace-nowrap">
+                <span className="font-bold text-[#E8F2EA]">{w.user}</span>
+                <span className="text-[#E8F2EA]/30">·</span>
+                <span>{w.game}</span>
+                <span className="font-black" style={{ color: '#5BBE8A' }}>+{w.amount}₮</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Featured Crash */}
+      <button onClick={() => onSelectGame('crash')}
+        className="relative overflow-hidden rounded-2xl border border-white/5 text-left cursor-pointer group">
+        <div className="h-32 relative flex items-center justify-center"
+          style={{
+            background: `linear-gradient(135deg, rgba(228,162,75,0.15), rgba(224,110,74,0.1)), repeating-linear-gradient(45deg, transparent 0 8px, rgba(255,255,255,0.02) 8px 16px), #112A1C`,
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
+          }}>
+          <TrendingUp size={64} strokeWidth={1} style={{ color: 'rgba(228,162,75,0.5)' }} />
+          <span className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full font-black text-[9px] uppercase tracking-widest backdrop-blur"
+            style={{ background: 'rgba(11,26,18,0.7)', color: '#E4A24B', border: '1px solid rgba(228,162,75,0.3)' }}>
+            🔥 HOT
+          </span>
+          <span className="absolute top-3 right-3 font-black text-xl" style={{ color: '#5BBE8A', letterSpacing: -0.5 }}>
+            ×12.45
+          </span>
+        </div>
+        <div className="flex items-center justify-between px-4 py-3" style={{ background: '#112A1C' }}>
+          <div>
+            <div className="font-black text-sm text-[#E8F2EA] uppercase tracking-tight">Crash</div>
+            <div className="font-mono text-[11px] text-[#E8F2EA]/60 mt-0.5">1 247 грає зараз</div>
+          </div>
+          <span className="px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest"
+            style={{ background: '#E8F2EA', color: '#0B1A12' }}>
+            Грати
+          </span>
+        </div>
+      </button>
+
+      {/* Games grid */}
+      <div>
+        <div className="font-black text-[10px] uppercase tracking-widest text-[#E8F2EA]/50 mb-2 px-1">Ігри</div>
+        <div className="grid grid-cols-2 gap-2.5">
           {GAMES.map(g => (
             <button key={g.key} onClick={() => onSelectGame(g.key)}
-              className="u24-card p-4 text-left group relative cursor-pointer">
-              {g.hot && !g.new && (
-                <span className="absolute top-2 right-2 bg-[#c0392b] text-white font-black text-[9px] px-1.5 py-0.5 uppercase tracking-widest">HOT</span>
-              )}
-              {g.new && (
-                <span className="absolute top-2 right-2 bg-[#4caf7d] text-white font-black text-[9px] px-1.5 py-0.5 uppercase tracking-widest">NEW</span>
-              )}
-              <div className="text-4xl mb-2">{g.icon}</div>
-              <div className="font-black text-sm uppercase tracking-tight">{g.label}</div>
-              <div className="font-mono text-[10px] text-[#6b7c6d] mt-0.5">{g.desc}</div>
-              <div className="mt-3 font-black text-[10px] uppercase tracking-widest text-[#a8792a] flex items-center gap-1">
-                Грати <ChevronRight size={10} />
+              className="rounded-xl overflow-hidden text-left cursor-pointer transition-all hover:-translate-y-0.5"
+              style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="h-20 relative flex items-center justify-center"
+                style={{
+                  background: `radial-gradient(circle at 70% 30%, ${g.accent}22 0%, transparent 60%), #163524`,
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                }}>
+                {g.key === 'crash' && <TrendingUp size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
+                {g.key === 'chicken' && <Zap size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
+                {g.key === 'mines' && <Target size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
+                {g.key === 'dice' && <Hash size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
+                {g.key === 'roulette' && <RefreshCw size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
+                {g.key === 'slots' && <Star size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
+                {g.live && (
+                  <span className="absolute top-2 left-2 w-1.5 h-1.5 rounded-full"
+                    style={{ background: '#5BBE8A', boxShadow: '0 0 0 2px rgba(91,190,138,0.25)' }} />
+                )}
+              </div>
+              <div className="px-3 py-2.5">
+                <div className="font-black text-xs text-[#E8F2EA] uppercase tracking-tight">{g.label}</div>
+                <div className="flex items-center justify-between mt-1 font-mono text-[10px]">
+                  <span className="text-[#E8F2EA]/50">{g.tag}</span>
+                  <span className="font-black" style={{ color: g.accent }}>{g.hint}</span>
+                </div>
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Achievements */}
-      <div>
-        <div className="font-black text-xs uppercase tracking-widest text-[#6b7c6d] mb-2">Досягнення</div>
-        <div className="grid grid-cols-2 gap-2">
-          {ACHIEVEMENTS.map(a => (
-            <div key={a.key} className="border-2 border-black p-3 flex gap-2 items-start opacity-40">
-              <span className="text-xl">{a.icon}</span>
-              <div>
-                <div className="font-black text-xs">{a.label}</div>
-                <div className="font-mono text-[10px] text-[#6b7c6d]">{a.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <div className="h-4" />
     </div>
   );
 }

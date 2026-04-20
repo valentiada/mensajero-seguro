@@ -7,6 +7,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_compress import Compress
+from flask_socketio import SocketIO
 
 from .config import BASE_PATH, DEBUG
 from .database import init_db
@@ -29,6 +30,14 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'weego-demo-secret')
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_ATTACHMENT_BYTES', str(10 * 1024 * 1024)))
 
 Compress(app)
+
+socketio = SocketIO(
+    app,
+    cors_allowed_origins='*',
+    async_mode='eventlet',
+    logger=False,
+    engineio_logger=False,
+)
 
 # ── DB init ───────────────────────────────────────────────────────────────────
 with app.app_context():
@@ -112,6 +121,13 @@ def _headers(response):
 # ── Blueprints ────────────────────────────────────────────────────────────────
 for bp in (auth_bp, chat_bp, msg_bp, call_bp, user_bp, support_bp, casino_bp, crypto_bp, admin_bp):
     app.register_blueprint(bp)
+
+# ── Socket.IO namespaces ──────────────────────────────────────────────────────
+from .routes.crash_ws import CrashNamespace  # noqa: E402
+from .services.crash_ws_service import start_loop as _start_crash_loop  # noqa: E402
+
+socketio.on_namespace(CrashNamespace('/crash'))
+_start_crash_loop(socketio)
 
 # Start BSC deposit monitor (only when enabled via env var)
 from .config import CRYPTO_MONITOR_ENABLED  # noqa: E402

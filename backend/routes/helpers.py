@@ -18,6 +18,14 @@ _RATE_LOCK = threading.Lock()
 _RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
 
 
+def decode_token(token: str) -> dict | None:
+    """Return user dict for a valid token, or None."""
+    try:
+        return auth_service.get_user_by_token(token.strip())
+    except Exception:
+        return None
+
+
 def api_error(message: str, status: int = 400):
     return jsonify({'ok': False, 'error': message}), status
 

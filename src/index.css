@@ -370,4 +370,11 @@
   .chip-100  { background: #1d2e20; border-color: #0d1a10; color: #a8792a; }
   .chip-500  { background: #6c3483; border-color: #4a235a; color: #f1c40f; }
   .chip-1000 { background: #a8792a; border-color: #7d5a1e; color: #fff; }
+
+  @keyframes wakeup-bar {
+    0%   { width: 0%; opacity: 0.6; }
+    70%  { width: 85%; opacity: 1; }
+    100% { width: 100%; opacity: 0.8; }
+  }
+  .animate-wakeup-bar { animation: wakeup-bar 28s cubic-bezier(0.1,0.4,0.2,1) forwards; }
 }

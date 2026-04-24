@@ -132,7 +132,11 @@ const I18N = {
 type LangCode = keyof typeof I18N;
 
 function detectLang(): LangCode {
-  const bl = (navigator.language || 'en').toLowerCase();
+  try {
+    const saved = localStorage.getItem('app_lang') as LangCode;
+    if (saved && saved in I18N) return saved;
+  } catch {}
+  const bl = ((navigator.languages?.[0] || navigator.language) || 'en').toLowerCase();
   if (bl.startsWith('uk')) return 'uk';
   if (bl.startsWith('ru')) return 'ru';
   if (bl.startsWith('es')) return 'es';
@@ -2623,17 +2627,23 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
   const xpToNext = wallet.level * 500;
   const xpPct = Math.min(100, Math.round((wallet.xp % xpToNext) / xpToNext * 100));
 
-  const GAMES: { key: CasinoView; label: string; tag: string; hint: string; accent: string; live?: boolean }[] = [
-    { key: 'crash',     label: 'Crash',        tag: 'Arcade',  hint: 'LIVE',  accent: '#E06E4A', live: true },
-    { key: 'plinko',    label: 'Plinko',       tag: 'Instant', hint: '×999',  accent: '#E4A24B' },
-    { key: 'blackjack', label: 'Blackjack',    tag: 'Table',   hint: '3:2',   accent: '#5BBE8A' },
-    { key: 'baccarat',  label: 'Baccarat',     tag: 'Table',   hint: '8:1',   accent: '#6DB5D4' },
-    { key: 'mines',     label: 'Mines',        tag: 'Instant', hint: '×1000', accent: '#E4A24B' },
-    { key: 'dice',      label: 'Dice',         tag: 'Classic', hint: '×49',   accent: '#6DB5D4' },
-    { key: 'roulette',  label: 'Roulette',     tag: 'Table',   hint: 'LIVE',  accent: '#E54B5E', live: true },
-    { key: 'slots',     label: 'Slots',        tag: 'Jackpot', hint: '×50',   accent: '#5BBE8A' },
-    { key: 'chicken',   label: 'Chicken Road', tag: 'Arcade',  hint: '×30',   accent: '#E4A24B' },
+  type GameMeta = { key: CasinoView; label: string; tag: string; hint: string; accent: string; emoji: string; live?: boolean };
+  const GAMES: GameMeta[] = [
+    { key: 'crash',     label: 'Crash',        tag: 'Arcade',  hint: 'LIVE',  accent: '#E06E4A', emoji: '🚀', live: true },
+    { key: 'plinko',    label: 'Plinko',       tag: 'Instant', hint: '×999',  accent: '#E4A24B', emoji: '🔮' },
+    { key: 'blackjack', label: 'Blackjack',    tag: 'Table',   hint: '3:2',   accent: '#5BBE8A', emoji: '🃏' },
+    { key: 'baccarat',  label: 'Baccarat',     tag: 'Table',   hint: '8:1',   accent: '#6DB5D4', emoji: '🎴' },
+    { key: 'roulette',  label: 'Roulette',     tag: 'Table',   hint: 'LIVE',  accent: '#E54B5E', emoji: '🎡', live: true },
+    { key: 'mines',     label: 'Mines',        tag: 'Instant', hint: '×1000', accent: '#E4A24B', emoji: '💣' },
+    { key: 'dice',      label: 'Dice',         tag: 'Classic', hint: '×49',   accent: '#6DB5D4', emoji: '🎲' },
+    { key: 'slots',     label: 'Slots',        tag: 'Jackpot', hint: '×50',   accent: '#5BBE8A', emoji: '🎰' },
+    { key: 'chicken',   label: 'Chicken Road', tag: 'Arcade',  hint: '×30',   accent: '#E4A24B', emoji: '🐔' },
   ];
+
+  const CATS = ['Всі', 'Table', 'Arcade', 'Instant', 'Classic', 'Jackpot'] as const;
+  type Cat = typeof CATS[number];
+  const [cat, setCat] = useState<Cat>('Всі');
+  const visibleGames = cat === 'Всі' ? GAMES : GAMES.filter(g => g.tag === cat);
 
   const FALLBACK_WINS = [
     { user_name: 'Sofía',  game_type: 'crash',    win_amount: 8450 },
@@ -2808,40 +2818,55 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
         </div>
       </button>
 
-      {/* Games grid */}
-      <div>
-        <div className="font-black text-[10px] uppercase tracking-widest text-[#E8F2EA]/50 mb-2 px-1">Ігри</div>
-        <div className="grid grid-cols-2 gap-2.5">
-          {GAMES.map(g => (
-            <button key={g.key} onClick={() => onSelectGame(g.key)}
-              className="rounded-xl overflow-hidden text-left cursor-pointer transition-all hover:-translate-y-0.5"
-              style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div className="h-20 relative flex items-center justify-center"
-                style={{
-                  background: `radial-gradient(circle at 70% 30%, ${g.accent}22 0%, transparent 60%), #163524`,
-                  borderBottom: '1px solid rgba(255,255,255,0.05)',
-                }}>
-                {g.key === 'crash' && <TrendingUp size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
-                {g.key === 'chicken' && <Zap size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
-                {g.key === 'mines' && <Target size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
-                {g.key === 'dice' && <Hash size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
-                {g.key === 'roulette' && <RefreshCw size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
-                {g.key === 'slots' && <Star size={30} strokeWidth={1.6} style={{ color: g.accent }} />}
-                {g.live && (
-                  <span className="absolute top-2 left-2 w-1.5 h-1.5 rounded-full"
-                    style={{ background: '#5BBE8A', boxShadow: '0 0 0 2px rgba(91,190,138,0.25)' }} />
-                )}
-              </div>
-              <div className="px-3 py-2.5">
-                <div className="font-black text-xs text-[#E8F2EA] uppercase tracking-tight">{g.label}</div>
-                <div className="flex items-center justify-between mt-1 font-mono text-[10px]">
-                  <span className="text-[#E8F2EA]/50">{g.tag}</span>
-                  <span className="font-black" style={{ color: g.accent }}>{g.hint}</span>
-                </div>
-              </div>
+      {/* Category tabs */}
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-0.5">
+        {CATS.map(c => {
+          const labels: Record<Cat, string> = { 'Всі': 'Всі', Table: 'Стіл', Arcade: 'Аркада', Instant: 'Миттєві', Classic: 'Класика', Jackpot: 'Джекпот' };
+          return (
+            <button key={c} onClick={() => setCat(c)}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+              style={{
+                background: cat === c ? '#E4A24B' : 'rgba(255,255,255,0.05)',
+                color: cat === c ? '#1a1006' : 'rgba(232,242,234,0.5)',
+                border: `1px solid ${cat === c ? '#E4A24B' : 'rgba(255,255,255,0.06)'}`,
+              }}>
+              {labels[c]}
             </button>
-          ))}
-        </div>
+          );
+        })}
+      </div>
+
+      {/* Games grid */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {visibleGames.map(g => (
+          <button key={g.key} onClick={() => onSelectGame(g.key)}
+            className="rounded-xl overflow-hidden text-left cursor-pointer transition-all hover:-translate-y-0.5 active:scale-[0.97]"
+            style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="h-[84px] relative flex items-center justify-center"
+              style={{
+                background: `radial-gradient(circle at 65% 35%, ${g.accent}28 0%, transparent 65%), linear-gradient(180deg, #163524 0%, #0f1e14 100%)`,
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+              }}>
+              <span className="text-[38px] leading-none select-none" style={{ filter: `drop-shadow(0 4px 12px ${g.accent}60)` }}>
+                {g.emoji}
+              </span>
+              {g.live && (
+                <span className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full"
+                  style={{ background: 'rgba(91,190,138,0.15)', border: '1px solid rgba(91,190,138,0.3)' }}>
+                  <span className="w-1 h-1 rounded-full animate-pulse" style={{ background: '#5BBE8A' }} />
+                  <span className="font-black text-[8px] uppercase tracking-widest" style={{ color: '#5BBE8A' }}>LIVE</span>
+                </span>
+              )}
+              <span className="absolute bottom-2 right-2 font-black text-xs" style={{ color: g.accent }}>
+                {g.hint}
+              </span>
+            </div>
+            <div className="px-3 py-2.5">
+              <div className="font-black text-xs text-[#E8F2EA] uppercase tracking-tight">{g.label}</div>
+              <div className="font-mono text-[10px] mt-0.5" style={{ color: 'rgba(232,242,234,0.4)' }}>{g.tag}</div>
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Quick links */}
@@ -3388,6 +3413,46 @@ function ProfileView({ user, wallet, notify, onLogout }: {
   );
 }
 
+// ─── Wake-up Screen ───────────────────────────────────────────────────────────
+
+function WakeUpScreen() {
+  const [dots, setDots] = useState('');
+  useEffect(() => {
+    const t = setInterval(() => setDots(d => d.length >= 3 ? '' : d + '.'), 500);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-8"
+      style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(228,162,75,0.08) 0%, transparent 70%), #080e12' }}>
+      <div className="relative">
+        <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg,#163524,#0d1f18)', border: '1px solid rgba(228,162,75,0.35)', boxShadow: '0 0 40px rgba(228,162,75,0.15)' }}>
+          <HummingbirdLogo size={52} />
+        </div>
+        <div className="absolute -inset-2 rounded-3xl animate-ping opacity-20"
+          style={{ background: 'radial-gradient(circle, rgba(228,162,75,0.4), transparent 70%)' }} />
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <div className="font-black text-lg uppercase tracking-widest" style={{ color: '#E4A24B', letterSpacing: 4 }}>
+          {APP_NAME}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#E4A24B' }} />
+          <span className="font-mono text-xs tracking-widest" style={{ color: 'rgba(228,162,75,0.6)' }}>
+            ЗАПУСК СЕРВЕРА{dots}
+          </span>
+        </div>
+        <div className="font-mono text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.2)' }}>
+          Free tier · Cold start ~30s
+        </div>
+      </div>
+      <div className="w-48 h-0.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+        <div className="h-full rounded-full animate-wakeup-bar" style={{ background: 'linear-gradient(90deg, #E4A24B, #5BBE8A)' }} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Auth Screen ──────────────────────────────────────────────────────────────
 
 function CountryPicker({ value, onChange, t }: { value: Country; onChange: (c: Country) => void; t: typeof I18N['en'] }) {
@@ -3444,6 +3509,7 @@ function CountryPicker({ value, onChange, t }: { value: Country; onChange: (c: C
 function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: boolean) => void }) {
   const [lang, setLang] = useState<LangCode>(detectLang);
   const t = I18N[lang];
+  useEffect(() => { try { localStorage.setItem('app_lang', lang); } catch {} }, [lang]);
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [country, setCountry] = useState<Country>(() => guessCountryFromLang(detectLang()));
@@ -3473,27 +3539,43 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
 
   const LANG_FLAGS: Record<LangCode, string> = { en: '🇬🇧', uk: '🇺🇦', ru: '🇷🇺', es: '🇪🇸', it: '🇮🇹', de: '🇩🇪' };
 
-  // Design tokens (dark theme)
-  const bg0 = '#0B1A12', bg1 = '#112A1C', bg2 = '#163524';
-  const hairline = 'rgba(255,255,255,0.09)';
-  const textDim = 'rgba(232,242,234,0.62)';
-  const amber = '#E4A24B';
+  // Design tokens (dark casino theme)
+  const bg0 = '#080e12', bg1 = '#0e1b14', bg2 = '#152012';
+  const hairline = 'rgba(255,255,255,0.08)';
+  const textDim = 'rgba(232,242,234,0.55)';
+  const amber = '#F0B93A';
   const mint = '#5BBE8A';
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px',
-    background: bg0, border: `1px solid ${hairline}`,
+    background: 'rgba(0,0,0,0.35)', border: `1px solid ${hairline}`,
     borderRadius: 12, color: '#E8F2EA',
     fontSize: 14, fontFamily: 'inherit', outline: 'none',
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: `radial-gradient(ellipse 80% 60% at 20% 10%, rgba(91,190,138,0.07) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 90%, rgba(228,162,75,0.06) 0%, transparent 60%), ${bg0}` }}>
+      style={{ background: `radial-gradient(ellipse 100% 70% at 50% 0%, rgba(228,162,75,0.12) 0%, transparent 55%), radial-gradient(ellipse 60% 40% at 10% 90%, rgba(91,190,138,0.07) 0%, transparent 50%), #060b0e` }}>
 
-      {/* Subtle grid */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{ backgroundImage: 'repeating-linear-gradient(0deg,#5BBE8A 0,#5BBE8A 1px,transparent 1px,transparent 48px),repeating-linear-gradient(90deg,#5BBE8A 0,#5BBE8A 1px,transparent 1px,transparent 48px)' }} />
+      {/* Decorative suit symbols */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+        {[
+          { s: '♠', x: '8%',  y: '12%', size: 80, rot: -15, op: 0.045 },
+          { s: '♥', x: '88%', y: '8%',  size: 64, rot: 12,  op: 0.05  },
+          { s: '♦', x: '5%',  y: '78%', size: 72, rot: -8,  op: 0.04  },
+          { s: '♣', x: '85%', y: '75%', size: 88, rot: 20,  op: 0.04  },
+          { s: '♠', x: '50%', y: '5%',  size: 48, rot: 5,   op: 0.03  },
+        ].map((d, i) => (
+          <div key={i} className="absolute font-black"
+            style={{ left: d.x, top: d.y, fontSize: d.size, color: `rgba(240,185,58,${d.op})`, transform: `rotate(${d.rot}deg)`, lineHeight: 1 }}>
+            {d.s}
+          </div>
+        ))}
+      </div>
+
+      {/* Top gold glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-40 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse, rgba(240,185,58,0.14) 0%, transparent 70%)' }} />
 
       <div className="w-full max-w-[400px] relative z-10 flex flex-col gap-6">
 
@@ -3528,7 +3610,7 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
         </div>
 
         {/* Card */}
-        <div style={{ background: bg1, border: `1px solid ${hairline}`, borderRadius: 24, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.5)' }}>
+        <div style={{ background: bg1, border: `1px solid rgba(240,185,58,0.15)`, borderRadius: 24, overflow: 'hidden', boxShadow: '0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(240,185,58,0.06)' }}>
 
           {/* Main tabs */}
           <div className="flex p-1.5 gap-1.5" style={{ background: bg0 }}>
@@ -3719,6 +3801,18 @@ export default function App() {
   const [screen, setScreen] = useState<'auth' | 'app'>('auth');
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState('');
+  const [waking, setWaking] = useState(false);
+
+  // Keep Render free tier awake + show wake-up screen on cold start
+  useEffect(() => {
+    let wakeTimer: ReturnType<typeof setTimeout>;
+    wakeTimer = setTimeout(() => setWaking(true), 1800);
+    fetch('/api/ping')
+      .catch(() => {})
+      .finally(() => { clearTimeout(wakeTimer); setWaking(false); });
+    const interval = setInterval(() => fetch('/api/ping').catch(() => {}), 10 * 60 * 1000);
+    return () => { clearTimeout(wakeTimer); clearInterval(interval); };
+  }, []);
 
   // Chats
   const [chats, setChats] = useState<Chat[]>(DEMO_CHATS);
@@ -3809,6 +3903,7 @@ export default function App() {
   const chatMessages = activeChat ? (messages[activeChat.id] || []) : [];
   const totalUnread = chats.reduce((a, c) => a + c.unread_count, 0);
 
+  if (waking) return <WakeUpScreen />;
   if (screen === 'auth') return <AuthScreen onAuth={handleAuth} />;
 
   // ── Design tokens ─────────────────────────────────────────

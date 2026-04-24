@@ -52,6 +52,60 @@ _crash_sessions: dict[str, dict] = {}
 _mines_sessions: dict[str, dict] = {}
 _chicken_sessions: dict[str, dict] = {}
 _pf_sessions: dict[str, dict] = {}   # provably-fair seed store
+_blackjack_sessions: dict[str, dict] = {}
+
+# ── Card game utilities ───────────────────────────────────────────────────────
+
+_SUITS = ['♠', '♥', '♦', '♣']
+_VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+_CARD_W = {'A': 11, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+           '8': 8, '9': 9, '10': 10, 'J': 10, 'Q': 10, 'K': 10}
+_BACCARAT_W = {'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+               '8': 8, '9': 9, '10': 0, 'J': 0, 'Q': 0, 'K': 0}
+
+
+def _make_shoe(decks: int = 6) -> list[dict]:
+    deck = [{'suit': s, 'value': v} for s in _SUITS for v in _VALUES] * decks
+    random.shuffle(deck)
+    return deck
+
+
+def _hand_value(cards: list[dict]) -> int:
+    total = sum(_CARD_W[c['value']] for c in cards)
+    aces = sum(1 for c in cards if c['value'] == 'A')
+    while total > 21 and aces:
+        total -= 10
+        aces -= 1
+    return total
+
+
+def _is_bj(cards: list[dict]) -> bool:
+    return len(cards) == 2 and _hand_value(cards) == 21
+
+
+def _baccarat_value(cards: list[dict]) -> int:
+    return sum(_BACCARAT_W[c['value']] for c in cards) % 10
+
+
+# ── Plinko multipliers (rows × risk) ─────────────────────────────────────────
+
+_PLINKO_MULTS: dict[int, dict[str, list[float]]] = {
+    8: {
+        'low':    [5.6, 2.1, 1.1, 1.0, 0.5, 1.0, 1.1, 2.1, 5.6],
+        'medium': [13.0, 3.0, 1.3, 0.7, 0.4, 0.7, 1.3, 3.0, 13.0],
+        'high':   [29.0, 4.0, 1.5, 0.3, 0.2, 0.3, 1.5, 4.0, 29.0],
+    },
+    12: {
+        'low':    [10.0, 3.0, 1.6, 1.4, 1.1, 1.0, 0.5, 1.0, 1.1, 1.4, 1.6, 3.0, 10.0],
+        'medium': [33.0, 11.0, 4.0, 2.0, 1.1, 0.6, 0.3, 0.6, 1.1, 2.0, 4.0, 11.0, 33.0],
+        'high':   [130.0, 26.0, 9.0, 4.0, 2.0, 0.2, 0.2, 0.2, 2.0, 4.0, 9.0, 26.0, 130.0],
+    },
+    16: {
+        'low':    [16.0, 9.0, 2.0, 1.4, 1.4, 1.2, 1.1, 1.0, 0.5, 1.0, 1.1, 1.2, 1.4, 1.4, 2.0, 9.0, 16.0],
+        'medium': [110.0, 41.0, 10.0, 5.0, 3.0, 1.5, 1.0, 0.5, 0.3, 0.5, 1.0, 1.5, 3.0, 5.0, 10.0, 41.0, 110.0],
+        'high':   [999.0, 130.0, 26.0, 9.0, 4.0, 2.0, 0.2, 0.2, 0.2, 0.2, 2.0, 4.0, 9.0, 26.0, 130.0, 999.0],
+    },
+}
 
 
 def _cleanup_old_sessions(store: dict, max_age: float = 300.0) -> None:
@@ -494,6 +548,228 @@ class CasinoService:
         self.repo.save_game(user_id, 'chicken', bet, win, {'lane': sess['lane'], 'mult': mult})
         _chicken_sessions.pop(session_id, None)
         return {'hit': False, 'cashed': True, 'mult': mult, 'win': win, 'net': win - bet, 'new_balance': new_balance}
+
+    # ── Blackjack ────────────────────────────────────────────────────────────
+
+    def start_blackjack(self, user_id: int, bet: float) -> dict:
+        _cleanup_old_sessions(_blackjack_sessions)
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+
+        shoe = _make_shoe(6)
+        player = [shoe.pop(), shoe.pop()]
+        dealer = [shoe.pop(), shoe.pop()]
+
+        session_id = secrets.token_hex(16)
+        _blackjack_sessions[session_id] = {
+            'user_id': user_id, 'bet': bet, 'shoe': shoe,
+            'player': player, 'dealer': dealer,
+            'status': 'playing', 'started_at': time.time(),
+        }
+        new_balance = self.repo.update_balance(user_id, -bet)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+
+        if _is_bj(player):
+            return self._resolve_blackjack(session_id, user_id, bet, player, dealer, 'blackjack')
+
+        return {
+            'session_id': session_id,
+            'new_balance': new_balance,
+            'player': player,
+            'dealer': [dealer[0]],
+            'player_value': _hand_value(player),
+            'status': 'playing',
+        }
+
+    def action_blackjack(self, user_id: int, session_id: str, action: str) -> dict:
+        sess = _blackjack_sessions.get(session_id)
+        if not sess:
+            raise ValueError('Сесія не знайдена.')
+        if sess['user_id'] != user_id:
+            raise ValueError('Доступ заборонено.')
+        if sess['status'] != 'playing':
+            raise ValueError('Гра вже завершена.')
+
+        player = sess['player']
+        dealer = sess['dealer']
+        shoe = sess['shoe']
+        bet = sess['bet']
+
+        if action == 'hit':
+            player.append(shoe.pop())
+            pv = _hand_value(player)
+            if pv > 21:
+                return self._resolve_blackjack(session_id, user_id, bet, player, dealer, 'dealer_done')
+            return {
+                'session_id': session_id,
+                'player': player,
+                'dealer': [dealer[0]],
+                'player_value': pv,
+                'status': 'playing',
+            }
+
+        if action == 'double':
+            wallet = self.repo.ensure_wallet(user_id)
+            if wallet['balance'] < bet:
+                raise ValueError('Недостатньо коштів для подвоєння.')
+            self.repo.update_balance(user_id, -bet)
+            sess['bet'] = bet * 2
+            player.append(shoe.pop())
+            return self._dealer_play(session_id, user_id, sess['bet'], player, dealer, shoe)
+
+        if action == 'stand':
+            return self._dealer_play(session_id, user_id, bet, player, dealer, shoe)
+
+        raise ValueError('Дія: hit, stand або double.')
+
+    def _dealer_play(self, session_id: str, user_id: int, bet: float,
+                     player: list, dealer: list, shoe: list) -> dict:
+        while _hand_value(dealer) < 17:
+            dealer.append(shoe.pop())
+        return self._resolve_blackjack(session_id, user_id, bet, player, dealer, 'dealer_done')
+
+    def _resolve_blackjack(self, session_id: str, user_id: int, bet: float,
+                            player: list, dealer: list, trigger: str) -> dict:
+        pv = _hand_value(player)
+        dv = _hand_value(dealer)
+
+        if trigger == 'blackjack':
+            if _is_bj(dealer):
+                outcome, win = 'push', bet
+            else:
+                outcome, win = 'blackjack', round(bet * 2.5, 2)
+        elif pv > 21:
+            outcome, win = 'loss', 0.0
+        elif dv > 21 or pv > dv:
+            outcome, win = 'win', bet * 2
+        elif pv == dv:
+            outcome, win = 'push', bet
+        else:
+            outcome, win = 'loss', 0.0
+
+        if win > 0:
+            new_balance = self.repo.update_balance(user_id, win)
+        else:
+            new_balance = self.repo.ensure_wallet(user_id)['balance']
+
+        self.repo.add_bet_stats(user_id, bet, win)
+        self.repo.save_game(user_id, 'blackjack', bet, win, {
+            'player': [c['value'] for c in player], 'dealer': [c['value'] for c in dealer],
+            'player_value': pv, 'dealer_value': dv, 'outcome': outcome,
+        })
+        if win >= 5000:
+            self.repo.unlock_achievement(user_id, 'big_winner')
+        if win > 0:
+            self.repo.upsert_leaderboard(user_id, win)
+        _blackjack_sessions.pop(session_id, None)
+
+        return {
+            'session_id': session_id, 'player': player, 'dealer': dealer,
+            'player_value': pv, 'dealer_value': dv,
+            'outcome': outcome, 'win': win, 'bet': bet,
+            'net': win - bet, 'new_balance': new_balance, 'status': 'done',
+        }
+
+    # ── Baccarat ─────────────────────────────────────────────────────────────
+
+    def play_baccarat(self, user_id: int, bet_type: str, amount: float) -> dict:
+        if bet_type not in ('player', 'banker', 'tie'):
+            raise ValueError("Тип ставки: 'player', 'banker' або 'tie'.")
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(amount, wallet['balance'])
+
+        shoe = _make_shoe(8)
+        p_cards = [shoe.pop(), shoe.pop()]
+        b_cards = [shoe.pop(), shoe.pop()]
+        pv = _baccarat_value(p_cards)
+        bv = _baccarat_value(b_cards)
+
+        if pv < 8 and bv < 8:
+            p3: int | None = None
+            if pv <= 5:
+                p_cards.append(shoe.pop())
+                pv = _baccarat_value(p_cards)
+                p3 = _BACCARAT_W[p_cards[2]['value']]
+            b_draws = (
+                bv <= 2 or
+                (p3 is not None and (
+                    (bv == 3 and p3 != 8) or
+                    (bv == 4 and p3 in (2, 3, 4, 5, 6, 7)) or
+                    (bv == 5 and p3 in (4, 5, 6, 7)) or
+                    (bv == 6 and p3 in (6, 7))
+                )) or
+                (p3 is None and bv <= 5)
+            )
+            if b_draws:
+                b_cards.append(shoe.pop())
+                bv = _baccarat_value(b_cards)
+
+        winner = 'player' if pv > bv else ('banker' if bv > pv else 'tie')
+
+        if bet_type == winner:
+            if winner == 'player':
+                win = round(amount * 2, 2)
+            elif winner == 'banker':
+                win = round(amount * 1.95, 2)
+            else:
+                win = round(amount * 9, 2)
+        elif winner == 'tie' and bet_type in ('player', 'banker'):
+            win = amount  # push
+        else:
+            win = 0.0
+
+        net = win - amount
+        new_balance = self.repo.update_balance(user_id, net)
+        self.repo.add_bet_stats(user_id, amount, win)
+        self.repo.add_xp(user_id, max(1, int(amount / 20)))
+        self.repo.save_game(user_id, 'baccarat', amount, win, {
+            'player_cards': [c['value'] for c in p_cards],
+            'banker_cards': [c['value'] for c in b_cards],
+            'player_value': pv, 'banker_value': bv, 'winner': winner, 'bet_type': bet_type,
+        })
+        if win > 0:
+            self.repo.upsert_leaderboard(user_id, win)
+
+        return {
+            'player_cards': p_cards, 'banker_cards': b_cards,
+            'player_value': pv, 'banker_value': bv,
+            'winner': winner, 'bet_type': bet_type,
+            'win': win, 'amount': amount, 'net': net, 'new_balance': new_balance,
+        }
+
+    # ── Plinko ───────────────────────────────────────────────────────────────
+
+    def play_plinko(self, user_id: int, bet: float, rows: int, risk: str) -> dict:
+        if rows not in _PLINKO_MULTS:
+            raise ValueError(f'Рядки: {sorted(_PLINKO_MULTS.keys())}.')
+        if risk not in ('low', 'medium', 'high'):
+            raise ValueError("Ризик: 'low', 'medium' або 'high'.")
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+
+        path = [random.randint(0, 1) for _ in range(rows)]
+        bucket = sum(path)
+        mult = _PLINKO_MULTS[rows][risk][bucket]
+        win = round(bet * mult, 2)
+
+        net = win - bet
+        new_balance = self.repo.update_balance(user_id, net)
+        self.repo.add_bet_stats(user_id, bet, win)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+        self.repo.save_game(user_id, 'plinko', bet, win, {
+            'rows': rows, 'risk': risk, 'bucket': bucket, 'mult': mult, 'path': path,
+        })
+        if win > 0:
+            self.repo.upsert_leaderboard(user_id, win)
+        if win >= 5000:
+            self.repo.unlock_achievement(user_id, 'big_winner')
+
+        return {
+            'path': path, 'bucket': bucket, 'rows': rows, 'risk': risk,
+            'mult': mult, 'win': win, 'bet': bet, 'net': net,
+            'new_balance': new_balance,
+            'multipliers': _PLINKO_MULTS[rows][risk],
+        }
 
     # ── Achievements ──────────────────────────────────────────────────────────
 

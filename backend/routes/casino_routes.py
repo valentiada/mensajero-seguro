@@ -408,3 +408,77 @@ def list_withdrawals():
         (g.current_user['id'],),
     )
     return jsonify({'ok': True, 'data': rows})
+
+
+# ── Blackjack ─────────────────────────────────────────────────────────────────
+
+@casino_bp.post('/blackjack/start')
+@auth_required
+@rate_limit(20, 10, key_func=_casino_rate_key)
+def blackjack_start():
+    data = request.get_json(force=True) or {}
+    try:
+        bet = float(data.get('bet', 10))
+    except (TypeError, ValueError):
+        return api_error('Невірна ставка.')
+    try:
+        result = casino_service.start_blackjack(g.current_user['id'], bet)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+@casino_bp.post('/blackjack/action')
+@auth_required
+def blackjack_action():
+    data = request.get_json(force=True) or {}
+    session_id = (data.get('session_id') or '').strip()
+    action = (data.get('action') or '').strip()
+    if not session_id:
+        return api_error('session_id обовʼязковий.')
+    if action not in ('hit', 'stand', 'double'):
+        return api_error('Дія: hit, stand або double.')
+    try:
+        result = casino_service.action_blackjack(g.current_user['id'], session_id, action)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+# ── Baccarat ──────────────────────────────────────────────────────────────────
+
+@casino_bp.post('/baccarat/play')
+@auth_required
+@rate_limit(30, 10, key_func=_casino_rate_key)
+def baccarat_play():
+    data = request.get_json(force=True) or {}
+    bet_type = (data.get('bet_type') or '').strip()
+    try:
+        amount = float(data.get('amount', 10))
+    except (TypeError, ValueError):
+        return api_error('Невірна ставка.')
+    try:
+        result = casino_service.play_baccarat(g.current_user['id'], bet_type, amount)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+# ── Plinko ────────────────────────────────────────────────────────────────────
+
+@casino_bp.post('/plinko/drop')
+@auth_required
+@rate_limit(30, 10, key_func=_casino_rate_key)
+def plinko_drop():
+    data = request.get_json(force=True) or {}
+    try:
+        bet = float(data.get('bet', 10))
+        rows = int(data.get('rows', 8))
+    except (TypeError, ValueError):
+        return api_error('Невірні параметри.')
+    risk = (data.get('risk') or 'medium').strip()
+    try:
+        result = casino_service.play_plinko(g.current_user['id'], bet, rows, risk)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))

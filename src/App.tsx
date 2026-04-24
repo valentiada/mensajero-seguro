@@ -189,7 +189,7 @@ function guessCountryFromLang(lang: LangCode): Country {
 
 type Role = 'soldier' | 'operator' | 'admin';
 type SidebarTab = 'chats' | 'casino' | 'profile' | 'admin';
-type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'deposit' | 'leaderboard' | 'history';
+type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'blackjack' | 'baccarat' | 'plinko' | 'deposit' | 'leaderboard' | 'history';
 
 interface User {
   id: number;
@@ -1803,6 +1803,507 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
   );
 }
 
+// ─── Playing Card ────────────────────────────────────────────────────────────
+
+function PlayingCard({ card, hidden = false }: { card?: { suit: string; value: string }; hidden?: boolean }) {
+  if (hidden || !card) {
+    return (
+      <div className="flex items-center justify-center rounded-lg border border-white/20 text-white/50 text-xl font-bold select-none"
+        style={{ width: 44, height: 64, background: 'linear-gradient(135deg,#163524,#0d2518)', flexShrink: 0 }}>
+        ?
+      </div>
+    );
+  }
+  const isRed = card.suit === '♥' || card.suit === '♦';
+  return (
+    <div className="flex flex-col rounded-lg border border-white/10 select-none"
+      style={{ width: 44, height: 64, background: '#f8f4ee', flexShrink: 0, padding: '4px 5px' }}>
+      <span className="font-black leading-none text-sm" style={{ color: isRed ? '#c0392b' : '#1a1a1a' }}>{card.value}</span>
+      <span className="font-bold leading-none text-base" style={{ color: isRed ? '#c0392b' : '#1a1a1a' }}>{card.suit}</span>
+    </div>
+  );
+}
+
+// ─── Blackjack ───────────────────────────────────────────────────────────────
+
+function BlackjackView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const [bet, setBet] = useState(10);
+  const [sessionId, setSessionId] = useState('');
+  const [playerCards, setPlayerCards] = useState<{ suit: string; value: string }[]>([]);
+  const [dealerCards, setDealerCards] = useState<{ suit: string; value: string }[]>([]);
+  const [dealerHidden, setDealerHidden] = useState(true);
+  const [playerValue, setPlayerValue] = useState(0);
+  const [dealerValue, setDealerValue] = useState<number | null>(null);
+  const [outcome, setOutcome] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const phase = sessionId ? 'playing' : 'idle';
+
+  async function startGame() {
+    setLoading(true); setOutcome(null);
+    const r = await api<any>('/casino/blackjack/start', { method: 'POST', body: JSON.stringify({ bet }) }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    const d = r.data!;
+    if (d.status === 'done') { applyResult(d); return; }
+    setSessionId(d.session_id);
+    setPlayerCards(d.player);
+    setDealerCards(d.dealer);
+    setDealerHidden(true);
+    setPlayerValue(d.player_value);
+    setDealerValue(null);
+    onWalletUpdate({ balance: d.new_balance });
+  }
+
+  async function doAction(action: string) {
+    if (!sessionId || loading) return;
+    setLoading(true);
+    const r = await api<any>('/casino/blackjack/action', { method: 'POST', body: JSON.stringify({ session_id: sessionId, action }) }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    const d = r.data!;
+    setPlayerCards(d.player);
+    setPlayerValue(d.player_value);
+    if (d.status === 'done') { applyResult(d); } else { setDealerCards(d.dealer); }
+  }
+
+  function applyResult(d: any) {
+    setSessionId('');
+    setPlayerCards(d.player || playerCards);
+    setDealerCards(d.dealer || dealerCards);
+    setDealerHidden(false);
+    setPlayerValue(d.player_value);
+    setDealerValue(d.dealer_value);
+    setOutcome(d.outcome);
+    onWalletUpdate({ balance: d.new_balance });
+    const msgs: Record<string, string> = {
+      blackjack: `🃏 Блекджек! +${fmtCoins(d.win)}`,
+      win: `✅ Перемога! +${fmtCoins(d.win)}`,
+      push: '🤝 Нічия — ставку повернено',
+      loss: '❌ Поразка',
+    };
+    notify(msgs[d.outcome] || '');
+  }
+
+  const outcomeColor: Record<string, string> = {
+    blackjack: '#E4A24B', win: '#5BBE8A', push: '#6DB5D4', loss: '#E54B5E',
+  };
+  const outcomeLabel: Record<string, string> = {
+    blackjack: 'Блекджек!', win: 'Перемога!', push: 'Нічия', loss: 'Поразка',
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-4 py-4" style={{ background: '#0B1A12' }}>
+      {/* Dealer zone */}
+      <div className="rounded-2xl border border-white/5 p-4" style={{ background: '#112A1C' }}>
+        <div className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-3">
+          Дилер {!dealerHidden && dealerValue !== null ? `· ${dealerValue}` : ''}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {dealerCards.map((c, i) => <React.Fragment key={i}><PlayingCard card={c} hidden={dealerHidden && i > 0} /></React.Fragment>)}
+          {dealerCards.length === 0 && <div className="text-white/20 text-sm">Карти ще не роздані</div>}
+        </div>
+      </div>
+
+      {/* Player zone */}
+      <div className="rounded-2xl border border-white/5 p-4" style={{ background: '#112A1C' }}>
+        <div className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-3">
+          Гравець · {playerValue || '—'}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {playerCards.map((c, i) => <React.Fragment key={i}><PlayingCard card={c} /></React.Fragment>)}
+          {playerCards.length === 0 && <div className="text-white/20 text-sm">Карти ще не роздані</div>}
+        </div>
+      </div>
+
+      {/* Outcome */}
+      {outcome && (
+        <div className="rounded-2xl border p-4 text-center font-black text-lg transition-all animate-slide-up"
+          style={{ borderColor: outcomeColor[outcome] + '60', background: outcomeColor[outcome] + '15', color: outcomeColor[outcome] }}>
+          {outcomeLabel[outcome] || outcome}
+        </div>
+      )}
+
+      {/* Controls */}
+      {phase === 'idle' ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-white/50 text-xs w-12">Ставка</span>
+            <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1} max={wallet.balance}
+              className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+              style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+          </div>
+          <div className="flex gap-2">
+            {[10, 50, 100, 500].map(v => (
+              <button key={v} onClick={() => setBet(v)}
+                className="flex-1 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+                style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <button onClick={startGame} disabled={loading || bet > wallet.balance || bet < 1}
+            className="u24-button py-4 text-base font-black transition-all disabled:opacity-40">
+            {loading ? '…' : 'Роздати карти'}
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-3">
+          <button onClick={() => doAction('hit')} disabled={loading}
+            className="flex-1 py-3 rounded-xl font-black text-sm transition-all hover:brightness-110 disabled:opacity-40"
+            style={{ background: '#5BBE8A', color: '#0B1A12' }}>Ще</button>
+          <button onClick={() => doAction('stand')} disabled={loading}
+            className="flex-1 py-3 rounded-xl font-black text-sm transition-all hover:brightness-110 disabled:opacity-40"
+            style={{ background: '#E54B5E', color: '#fff' }}>Стоп</button>
+          {playerCards.length === 2 && (
+            <button onClick={() => doAction('double')} disabled={loading || wallet.balance < bet}
+              className="flex-1 py-3 rounded-xl font-black text-sm transition-all hover:brightness-110 disabled:opacity-40"
+              style={{ background: '#E4A24B', color: '#1a1006' }}>×2</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Baccarat ─────────────────────────────────────────────────────────────────
+
+function BaccaratView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const [bet, setBet] = useState(10);
+  const [betType, setBetType] = useState<'player' | 'banker' | 'tie'>('player');
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function deal() {
+    setLoading(true); setResult(null);
+    const r = await api<any>('/casino/baccarat/play', {
+      method: 'POST', body: JSON.stringify({ bet_type: betType, amount: bet }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    setResult(r.data);
+    onWalletUpdate({ balance: r.data.new_balance });
+    if (r.data.win > 0) notify(`✅ +${fmtCoins(r.data.win)}`);
+    else if (r.data.winner === 'tie' && betType !== 'tie') notify('🤝 Нічия — ставку повернено');
+    else notify('❌ Поразка');
+  }
+
+  const BET_OPTS = [
+    { key: 'player' as const, label: 'Гравець', odds: '1:1', color: '#5BBE8A' },
+    { key: 'banker' as const, label: 'Банкір', odds: '0.95:1', color: '#E4A24B' },
+    { key: 'tie' as const, label: 'Нічия', odds: '8:1', color: '#6DB5D4' },
+  ];
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-4 py-4" style={{ background: '#0B1A12' }}>
+      {/* Cards result */}
+      {result && (
+        <div className="flex gap-3 animate-slide-up">
+          {(['player', 'banker'] as const).map(side => (
+            <div key={side} className="flex-1 rounded-2xl border border-white/5 p-3"
+              style={{ background: '#112A1C', outline: result.winner === side ? `2px solid ${side === 'player' ? '#5BBE8A' : '#E4A24B'}` : undefined }}>
+              <div className="font-mono text-[10px] uppercase tracking-widest mb-2 flex justify-between"
+                style={{ color: side === 'player' ? '#5BBE8A' : '#E4A24B' }}>
+                <span>{side === 'player' ? 'Гравець' : 'Банкір'}</span>
+                <span className="text-white/60">{side === 'player' ? result.player_value : result.banker_value}</span>
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {(side === 'player' ? result.player_cards : result.banker_cards).map((c: { suit: string; value: string }, i: number) => (
+                  <React.Fragment key={i}><PlayingCard card={c} /></React.Fragment>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {result && (
+        <div className="rounded-2xl border p-3 text-center font-black text-base animate-slide-up"
+          style={{
+            borderColor: result.win > 0 ? '#5BBE8A60' : result.winner === 'tie' && betType !== 'tie' ? '#6DB5D440' : '#E54B5E40',
+            background: result.win > 0 ? '#5BBE8A15' : '#E54B5E10',
+            color: result.win > 0 ? '#5BBE8A' : result.winner === 'tie' && betType !== 'tie' ? '#6DB5D4' : '#E54B5E',
+          }}>
+          Переміг: {result.winner === 'player' ? 'Гравець' : result.winner === 'banker' ? 'Банкір' : 'Нічия'}
+          {result.win > 0 && <span> · +{fmtCoins(result.win)}</span>}
+        </div>
+      )}
+
+      {/* Bet type */}
+      <div className="flex gap-2">
+        {BET_OPTS.map(o => (
+          <button key={o.key} onClick={() => setBetType(o.key)}
+            className="flex-1 py-3 rounded-xl flex flex-col items-center gap-0.5 transition-all border"
+            style={{
+              background: betType === o.key ? o.color + '25' : '#112A1C',
+              borderColor: betType === o.key ? o.color + '80' : 'rgba(255,255,255,0.06)',
+              boxShadow: betType === o.key ? `0 0 12px ${o.color}20` : undefined,
+            }}>
+            <span className="font-black text-sm" style={{ color: betType === o.key ? o.color : 'rgba(255,255,255,0.7)' }}>{o.label}</span>
+            <span className="font-mono text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{o.odds}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Bet amount */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-white/50 text-xs w-12">Ставка</span>
+          <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
+            className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+            style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+        </div>
+        <div className="flex gap-2">
+          {[10, 50, 100, 500].map(v => (
+            <button key={v} onClick={() => setBet(v)}
+              className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+              style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={deal} disabled={loading || bet > wallet.balance || bet < 1}
+        className="u24-button py-4 text-base font-black disabled:opacity-40">
+        {loading ? '…' : 'Роздати'}
+      </button>
+    </div>
+  );
+}
+
+// ─── Plinko ───────────────────────────────────────────────────────────────────
+
+function PlinkoCanvas({ rows, path, multipliers, bucket, animating, onDone }: {
+  rows: number; path: number[] | null; multipliers: number[]; bucket: number | null;
+  animating: boolean; onDone: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    const W = canvas.width, H = canvas.height;
+    const bucketH = 28;
+    const boardH = H - bucketH;
+    const PAD = 16;
+    const colW = (W - PAD * 2) / rows;
+    const rowH = boardH / (rows + 2);
+
+    function drawBoard() {
+      ctx.fillStyle = '#0B1A12';
+      ctx.fillRect(0, 0, W, H);
+      for (let r = 0; r < rows; r++) {
+        const pegsInRow = r + 2;
+        for (let p = 0; p < pegsInRow; p++) {
+          const x = W / 2 - (pegsInRow - 1) * colW / 2 + p * colW;
+          const y = PAD + (r + 1) * rowH;
+          ctx.beginPath();
+          ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.35)';
+          ctx.fill();
+        }
+      }
+    }
+
+    function drawBuckets(activeBucket: number | null) {
+      const bucketCount = rows + 1;
+      const bucketW = (W - PAD * 2) / bucketCount;
+      const mults = multipliers;
+      for (let i = 0; i < bucketCount; i++) {
+        const x = PAD + i * bucketW;
+        const y = boardH;
+        const m = mults[i] ?? 0;
+        const isActive = i === activeBucket;
+        const intensity = Math.min(1, m / 5);
+        const r = Math.round(91 + (229 - 91) * intensity);
+        const g = Math.round(190 + (75 - 190) * intensity);
+        const b = Math.round(138 + (94 - 138) * intensity);
+        ctx.fillStyle = isActive ? `rgba(${r},${g},${b},0.9)` : `rgba(${r},${g},${b},0.35)`;
+        ctx.fillRect(x + 1, y, bucketW - 2, bucketH);
+        ctx.fillStyle = isActive ? '#fff' : 'rgba(255,255,255,0.7)';
+        ctx.font = `bold ${m >= 10 ? 9 : 10}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText(`${m}×`, x + bucketW / 2, y + 18);
+      }
+    }
+
+    if (!path || !animating) {
+      drawBoard();
+      drawBuckets(bucket);
+      return;
+    }
+
+    const ballPositions: { x: number; y: number }[] = [];
+    let cx = W / 2;
+    ballPositions.push({ x: cx, y: PAD });
+    for (let r = 0; r < rows; r++) {
+      cx += (path[r] === 0 ? -1 : 1) * colW / 2;
+      ballPositions.push({ x: cx, y: PAD + (r + 1) * rowH });
+    }
+    ballPositions.push({ x: cx, y: boardH - 6 });
+
+    let step = 0, progress = 0;
+    const SPEED = 0.12;
+
+    function animate() {
+      drawBoard();
+      drawBuckets(null);
+      if (step >= ballPositions.length - 1) {
+        ctx.beginPath();
+        ctx.arc(ballPositions[ballPositions.length - 1].x, ballPositions[ballPositions.length - 1].y, 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#E4A24B';
+        ctx.fill();
+        onDone();
+        return;
+      }
+      const from = ballPositions[step], to = ballPositions[step + 1];
+      const bx = from.x + (to.x - from.x) * progress;
+      const by = from.y + (to.y - from.y) * progress;
+      const easedP = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      const drawY = from.y + (to.y - from.y) * easedP;
+      ctx.beginPath();
+      ctx.arc(bx, drawY, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#E4A24B';
+      ctx.shadowColor = '#E4A24B';
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      progress += SPEED;
+      if (progress >= 1) { progress = 0; step++; }
+      rafRef.current = requestAnimationFrame(animate);
+    }
+
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [rows, path, multipliers, bucket, animating]);
+
+  return <canvas ref={canvasRef} width={320} height={320} className="rounded-2xl w-full" style={{ maxWidth: 360 }} />;
+}
+
+function PlinkoView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const [bet, setBet] = useState(10);
+  const [rows, setRows] = useState<8 | 12 | 16>(8);
+  const [risk, setRisk] = useState<'low' | 'medium' | 'high'>('medium');
+  const [loading, setLoading] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [pendingResult, setPendingResult] = useState<any>(null);
+
+  const defaultMults: Record<number, Record<string, number[]>> = {
+    8: { low: [5.6,2.1,1.1,1.0,0.5,1.0,1.1,2.1,5.6], medium: [13,3,1.3,0.7,0.4,0.7,1.3,3,13], high: [29,4,1.5,0.3,0.2,0.3,1.5,4,29] },
+    12: { low: [10,3,1.6,1.4,1.1,1.0,0.5,1.0,1.1,1.4,1.6,3,10], medium: [33,11,4,2,1.1,0.6,0.3,0.6,1.1,2,4,11,33], high: [130,26,9,4,2,0.2,0.2,0.2,2,4,9,26,130] },
+    16: { low: [16,9,2,1.4,1.4,1.2,1.1,1,0.5,1,1.1,1.2,1.4,1.4,2,9,16], medium: [110,41,10,5,3,1.5,1,0.5,0.3,0.5,1,1.5,3,5,10,41,110], high: [999,130,26,9,4,2,0.2,0.2,0.2,0.2,2,4,9,26,130,999] },
+  };
+
+  const currentMults = (result?.multipliers ?? defaultMults[rows][risk]) as number[];
+
+  async function drop() {
+    setLoading(true); setResult(null); setPendingResult(null);
+    const r = await api<any>('/casino/plinko/drop', {
+      method: 'POST', body: JSON.stringify({ bet, rows, risk }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    setPendingResult(r.data);
+    setAnimating(true);
+  }
+
+  function onAnimDone() {
+    setAnimating(false);
+    if (pendingResult) {
+      setResult(pendingResult);
+      onWalletUpdate({ balance: pendingResult.new_balance });
+      if (pendingResult.win > 0) notify(`🎯 ×${pendingResult.mult} · +${fmtCoins(pendingResult.win)}`);
+      else notify(`❌ ×${pendingResult.mult}`);
+    }
+  }
+
+  const displayResult = animating ? null : result;
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
+      <div className="flex justify-center">
+        <PlinkoCanvas
+          rows={animating ? (pendingResult?.rows ?? rows) : rows}
+          path={animating ? pendingResult?.path ?? null : null}
+          multipliers={currentMults}
+          bucket={displayResult?.bucket ?? null}
+          animating={animating}
+          onDone={onAnimDone}
+        />
+      </div>
+
+      {displayResult && (
+        <div className="rounded-2xl border p-3 text-center font-black text-base animate-slide-up"
+          style={{
+            borderColor: displayResult.win > 0 ? '#5BBE8A60' : '#E54B5E40',
+            background: displayResult.win > 0 ? '#5BBE8A15' : '#E54B5E10',
+            color: displayResult.win > 0 ? '#5BBE8A' : '#E54B5E',
+          }}>
+          ×{displayResult.mult} {displayResult.win > 0 ? `· +${fmtCoins(displayResult.win)}` : ''}
+        </div>
+      )}
+
+      {/* Settings */}
+      <div className="flex gap-2">
+        {([8, 12, 16] as const).map(r => (
+          <button key={r} onClick={() => { setRows(r); setResult(null); }}
+            disabled={animating}
+            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all border"
+            style={{ background: rows === r ? '#E4A24B' : '#112A1C', color: rows === r ? '#1a1006' : 'rgba(255,255,255,0.6)', borderColor: rows === r ? '#E4A24B' : 'rgba(255,255,255,0.06)' }}>
+            {r} рядків
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        {(['low', 'medium', 'high'] as const).map(rv => {
+          const col = rv === 'low' ? '#5BBE8A' : rv === 'medium' ? '#E4A24B' : '#E54B5E';
+          return (
+            <button key={rv} onClick={() => { setRisk(rv); setResult(null); }}
+              disabled={animating}
+              className="flex-1 py-2 rounded-xl text-xs font-bold transition-all border"
+              style={{ background: risk === rv ? col + '25' : '#112A1C', color: risk === rv ? col : 'rgba(255,255,255,0.6)', borderColor: risk === rv ? col + '80' : 'rgba(255,255,255,0.06)' }}>
+              {rv === 'low' ? 'Низький' : rv === 'medium' ? 'Середній' : 'Високий'}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-white/50 text-xs w-12">Ставка</span>
+        <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
+          className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+      </div>
+      <div className="flex gap-2">
+        {[10, 50, 100, 500].map(v => (
+          <button key={v} onClick={() => setBet(v)}
+            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+            style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {v}
+          </button>
+        ))}
+      </div>
+
+      <button onClick={drop} disabled={loading || animating || bet > wallet.balance || bet < 1}
+        className="u24-button py-4 text-base font-black disabled:opacity-40">
+        {loading || animating ? '…' : 'Кинути кулю'}
+      </button>
+    </div>
+  );
+}
+
 // ─── Crypto Deposit ────────────────────────────────────────────────────────────
 
 interface CryptoDeposit {
@@ -2123,12 +2624,15 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
   const xpPct = Math.min(100, Math.round((wallet.xp % xpToNext) / xpToNext * 100));
 
   const GAMES: { key: CasinoView; label: string; tag: string; hint: string; accent: string; live?: boolean }[] = [
-    { key: 'crash',    label: 'Crash',        tag: 'Arcade',  hint: 'LIVE',  accent: '#E06E4A', live: true },
-    { key: 'chicken',  label: 'Chicken Road', tag: 'Arcade',  hint: '×30',   accent: '#E4A24B' },
-    { key: 'mines',    label: 'Mines',        tag: 'Instant', hint: '×1000', accent: '#E4A24B' },
-    { key: 'dice',     label: 'Dice',         tag: 'Classic', hint: '×49',   accent: '#6DB5D4' },
-    { key: 'roulette', label: 'Roulette',     tag: 'Table',   hint: 'LIVE',  accent: '#E54B5E', live: true },
-    { key: 'slots',    label: 'Slots',        tag: 'Jackpot', hint: '×50',   accent: '#5BBE8A' },
+    { key: 'crash',     label: 'Crash',        tag: 'Arcade',  hint: 'LIVE',  accent: '#E06E4A', live: true },
+    { key: 'plinko',    label: 'Plinko',       tag: 'Instant', hint: '×999',  accent: '#E4A24B' },
+    { key: 'blackjack', label: 'Blackjack',    tag: 'Table',   hint: '3:2',   accent: '#5BBE8A' },
+    { key: 'baccarat',  label: 'Baccarat',     tag: 'Table',   hint: '8:1',   accent: '#6DB5D4' },
+    { key: 'mines',     label: 'Mines',        tag: 'Instant', hint: '×1000', accent: '#E4A24B' },
+    { key: 'dice',      label: 'Dice',         tag: 'Classic', hint: '×49',   accent: '#6DB5D4' },
+    { key: 'roulette',  label: 'Roulette',     tag: 'Table',   hint: 'LIVE',  accent: '#E54B5E', live: true },
+    { key: 'slots',     label: 'Slots',        tag: 'Jackpot', hint: '×50',   accent: '#5BBE8A' },
+    { key: 'chicken',   label: 'Chicken Road', tag: 'Arcade',  hint: '×30',   accent: '#E4A24B' },
   ];
 
   const FALLBACK_WINS = [
@@ -3662,6 +4166,24 @@ export default function App() {
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎲" title="Dice" sub="Більше / менше" />
             <DiceView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'blackjack' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🃏" title="Blackjack" sub="Блекджек 3:2 · Дилер стоїть на 17" />
+            <BlackjackView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'baccarat' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🎴" title="Baccarat" sub="Гравець · Банкір · Нічия 8:1" />
+            <BaccaratView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'plinko' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🔮" title="Plinko" sub="8 / 12 / 16 рядків · До ×999" />
+            <PlinkoView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'deposit' && (

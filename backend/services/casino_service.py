@@ -771,6 +771,186 @@ class CasinoService:
             'multipliers': _PLINKO_MULTS[rows][risk],
         }
 
+    # ── Limbo ────────────────────────────────────────────────────────────────
+    def play_limbo(self, user_id: int, bet: float, target: float) -> dict:
+        if target < 1.01 or target > 1000:
+            raise ValueError('Цільовий множник: 1.01 — 1000.')
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+
+        raw = secrets.randbelow(10_000_000) / 10_000_000
+        result_mult = max(1.00, 99.0 / max(raw * 100, 0.001))
+        result_mult = round(min(result_mult, 1_000_000), 2)
+        won = result_mult >= target
+        win = round(bet * target, 2) if won else 0.0
+
+        net = win - bet
+        new_balance = self.repo.update_balance(user_id, net)
+        self.repo.add_bet_stats(user_id, bet, win)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+        self.repo.save_game(user_id, 'limbo', bet, win, {
+            'target': target, 'result': result_mult, 'won': won,
+        })
+        if win > 0:
+            self.repo.upsert_leaderboard(user_id, win)
+        if win >= 10_000:
+            self.repo.unlock_achievement(user_id, 'big_winner')
+
+        return {
+            'target': target, 'result': result_mult, 'won': won,
+            'win': win, 'bet': bet, 'net': net,
+            'new_balance': new_balance,
+        }
+
+    # ── Wheel ────────────────────────────────────────────────────────────────
+    # Stake-style wheel: 54 segments, risk level changes multiplier distribution
+    def play_wheel(self, user_id: int, bet: float, risk: str, segments: int = 30) -> dict:
+        if risk not in ('low', 'medium', 'high'):
+            raise ValueError("Ризик: 'low', 'medium', 'high'.")
+        if segments not in (10, 20, 30, 40, 50):
+            raise ValueError('Сегменти: 10, 20, 30, 40, 50.')
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+
+        # Build wheel multipliers (sum ≤ segments for ~1% house edge)
+        wheel = self._build_wheel(risk, segments)
+        idx = secrets.randbelow(segments)
+        mult = wheel[idx]
+        win = round(bet * mult, 2)
+
+        net = win - bet
+        new_balance = self.repo.update_balance(user_id, net)
+        self.repo.add_bet_stats(user_id, bet, win)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+        self.repo.save_game(user_id, 'wheel', bet, win, {
+            'risk': risk, 'segments': segments, 'idx': idx, 'mult': mult,
+        })
+        if win > 0:
+            self.repo.upsert_leaderboard(user_id, win)
+        if win >= 5000:
+            self.repo.unlock_achievement(user_id, 'big_winner')
+
+        return {
+            'risk': risk, 'segments': segments, 'wheel': wheel,
+            'idx': idx, 'mult': mult, 'win': win, 'bet': bet, 'net': net,
+            'new_balance': new_balance,
+        }
+
+    def _build_wheel(self, risk: str, n: int) -> list[float]:
+        # Ratios approximating Stake.com. Rest of segments are 0.
+        if risk == 'low':
+            base = {'1.5': 2, '1.2': int(n * 0.35)}
+            zero = n - sum(base.values())
+            arr = [1.5]*2 + [1.2]*base['1.2'] + [0.0]*zero
+        elif risk == 'medium':
+            base = {'3': 1, '1.5': int(n * 0.25), '1.2': int(n * 0.15)}
+            zero = n - sum(base.values())
+            arr = [3.0]*1 + [1.5]*base['1.5'] + [1.2]*base['1.2'] + [0.0]*zero
+        else:  # high
+            arr = [9.9] + [0.0]*(n-1) if n <= 10 else [19.8] + [0.0]*(n-1) if n <= 20 else [29.7] + [0.0]*(n-1) if n <= 30 else [39.6] + [0.0]*(n-1) if n <= 40 else [49.5] + [0.0]*(n-1)
+        # Shuffle deterministically based on secrets for visual variety
+        rng = random.Random(secrets.randbelow(1_000_000))
+        rng.shuffle(arr)
+        return arr
+
+    # ── Hilo ─────────────────────────────────────────────────────────────────
+    # Sessions: {session_id: {user, bet, current_card, multiplier, cards_seen}}
+    _hilo_sessions: dict = {}
+
+    def start_hilo(self, user_id: int, bet: float) -> dict:
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+        new_balance = self.repo.update_balance(user_id, -bet)
+
+        session_id = secrets.token_urlsafe(16)
+        card = self._draw_hilo_card()
+        self._hilo_sessions[session_id] = {
+            'user_id': user_id, 'bet': bet, 'current': card,
+            'multiplier': 1.0, 'history': [card],
+        }
+        return {
+            'session_id': session_id, 'card': card, 'multiplier': 1.0,
+            'balance': new_balance, 'bet': bet,
+        }
+
+    def guess_hilo(self, user_id: int, session_id: str, guess: str) -> dict:
+        if guess not in ('higher', 'lower', 'equal'):
+            raise ValueError("Вгадай: 'higher', 'lower', 'equal'.")
+        s = self._hilo_sessions.get(session_id)
+        if not s or s['user_id'] != user_id:
+            raise ValueError('Сесію не знайдено.')
+
+        cur_v = s['current']['rank_value']
+        new_card = self._draw_hilo_card()
+        new_v = new_card['rank_value']
+        s['history'].append(new_card)
+
+        # Payout odds per remaining deck probability
+        if guess == 'higher':
+            won = new_v > cur_v
+            prob = (14 - cur_v) / 13  # of getting higher among 2..14
+        elif guess == 'lower':
+            won = new_v < cur_v
+            prob = (cur_v - 1) / 13
+        else:  # equal
+            won = new_v == cur_v
+            prob = 1 / 13
+
+        if not won or prob <= 0:
+            self._hilo_sessions.pop(session_id, None)
+            self.repo.add_bet_stats(user_id, s['bet'], 0)
+            self.repo.save_game(user_id, 'hilo', s['bet'], 0, {
+                'history': s['history'], 'final_mult': s['multiplier'], 'bust': True,
+            })
+            wallet = self.repo.ensure_wallet(user_id)
+            return {
+                'won': False, 'bust': True, 'card': new_card,
+                'multiplier': 0.0, 'win': 0.0, 'new_balance': wallet['balance'],
+            }
+
+        # House edge ~5%
+        step_mult = round((1 / prob) * 0.95, 4)
+        s['multiplier'] = round(s['multiplier'] * step_mult, 4)
+        s['current'] = new_card
+
+        return {
+            'won': True, 'bust': False, 'card': new_card,
+            'multiplier': s['multiplier'], 'current': new_card,
+            'step_mult': step_mult,
+        }
+
+    def cashout_hilo(self, user_id: int, session_id: str) -> dict:
+        s = self._hilo_sessions.pop(session_id, None)
+        if not s or s['user_id'] != user_id:
+            raise ValueError('Сесію не знайдено.')
+        win = round(s['bet'] * s['multiplier'], 2)
+        new_balance = self.repo.update_balance(user_id, win)
+        self.repo.add_bet_stats(user_id, s['bet'], win)
+        self.repo.add_xp(user_id, max(1, int(s['bet'] / 20)))
+        self.repo.save_game(user_id, 'hilo', s['bet'], win, {
+            'history': s['history'], 'final_mult': s['multiplier'], 'bust': False,
+        })
+        if win > 0:
+            self.repo.upsert_leaderboard(user_id, win)
+        if win >= 5000:
+            self.repo.unlock_achievement(user_id, 'big_winner')
+        return {
+            'win': win, 'multiplier': s['multiplier'],
+            'new_balance': new_balance,
+        }
+
+    def _draw_hilo_card(self) -> dict:
+        # 2..10 = face value; J=11, Q=12, K=13, A=14
+        rank_idx = secrets.randbelow(13)  # 0..12
+        ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
+        suits = ['♠','♥','♦','♣']
+        suit = suits[secrets.randbelow(4)]
+        return {
+            'rank': ranks[rank_idx],
+            'rank_value': rank_idx + 2,
+            'suit': suit,
+        }
+
     # ── Achievements ──────────────────────────────────────────────────────────
 
     def _check_roulette_achievements(self, user_id: int, number: int, win: float, bet: float) -> None:

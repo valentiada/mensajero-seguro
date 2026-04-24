@@ -515,3 +515,91 @@ def plinko_drop():
         return jsonify({'ok': True, 'data': result})
     except ValueError as exc:
         return api_error(str(exc))
+
+
+# ── Limbo ─────────────────────────────────────────────────────────────────────
+
+@casino_bp.post('/limbo/play')
+@auth_required
+@rate_limit(30, 10, key_func=_casino_rate_key)
+def limbo_play():
+    data = request.get_json(force=True) or {}
+    try:
+        bet = float(data.get('bet', 10))
+        target = float(data.get('target', 2.0))
+    except (TypeError, ValueError):
+        return api_error('Невірні параметри.')
+    try:
+        result = casino_service.play_limbo(g.current_user['id'], bet, target)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+# ── Wheel ─────────────────────────────────────────────────────────────────────
+
+@casino_bp.post('/wheel/spin')
+@auth_required
+@rate_limit(30, 10, key_func=_casino_rate_key)
+def wheel_spin():
+    data = request.get_json(force=True) or {}
+    try:
+        bet = float(data.get('bet', 10))
+        segments = int(data.get('segments', 30))
+    except (TypeError, ValueError):
+        return api_error('Невірні параметри.')
+    risk = (data.get('risk') or 'medium').strip()
+    try:
+        result = casino_service.play_wheel(g.current_user['id'], bet, risk, segments)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+# ── Hilo ──────────────────────────────────────────────────────────────────────
+
+@casino_bp.post('/hilo/start')
+@auth_required
+@rate_limit(20, 10, key_func=_casino_rate_key)
+def hilo_start():
+    data = request.get_json(force=True) or {}
+    try:
+        bet = float(data.get('bet', 10))
+    except (TypeError, ValueError):
+        return api_error('Невірна ставка.')
+    try:
+        result = casino_service.start_hilo(g.current_user['id'], bet)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+@casino_bp.post('/hilo/guess')
+@auth_required
+def hilo_guess():
+    data = request.get_json(force=True) or {}
+    session_id = (data.get('session_id') or '').strip()
+    guess = (data.get('guess') or '').strip()
+    if not session_id:
+        return api_error('session_id обовʼязковий.')
+    if guess not in ('higher', 'lower', 'equal'):
+        return api_error('guess: higher, lower або equal.')
+    try:
+        result = casino_service.guess_hilo(g.current_user['id'], session_id, guess)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+@casino_bp.post('/hilo/cashout')
+@auth_required
+def hilo_cashout():
+    data = request.get_json(force=True) or {}
+    session_id = (data.get('session_id') or '').strip()
+    if not session_id:
+        return api_error('session_id обовʼязковий.')
+    try:
+        result = casino_service.cashout_hilo(g.current_user['id'], session_id)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))

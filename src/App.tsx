@@ -193,7 +193,7 @@ function guessCountryFromLang(lang: LangCode): Country {
 
 type Role = 'soldier' | 'operator' | 'admin';
 type SidebarTab = 'chats' | 'casino' | 'profile' | 'admin';
-type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'blackjack' | 'baccarat' | 'plinko' | 'deposit' | 'leaderboard' | 'history';
+type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'blackjack' | 'baccarat' | 'plinko' | 'limbo' | 'wheel' | 'hilo' | 'deposit' | 'leaderboard' | 'history';
 
 interface User {
   id: number;
@@ -2307,6 +2307,399 @@ function PlinkoView({ wallet, onWalletUpdate, token, notify }: {
   );
 }
 
+// ─── Limbo ─────────────────────────────────────────────────────────────────────
+
+function LimboView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const [bet, setBet] = useState(10);
+  const [target, setTarget] = useState(2.0);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [animMult, setAnimMult] = useState(1.0);
+
+  async function play() {
+    if (bet < 1 || bet > wallet.balance) return;
+    setLoading(true); setResult(null); setAnimMult(1.0);
+    const r = await api<any>('/casino/limbo/play', {
+      method: 'POST', body: JSON.stringify({ bet, target }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    // animate counter
+    const final = r.data.result;
+    const steps = 30;
+    let i = 0;
+    const tm = setInterval(() => {
+      i++;
+      const p = i / steps;
+      setAnimMult(1.0 + (final - 1.0) * Math.pow(p, 2));
+      if (i >= steps) {
+        clearInterval(tm);
+        setAnimMult(final);
+        setResult(r.data);
+        onWalletUpdate({ balance: r.data.new_balance });
+        if (r.data.won) notify(`🚀 ×${final} · +${fmtCoins(r.data.win)}`);
+        else notify(`💥 ×${final}`);
+      }
+    }, 40);
+  }
+
+  const winChance = Math.min(99, (99 / target)).toFixed(2);
+  const payout = (bet * target).toFixed(2);
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
+      <div className="rounded-3xl border p-8 flex flex-col items-center justify-center"
+        style={{
+          background: result ? (result.won ? '#5BBE8A15' : '#E54B5E15') : '#112A1C',
+          borderColor: result ? (result.won ? '#5BBE8A60' : '#E54B5E60') : 'rgba(255,255,255,0.08)',
+          minHeight: 220,
+        }}>
+        <div className="text-[64px] font-black tabular-nums tracking-tight"
+          style={{ color: result ? (result.won ? '#5BBE8A' : '#E54B5E') : '#C678DD' }}>
+          ×{animMult.toFixed(2)}
+        </div>
+        <div className="text-white/50 text-xs mt-2">
+          Ціль: ×{target.toFixed(2)} · Шанс: {winChance}%
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-white/50 text-xs w-16">Ціль ×</span>
+        <input type="number" step="0.01" min={1.01} max={1000} value={target}
+          onChange={e => setTarget(Math.max(1.01, Math.min(1000, +e.target.value || 1.01)))}
+          className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+      </div>
+      <div className="flex gap-2">
+        {[1.5, 2, 5, 10, 100].map(v => (
+          <button key={v} onClick={() => setTarget(v)}
+            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+            style={{ background: target === v ? '#C678DD' : '#163524', color: target === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            ×{v}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-white/50 text-xs w-16">Ставка</span>
+        <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
+          className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+      </div>
+      <div className="flex gap-2">
+        {[10, 50, 100, 500].map(v => (
+          <button key={v} onClick={() => setBet(v)}
+            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+            style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {v}
+          </button>
+        ))}
+      </div>
+
+      <div className="text-center text-white/50 text-xs">
+        Виграш: {payout} USDT
+      </div>
+
+      <button onClick={play} disabled={loading || bet > wallet.balance || bet < 1}
+        className="u24-button py-4 text-base font-black disabled:opacity-40">
+        {loading ? '…' : 'Грати'}
+      </button>
+    </div>
+  );
+}
+
+// ─── Wheel ─────────────────────────────────────────────────────────────────────
+
+function WheelView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const [bet, setBet] = useState(10);
+  const [risk, setRisk] = useState<'low' | 'medium' | 'high'>('medium');
+  const [segments, setSegments] = useState<10 | 20 | 30 | 40 | 50>(30);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [rotation, setRotation] = useState(0);
+
+  async function spin() {
+    if (bet < 1 || bet > wallet.balance) return;
+    setLoading(true); setResult(null);
+    const r = await api<any>('/casino/wheel/spin', {
+      method: 'POST', body: JSON.stringify({ bet, risk, segments }),
+    }, token);
+    if (!r.ok) { setLoading(false); notify(r.error || 'Помилка.'); return; }
+    const segAngle = 360 / segments;
+    const target = 360 * 5 + (segments - r.data.idx) * segAngle;
+    setRotation(target);
+    setTimeout(() => {
+      setLoading(false);
+      setResult(r.data);
+      onWalletUpdate({ balance: r.data.new_balance });
+      if (r.data.win > 0) notify(`🎡 ×${r.data.mult} · +${fmtCoins(r.data.win)}`);
+      else notify('❌ Мимо');
+    }, 3200);
+  }
+
+  // Build display wheel
+  const displayWheel: number[] = result?.wheel ?? new Array(segments).fill(0).map((_, i) =>
+    i === 0 ? (risk === 'high' ? segments : risk === 'medium' ? 3 : 1.5) : (i % 3 === 0 ? 1.2 : 0)
+  );
+
+  const colorOf = (m: number) =>
+    m >= 10 ? '#E54B5E' : m >= 3 ? '#C678DD' : m >= 1.5 ? '#E4A24B' : m > 0 ? '#5BBE8A' : '#2a4a35';
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
+      <div className="relative flex justify-center items-center" style={{ height: 280 }}>
+        <svg viewBox="-110 -110 220 220" style={{
+          width: 260, height: 260,
+          transform: `rotate(${rotation}deg)`,
+          transition: loading ? 'transform 3.2s cubic-bezier(0.2, 0.9, 0.3, 1)' : 'none',
+        }}>
+          {displayWheel.map((m, i) => {
+            const a1 = (i / segments) * Math.PI * 2 - Math.PI / 2;
+            const a2 = ((i + 1) / segments) * Math.PI * 2 - Math.PI / 2;
+            const x1 = 100 * Math.cos(a1), y1 = 100 * Math.sin(a1);
+            const x2 = 100 * Math.cos(a2), y2 = 100 * Math.sin(a2);
+            return (
+              <path key={i}
+                d={`M 0 0 L ${x1} ${y1} A 100 100 0 0 1 ${x2} ${y2} Z`}
+                fill={colorOf(m)} stroke="#0B1A12" strokeWidth="1" />
+            );
+          })}
+          <circle r="20" fill="#112A1C" stroke="#E4A24B" strokeWidth="2" />
+        </svg>
+        {/* Pointer */}
+        <div style={{
+          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+          width: 0, height: 0, borderLeft: '10px solid transparent', borderRight: '10px solid transparent',
+          borderTop: '18px solid #E4A24B',
+        }} />
+      </div>
+
+      {result && (
+        <div className="rounded-2xl border p-3 text-center font-black text-base"
+          style={{
+            borderColor: result.win > 0 ? '#5BBE8A60' : '#E54B5E40',
+            background: result.win > 0 ? '#5BBE8A15' : '#E54B5E10',
+            color: result.win > 0 ? '#5BBE8A' : '#E54B5E',
+          }}>
+          ×{result.mult} {result.win > 0 ? `· +${fmtCoins(result.win)}` : ''}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        {(['low', 'medium', 'high'] as const).map(rv => {
+          const col = rv === 'low' ? '#5BBE8A' : rv === 'medium' ? '#E4A24B' : '#E54B5E';
+          return (
+            <button key={rv} onClick={() => setRisk(rv)} disabled={loading}
+              className="flex-1 py-2 rounded-xl text-xs font-bold transition-all border"
+              style={{ background: risk === rv ? col + '25' : '#112A1C', color: risk === rv ? col : 'rgba(255,255,255,0.6)', borderColor: risk === rv ? col + '80' : 'rgba(255,255,255,0.06)' }}>
+              {rv === 'low' ? 'Низький' : rv === 'medium' ? 'Середній' : 'Високий'}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex gap-2">
+        {([10, 20, 30, 40, 50] as const).map(s => (
+          <button key={s} onClick={() => setSegments(s)} disabled={loading}
+            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+            style={{ background: segments === s ? '#E4A24B' : '#163524', color: segments === s ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {s}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-white/50 text-xs w-12">Ставка</span>
+        <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
+          className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+      </div>
+      <div className="flex gap-2">
+        {[10, 50, 100, 500].map(v => (
+          <button key={v} onClick={() => setBet(v)}
+            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+            style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {v}
+          </button>
+        ))}
+      </div>
+
+      <button onClick={spin} disabled={loading || bet > wallet.balance || bet < 1}
+        className="u24-button py-4 text-base font-black disabled:opacity-40">
+        {loading ? '…' : 'Крутити'}
+      </button>
+    </div>
+  );
+}
+
+// ─── Hi-Lo ─────────────────────────────────────────────────────────────────────
+
+function HiloView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const [bet, setBet] = useState(10);
+  const [loading, setLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [current, setCurrent] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [multiplier, setMultiplier] = useState(1.0);
+  const [bust, setBust] = useState(false);
+
+  async function start() {
+    if (bet < 1 || bet > wallet.balance) return;
+    setLoading(true);
+    const r = await api<any>('/casino/hilo/start', {
+      method: 'POST', body: JSON.stringify({ bet }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    setSessionId(r.data.session_id);
+    setCurrent(r.data.card);
+    setHistory([r.data.card]);
+    setMultiplier(1.0);
+    setBust(false);
+    onWalletUpdate({ balance: r.data.balance });
+  }
+
+  async function guess(g: 'higher' | 'lower' | 'equal') {
+    if (!sessionId) return;
+    setLoading(true);
+    const r = await api<any>('/casino/hilo/guess', {
+      method: 'POST', body: JSON.stringify({ session_id: sessionId, guess: g }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    setCurrent(r.data.card);
+    setHistory(h => [...h, r.data.card]);
+    if (r.data.bust) {
+      setBust(true);
+      setMultiplier(0);
+      setSessionId(null);
+      onWalletUpdate({ balance: r.data.new_balance });
+      notify('💥 Програш');
+    } else {
+      setMultiplier(r.data.multiplier);
+      notify(`✓ ×${r.data.multiplier}`);
+    }
+  }
+
+  async function cashout() {
+    if (!sessionId) return;
+    setLoading(true);
+    const r = await api<any>('/casino/hilo/cashout', {
+      method: 'POST', body: JSON.stringify({ session_id: sessionId }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    onWalletUpdate({ balance: r.data.new_balance });
+    notify(`💰 +${fmtCoins(r.data.win)}`);
+    setSessionId(null);
+    setCurrent(null);
+    setHistory([]);
+    setMultiplier(1.0);
+  }
+
+  const inGame = !!sessionId;
+  const curV = current?.rank_value ?? 8;
+  const probH = ((14 - curV) / 13 * 100).toFixed(0);
+  const probL = ((curV - 1) / 13 * 100).toFixed(0);
+
+  function CardVis({ card, big }: { card: any; big?: boolean }) {
+    if (!card) return null;
+    const red = card.suit === '♥' || card.suit === '♦';
+    return (
+      <div className="rounded-2xl flex flex-col items-center justify-center font-black"
+        style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)',
+          color: red ? '#E54B5E' : '#1a1a1a',
+          width: big ? 120 : 56, height: big ? 170 : 80,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          fontSize: big ? 40 : 20,
+        }}>
+        <div>{card.rank}</div>
+        <div style={{ fontSize: big ? 48 : 24 }}>{card.suit}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
+      <div className="rounded-3xl border p-6 flex flex-col items-center gap-3"
+        style={{
+          background: bust ? '#E54B5E15' : '#112A1C',
+          borderColor: bust ? '#E54B5E60' : 'rgba(255,255,255,0.08)',
+        }}>
+        <div className="text-white/50 text-xs">Множник</div>
+        <div className="text-3xl font-black tabular-nums"
+          style={{ color: bust ? '#E54B5E' : multiplier > 1 ? '#5BBE8A' : '#E4A24B' }}>
+          ×{multiplier.toFixed(2)}
+        </div>
+        <CardVis card={current} big />
+      </div>
+
+      {history.length > 1 && (
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          {history.slice(0, -1).map((c, i) => <CardVis key={i} card={c} />)}
+        </div>
+      )}
+
+      {inGame ? (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={() => guess('higher')} disabled={loading}
+              className="py-3 rounded-xl text-sm font-black transition-all"
+              style={{ background: '#5BBE8A', color: '#0a1a12' }}>
+              ▲ Вище ({probH}%)
+            </button>
+            <button onClick={() => guess('equal')} disabled={loading}
+              className="py-3 rounded-xl text-sm font-black transition-all"
+              style={{ background: '#C678DD', color: '#1a1006' }}>
+              = (7%)
+            </button>
+            <button onClick={() => guess('lower')} disabled={loading}
+              className="py-3 rounded-xl text-sm font-black transition-all"
+              style={{ background: '#E54B5E', color: '#1a1006' }}>
+              ▼ Нижче ({probL}%)
+            </button>
+          </div>
+          <button onClick={cashout} disabled={loading || multiplier <= 1}
+            className="u24-button py-4 text-base font-black disabled:opacity-40">
+            💰 Забрати {(bet * multiplier).toFixed(2)}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="text-white/50 text-xs w-12">Ставка</span>
+            <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
+              className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+              style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+          </div>
+          <div className="flex gap-2">
+            {[10, 50, 100, 500].map(v => (
+              <button key={v} onClick={() => setBet(v)}
+                className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+                style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <button onClick={start} disabled={loading || bet > wallet.balance || bet < 1}
+            className="u24-button py-4 text-base font-black disabled:opacity-40">
+            {loading ? '…' : 'Роздати карту'}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Crypto Deposit ────────────────────────────────────────────────────────────
 
 interface CryptoDeposit {
@@ -2769,6 +3162,9 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
     { key: 'dice',      label: 'Dice',         tag: 'Classic', hint: '×49',   accent: '#6DB5D4', emoji: '🎲' },
     { key: 'slots',     label: 'Slots',        tag: 'Jackpot', hint: '×50',   accent: '#5BBE8A', emoji: '🎰' },
     { key: 'chicken',   label: 'Chicken Road', tag: 'Arcade',  hint: '×30',   accent: '#E4A24B', emoji: '🐔' },
+    { key: 'limbo',     label: 'Limbo',        tag: 'Instant', hint: '×1000', accent: '#C678DD', emoji: '🚀' },
+    { key: 'wheel',     label: 'Wheel',        tag: 'Arcade',  hint: '×49',   accent: '#E54B5E', emoji: '🎡' },
+    { key: 'hilo',      label: 'Hi-Lo',        tag: 'Classic', hint: 'Cards', accent: '#5BBE8A', emoji: '🎴' },
   ];
 
   const CATS = ['Всі', 'Table', 'Arcade', 'Instant', 'Classic', 'Jackpot'] as const;
@@ -4598,6 +4994,24 @@ export default function App() {
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🔮" title="Plinko" sub="8 / 12 / 16 рядків · До ×999" />
             <PlinkoView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'limbo' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🚀" title="Limbo" sub="Цільовий множник · Provably Fair" />
+            <LimboView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'wheel' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🎡" title="Wheel" sub="Колесо фортуни · 3 рівні ризику" />
+            <WheelView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'hilo' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🎴" title="Hi-Lo" sub="Вище чи нижче · Множник ×∞" />
+            <HiloView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'deposit' && (

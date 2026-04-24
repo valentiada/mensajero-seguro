@@ -951,6 +951,186 @@ class CasinoService:
             'suit': suit,
         }
 
+    # ── Tower (Stake-style) ──────────────────────────────────────────────────
+    # Sessions: {session_id: {user, bet, difficulty, level, pattern, multiplier}}
+    _tower_sessions: dict = {}
+
+    _TOWER_CFG = {
+        'easy':   {'cols': 4, 'safe': 3, 'levels': 9},   # 3 of 4 safe, 9 levels
+        'medium': {'cols': 3, 'safe': 2, 'levels': 9},   # 2 of 3 safe
+        'hard':   {'cols': 2, 'safe': 1, 'levels': 9},   # 1 of 2 safe
+        'expert': {'cols': 3, 'safe': 1, 'levels': 9},   # 1 of 3 safe
+    }
+
+    def _tower_multiplier(self, difficulty: str, level: int) -> float:
+        cfg = self._TOWER_CFG[difficulty]
+        prob = cfg['safe'] / cfg['cols']
+        # With 3% house edge compounded
+        return round((1 / prob) ** level * 0.97, 4)
+
+    def start_tower(self, user_id: int, bet: float, difficulty: str) -> dict:
+        if difficulty not in self._TOWER_CFG:
+            raise ValueError('Складність: easy, medium, hard, expert.')
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+        new_balance = self.repo.update_balance(user_id, -bet)
+
+        cfg = self._TOWER_CFG[difficulty]
+        pattern = []  # pattern[level] = list of safe column indices
+        for _ in range(cfg['levels']):
+            cols = list(range(cfg['cols']))
+            random.Random(secrets.token_bytes(16)).shuffle(cols)
+            pattern.append(cols[:cfg['safe']])
+
+        session_id = secrets.token_urlsafe(16)
+        self._tower_sessions[session_id] = {
+            'user_id': user_id, 'bet': bet, 'difficulty': difficulty,
+            'level': 0, 'pattern': pattern, 'revealed': [],
+        }
+        return {
+            'session_id': session_id,
+            'bet': bet,
+            'difficulty': difficulty,
+            'cols': cfg['cols'],
+            'levels': cfg['levels'],
+            'current_level': 0,
+            'multiplier': 1.0,
+            'next_multiplier': self._tower_multiplier(difficulty, 1),
+            'new_balance': new_balance,
+        }
+
+    def pick_tower(self, user_id: int, session_id: str, col: int) -> dict:
+        s = self._tower_sessions.get(session_id)
+        if not s or s['user_id'] != user_id:
+            raise ValueError('Сесію не знайдено.')
+        cfg = self._TOWER_CFG[s['difficulty']]
+        if col < 0 or col >= cfg['cols']:
+            raise ValueError('Невірна колонка.')
+        level = s['level']
+        safe = s['pattern'][level]
+        won = col in safe
+
+        if not won:
+            self._tower_sessions.pop(session_id, None)
+            self.repo.add_bet_stats(user_id, s['bet'], 0)
+            self.repo.save_game(user_id, 'tower', s['bet'], 0, {
+                'difficulty': s['difficulty'], 'level': level, 'bust': True,
+            })
+            return {
+                'bust': True, 'col': col, 'safe_cols': safe,
+                'pattern': s['pattern'], 'multiplier': 0.0,
+                'win': 0.0,
+            }
+
+        s['revealed'].append({'level': level, 'col': col})
+        s['level'] += 1
+        cur_mult = self._tower_multiplier(s['difficulty'], s['level'])
+        next_mult = self._tower_multiplier(s['difficulty'], s['level'] + 1) if s['level'] < cfg['levels'] else None
+
+        # Auto-cashout on reaching top
+        if s['level'] >= cfg['levels']:
+            win = round(s['bet'] * cur_mult, 2)
+            new_balance = self.repo.update_balance(user_id, win)
+            self.repo.add_bet_stats(user_id, s['bet'], win)
+            self.repo.add_xp(user_id, max(1, int(s['bet'] / 10)))
+            self.repo.save_game(user_id, 'tower', s['bet'], win, {
+                'difficulty': s['difficulty'], 'level': s['level'], 'top': True,
+            })
+            if win > 0:
+                self.repo.upsert_leaderboard(user_id, win)
+            if win >= 5000:
+                self.repo.unlock_achievement(user_id, 'big_winner')
+            self._tower_sessions.pop(session_id, None)
+            return {
+                'bust': False, 'col': col, 'safe_cols': safe,
+                'top': True, 'multiplier': cur_mult, 'win': win,
+                'new_balance': new_balance,
+            }
+
+        return {
+            'bust': False, 'col': col, 'safe_cols': safe,
+            'level': s['level'], 'multiplier': cur_mult,
+            'next_multiplier': next_mult,
+        }
+
+    def cashout_tower(self, user_id: int, session_id: str) -> dict:
+        s = self._tower_sessions.pop(session_id, None)
+        if not s or s['user_id'] != user_id:
+            raise ValueError('Сесію не знайдено.')
+        if s['level'] == 0:
+            raise ValueError('Потрібно пройти хоча б один рівень.')
+        mult = self._tower_multiplier(s['difficulty'], s['level'])
+        win = round(s['bet'] * mult, 2)
+        new_balance = self.repo.update_balance(user_id, win)
+        self.repo.add_bet_stats(user_id, s['bet'], win)
+        self.repo.add_xp(user_id, max(1, int(s['bet'] / 20)))
+        self.repo.save_game(user_id, 'tower', s['bet'], win, {
+            'difficulty': s['difficulty'], 'level': s['level'], 'cashout': True,
+        })
+        if win > 0:
+            self.repo.upsert_leaderboard(user_id, win)
+        if win >= 5000:
+            self.repo.unlock_achievement(user_id, 'big_winner')
+        return {
+            'win': win, 'multiplier': mult, 'new_balance': new_balance,
+            'pattern': s['pattern'],
+        }
+
+    # ── Keno ─────────────────────────────────────────────────────────────────
+    # Classic Keno: pick 1-10 from 40, 10 drawn, payouts by matches
+    _KENO_PAYOUTS = {
+        # picks: [mult for 0 matches, 1, 2, ... picks matches]
+        1: [0.00, 3.96],
+        2: [0.00, 1.90, 4.50],
+        3: [0.00, 1.00, 3.10, 10.40],
+        4: [0.00, 0.80, 1.80, 5.00, 22.50],
+        5: [0.00, 0.25, 1.40, 4.10, 16.50, 36.00],
+        6: [0.00, 0.00, 1.00, 3.00, 8.00, 16.00, 40.00],
+        7: [0.00, 0.00, 1.00, 1.55, 3.00, 15.00, 40.00, 90.00],
+        8: [0.00, 0.00, 0.00, 2.00, 4.00, 11.00, 28.00, 90.00, 185.00],
+        9: [0.00, 0.00, 0.00, 2.00, 2.50, 5.00, 15.00, 40.00, 90.00, 400.00],
+        10:[0.00, 0.00, 0.00, 1.60, 2.00, 4.00, 7.00, 17.00, 50.00, 200.00, 800.00],
+    }
+    _KENO_POOL = 40
+    _KENO_DRAW = 10
+
+    def play_keno(self, user_id: int, bet: float, picks: list[int]) -> dict:
+        if not picks or len(picks) < 1 or len(picks) > 10:
+            raise ValueError('Потрібно обрати 1–10 чисел.')
+        if len(set(picks)) != len(picks):
+            raise ValueError('Числа не можуть повторюватись.')
+        if any(p < 1 or p > self._KENO_POOL for p in picks):
+            raise ValueError(f'Числа: 1–{self._KENO_POOL}.')
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+
+        pool = list(range(1, self._KENO_POOL + 1))
+        random.Random(secrets.token_bytes(16)).shuffle(pool)
+        drawn = sorted(pool[:self._KENO_DRAW])
+        drawn_set = set(drawn)
+
+        matches = len([p for p in picks if p in drawn_set])
+        mult = self._KENO_PAYOUTS[len(picks)][matches]
+        win = round(bet * mult, 2)
+
+        net = win - bet
+        new_balance = self.repo.update_balance(user_id, net)
+        self.repo.add_bet_stats(user_id, bet, win)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+        self.repo.save_game(user_id, 'keno', bet, win, {
+            'picks': picks, 'drawn': drawn, 'matches': matches, 'mult': mult,
+        })
+        if win > 0:
+            self.repo.upsert_leaderboard(user_id, win)
+        if win >= 5000:
+            self.repo.unlock_achievement(user_id, 'big_winner')
+
+        return {
+            'picks': picks, 'drawn': drawn, 'matches': matches,
+            'mult': mult, 'win': win, 'bet': bet, 'net': net,
+            'new_balance': new_balance,
+        }
+
     # ── Achievements ──────────────────────────────────────────────────────────
 
     def _check_roulette_achievements(self, user_id: int, number: int, win: float, bet: float) -> None:

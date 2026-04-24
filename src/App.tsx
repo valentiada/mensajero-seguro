@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
+import confetti from 'canvas-confetti';
+
+function celebrate(intensity: 'small' | 'big' | 'huge' = 'big') {
+  const count = intensity === 'huge' ? 300 : intensity === 'big' ? 150 : 60;
+  const defaults = { origin: { y: 0.7 }, colors: ['#E4A24B', '#5BBE8A', '#E54B5E', '#C678DD', '#6DB5D4'] };
+  confetti({ ...defaults, particleCount: count * 0.6, spread: 60, startVelocity: 55, scalar: 1.1 });
+  confetti({ ...defaults, particleCount: count * 0.4, spread: 120, startVelocity: 35, scalar: 0.8, decay: 0.9 });
+  if (intensity === 'huge') {
+    setTimeout(() => confetti({ ...defaults, particleCount: 120, spread: 100, startVelocity: 45 }), 250);
+    setTimeout(() => confetti({ ...defaults, particleCount: 120, spread: 100, startVelocity: 45 }), 500);
+  }
+}
 import {
   Send, Phone, Video, Search, Plus, Lock, Shield, Users,
   LogOut, Settings, Paperclip, Smile, Check, CheckCheck,
@@ -193,7 +205,7 @@ function guessCountryFromLang(lang: LangCode): Country {
 
 type Role = 'soldier' | 'operator' | 'admin';
 type SidebarTab = 'chats' | 'casino' | 'profile' | 'admin';
-type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'blackjack' | 'baccarat' | 'plinko' | 'limbo' | 'wheel' | 'hilo' | 'deposit' | 'leaderboard' | 'history';
+type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'blackjack' | 'baccarat' | 'plinko' | 'limbo' | 'wheel' | 'hilo' | 'tower' | 'keno' | 'deposit' | 'leaderboard' | 'history';
 
 interface User {
   id: number;
@@ -2319,50 +2331,100 @@ function LimboView({ wallet, onWalletUpdate, token, notify }: {
   const [result, setResult] = useState<any>(null);
   const [animMult, setAnimMult] = useState(1.0);
 
+  const [launching, setLaunching] = useState(false);
+
   async function play() {
     if (bet < 1 || bet > wallet.balance) return;
-    setLoading(true); setResult(null); setAnimMult(1.0);
+    setLoading(true); setResult(null); setAnimMult(1.0); setLaunching(true);
     const r = await api<any>('/casino/limbo/play', {
       method: 'POST', body: JSON.stringify({ bet, target }),
     }, token);
-    setLoading(false);
-    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
-    // animate counter
+    if (!r.ok) { setLoading(false); setLaunching(false); notify(r.error || 'Помилка.'); return; }
     const final = r.data.result;
-    const steps = 30;
-    let i = 0;
-    const tm = setInterval(() => {
-      i++;
-      const p = i / steps;
-      setAnimMult(1.0 + (final - 1.0) * Math.pow(p, 2));
-      if (i >= steps) {
-        clearInterval(tm);
+    const duration = 1400;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / duration);
+      // ease-out cubic for exciting climb
+      const eased = 1 - Math.pow(1 - p, 3);
+      setAnimMult(1.0 + (final - 1.0) * eased);
+      if (p < 1) {
+        requestAnimationFrame(tick);
+      } else {
         setAnimMult(final);
         setResult(r.data);
+        setLoading(false);
+        setLaunching(false);
         onWalletUpdate({ balance: r.data.new_balance });
-        if (r.data.won) notify(`🚀 ×${final} · +${fmtCoins(r.data.win)}`);
-        else notify(`💥 ×${final}`);
+        if (r.data.won) {
+          notify(`🚀 ×${final} · +${fmtCoins(r.data.win)}`);
+          celebrate(final >= 10 ? 'huge' : final >= 3 ? 'big' : 'small');
+        } else {
+          notify(`💥 ×${final}`);
+        }
       }
-    }, 40);
+    };
+    requestAnimationFrame(tick);
   }
 
   const winChance = Math.min(99, (99 / target)).toFixed(2);
   const payout = (bet * target).toFixed(2);
+  // Rocket height scaled logarithmically so large mults still visible
+  const heightPct = Math.min(85, Math.log(animMult) / Math.log(100) * 85);
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
-      <div className="rounded-3xl border p-8 flex flex-col items-center justify-center"
+      <div className="rounded-3xl border p-4 flex flex-col items-center justify-center relative overflow-hidden"
         style={{
-          background: result ? (result.won ? '#5BBE8A15' : '#E54B5E15') : '#112A1C',
-          borderColor: result ? (result.won ? '#5BBE8A60' : '#E54B5E60') : 'rgba(255,255,255,0.08)',
-          minHeight: 220,
+          background: result
+            ? (result.won ? 'linear-gradient(180deg, #0d3324 0%, #0B1A12 100%)' : 'linear-gradient(180deg, #33151a 0%, #0B1A12 100%)')
+            : 'linear-gradient(180deg, #1a0d2e 0%, #0B1A12 60%)',
+          borderColor: result ? (result.won ? '#5BBE8A60' : '#E54B5E60') : '#C678DD40',
+          minHeight: 280,
         }}>
-        <div className="text-[64px] font-black tabular-nums tracking-tight"
-          style={{ color: result ? (result.won ? '#5BBE8A' : '#E54B5E') : '#C678DD' }}>
-          ×{animMult.toFixed(2)}
+        {/* Starfield */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.4 }}>
+          {Array.from({ length: 40 }, (_, i) => {
+            const x = (i * 137.5) % 100;
+            const y = (i * 89.3) % 100;
+            const s = (i % 3) + 1;
+            return <div key={i} style={{
+              position: 'absolute', left: `${x}%`, top: `${y}%`,
+              width: s, height: s, borderRadius: '50%', background: '#fff',
+              boxShadow: '0 0 4px #fff', opacity: 0.3 + (i % 5) * 0.15,
+            }} />;
+          })}
         </div>
-        <div className="text-white/50 text-xs mt-2">
-          Ціль: ×{target.toFixed(2)} · Шанс: {winChance}%
+        {/* Rising rocket */}
+        <div style={{
+          position: 'absolute', left: '50%', bottom: `${10 + heightPct}%`,
+          transform: 'translateX(-50%)', fontSize: 42,
+          filter: launching ? 'drop-shadow(0 0 12px #E4A24B)' : 'none',
+          transition: 'filter 0.2s ease',
+        }}>
+          🚀
+        </div>
+        {launching && (
+          <div style={{
+            position: 'absolute', left: '50%', bottom: `${Math.max(2, 6 + heightPct - 8)}%`,
+            transform: 'translateX(-50%)',
+            width: 6, height: 40, borderRadius: '50%',
+            background: 'radial-gradient(ellipse at top, #E4A24B 0%, #E54B5E 50%, transparent 100%)',
+            opacity: 0.8,
+          }} />
+        )}
+        {/* Counter */}
+        <div className="relative z-10 text-center">
+          <div className="text-[56px] font-black tabular-nums tracking-tight leading-none"
+            style={{
+              color: result ? (result.won ? '#5BBE8A' : '#E54B5E') : '#fff',
+              textShadow: launching ? '0 0 24px rgba(228,162,75,0.6)' : '0 2px 8px rgba(0,0,0,0.4)',
+            }}>
+            ×{animMult.toFixed(2)}
+          </div>
+          <div className="text-white/60 text-xs mt-1 font-semibold">
+            Ціль: ×{target.toFixed(2)} · Шанс {winChance}%
+          </div>
         </div>
       </div>
 
@@ -2432,51 +2494,118 @@ function WheelView({ wallet, onWalletUpdate, token, notify }: {
     }, token);
     if (!r.ok) { setLoading(false); notify(r.error || 'Помилка.'); return; }
     const segAngle = 360 / segments;
-    const target = 360 * 5 + (segments - r.data.idx) * segAngle;
+    // Stop pointer at top pointing at the winning segment's center
+    const target = 360 * 6 + (360 - (r.data.idx + 0.5) * segAngle);
     setRotation(target);
     setTimeout(() => {
       setLoading(false);
       setResult(r.data);
       onWalletUpdate({ balance: r.data.new_balance });
-      if (r.data.win > 0) notify(`🎡 ×${r.data.mult} · +${fmtCoins(r.data.win)}`);
-      else notify('❌ Мимо');
-    }, 3200);
+      if (r.data.win > 0) {
+        notify(`🎡 ×${r.data.mult} · +${fmtCoins(r.data.win)}`);
+        celebrate(r.data.mult >= 10 ? 'huge' : r.data.mult >= 3 ? 'big' : 'small');
+      } else {
+        notify('❌ Мимо');
+      }
+    }, 4000);
   }
 
-  // Build display wheel
-  const displayWheel: number[] = result?.wheel ?? new Array(segments).fill(0).map((_, i) =>
-    i === 0 ? (risk === 'high' ? segments : risk === 'medium' ? 3 : 1.5) : (i % 3 === 0 ? 1.2 : 0)
-  );
+  // Build display wheel (matches backend distribution approx)
+  const displayWheel: number[] = useMemo(() => {
+    if (result?.wheel) return result.wheel;
+    const n = segments;
+    let arr: number[];
+    if (risk === 'low') {
+      const ones = Math.floor(n * 0.35);
+      arr = [1.5, 1.5, ...Array(ones).fill(1.2), ...Array(n - 2 - ones).fill(0)];
+    } else if (risk === 'medium') {
+      const mids = Math.floor(n * 0.25), lows = Math.floor(n * 0.15);
+      arr = [3.0, ...Array(mids).fill(1.5), ...Array(lows).fill(1.2), ...Array(n - 1 - mids - lows).fill(0)];
+    } else {
+      const big = n <= 10 ? 9.9 : n <= 20 ? 19.8 : n <= 30 ? 29.7 : n <= 40 ? 39.6 : 49.5;
+      arr = [big, ...Array(n - 1).fill(0)];
+    }
+    // Distribute to avoid clumping
+    const shuffled: number[] = [];
+    const winners = arr.filter(m => m > 0);
+    const zeros = arr.filter(m => m === 0);
+    const step = zeros.length ? Math.ceil(zeros.length / winners.length) : 0;
+    let zi = 0;
+    for (const w of winners) {
+      for (let k = 0; k < step && zi < zeros.length; k++) shuffled.push(zeros[zi++]);
+      shuffled.push(w);
+    }
+    while (zi < zeros.length) shuffled.push(zeros[zi++]);
+    return shuffled.slice(0, n);
+  }, [risk, segments, result]);
 
   const colorOf = (m: number) =>
-    m >= 10 ? '#E54B5E' : m >= 3 ? '#C678DD' : m >= 1.5 ? '#E4A24B' : m > 0 ? '#5BBE8A' : '#2a4a35';
+    m >= 10 ? '#E54B5E' : m >= 3 ? '#C678DD' : m >= 1.5 ? '#E4A24B' : m > 0 ? '#5BBE8A' : '#1d3a2a';
+  const gradOf = (m: number) => {
+    const c = colorOf(m);
+    return m > 0 ? `linear-gradient(135deg, ${c}, ${c}cc)` : c;
+  };
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
-      <div className="relative flex justify-center items-center" style={{ height: 280 }}>
+      <div className="relative flex justify-center items-center" style={{ height: 300 }}>
+        {/* Outer ring glow */}
+        <div style={{
+          position: 'absolute', width: 290, height: 290, borderRadius: '50%',
+          background: 'radial-gradient(circle, transparent 58%, #E4A24B30 62%, transparent 68%)',
+          filter: 'blur(2px)',
+        }} />
         <svg viewBox="-110 -110 220 220" style={{
-          width: 260, height: 260,
+          width: 280, height: 280,
           transform: `rotate(${rotation}deg)`,
-          transition: loading ? 'transform 3.2s cubic-bezier(0.2, 0.9, 0.3, 1)' : 'none',
+          transition: loading ? 'transform 4s cubic-bezier(0.15, 0.85, 0.25, 1)' : 'none',
+          filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.5))',
         }}>
+          <defs>
+            {displayWheel.map((m, i) => (
+              <radialGradient key={i} id={`seg-${i}`} cx="50%" cy="50%" r="100%">
+                <stop offset="20%" stopColor={colorOf(m)} stopOpacity={m > 0 ? '1' : '0.6'} />
+                <stop offset="100%" stopColor={colorOf(m)} stopOpacity={m > 0 ? '0.7' : '0.3'} />
+              </radialGradient>
+            ))}
+          </defs>
           {displayWheel.map((m, i) => {
             const a1 = (i / segments) * Math.PI * 2 - Math.PI / 2;
             const a2 = ((i + 1) / segments) * Math.PI * 2 - Math.PI / 2;
             const x1 = 100 * Math.cos(a1), y1 = 100 * Math.sin(a1);
             const x2 = 100 * Math.cos(a2), y2 = 100 * Math.sin(a2);
+            // Label at mid-radius
+            const am = (a1 + a2) / 2;
+            const lx = 72 * Math.cos(am), ly = 72 * Math.sin(am);
+            const labelRot = (am * 180 / Math.PI) + 90;
+            const showLabel = segments <= 20 && m > 0;
             return (
-              <path key={i}
-                d={`M 0 0 L ${x1} ${y1} A 100 100 0 0 1 ${x2} ${y2} Z`}
-                fill={colorOf(m)} stroke="#0B1A12" strokeWidth="1" />
+              <g key={i}>
+                <path
+                  d={`M 0 0 L ${x1} ${y1} A 100 100 0 0 1 ${x2} ${y2} Z`}
+                  fill={`url(#seg-${i})`} stroke="#0B1A12" strokeWidth="0.5" />
+                {showLabel && (
+                  <text x={lx} y={ly} fontSize="8" fontWeight="900"
+                    fill="#fff" textAnchor="middle" dominantBaseline="middle"
+                    transform={`rotate(${labelRot} ${lx} ${ly})`}>
+                    {m}x
+                  </text>
+                )}
+              </g>
             );
           })}
-          <circle r="20" fill="#112A1C" stroke="#E4A24B" strokeWidth="2" />
+          {/* Inner hub */}
+          <circle r="22" fill="#0B1A12" stroke="#E4A24B" strokeWidth="2" />
+          <circle r="8" fill="#E4A24B" />
         </svg>
         {/* Pointer */}
         <div style={{
-          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-          width: 0, height: 0, borderLeft: '10px solid transparent', borderRight: '10px solid transparent',
-          borderTop: '18px solid #E4A24B',
+          position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)',
+          width: 0, height: 0,
+          borderLeft: '12px solid transparent', borderRight: '12px solid transparent',
+          borderTop: '22px solid #E4A24B',
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+          zIndex: 2,
         }} />
       </div>
 
@@ -2598,7 +2727,9 @@ function HiloView({ wallet, onWalletUpdate, token, notify }: {
     setLoading(false);
     if (!r.ok) { notify(r.error || 'Помилка.'); return; }
     onWalletUpdate({ balance: r.data.new_balance });
-    notify(`💰 +${fmtCoins(r.data.win)}`);
+    const m = r.data.multiplier ?? multiplier;
+    notify(`💰 ×${m.toFixed(2)} · +${fmtCoins(r.data.win)}`);
+    celebrate(m >= 10 ? 'huge' : m >= 3 ? 'big' : 'small');
     setSessionId(null);
     setCurrent(null);
     setHistory([]);
@@ -2696,6 +2827,407 @@ function HiloView({ wallet, onWalletUpdate, token, notify }: {
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+// ─── Tower (Stake-style) ──────────────────────────────────────────────────────
+
+function TowerView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  type Diff = 'easy' | 'medium' | 'hard' | 'expert';
+  const DIFF: Record<Diff, { cols: number; label: string; col: string; safe: number }> = {
+    easy:   { cols: 4, label: 'Легко',     col: '#5BBE8A', safe: 3 },
+    medium: { cols: 3, label: 'Середньо',  col: '#E4A24B', safe: 2 },
+    hard:   { cols: 2, label: 'Важко',     col: '#E54B5E', safe: 1 },
+    expert: { cols: 3, label: 'Експерт',   col: '#C678DD', safe: 1 },
+  };
+  const LEVELS = 9;
+
+  const [bet, setBet] = useState(10);
+  const [diff, setDiff] = useState<Diff>('medium');
+  const [loading, setLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [currentLevel, setCurrentLevel] = useState(0);
+  const [multiplier, setMultiplier] = useState(1.0);
+  const [nextMult, setNextMult] = useState<number | null>(1.5);
+  const [revealed, setRevealed] = useState<{ level: number; col: number; safe: boolean }[]>([]);
+  const [bustInfo, setBustInfo] = useState<{ col: number; safeCols: number[]; level: number; pattern: number[][] } | null>(null);
+
+  const cfg = DIFF[diff];
+
+  async function start() {
+    if (bet < 1 || bet > wallet.balance) return;
+    setLoading(true); setBustInfo(null); setRevealed([]);
+    const r = await api<any>('/casino/tower/start', {
+      method: 'POST', body: JSON.stringify({ bet, difficulty: diff }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    setSessionId(r.data.session_id);
+    setCurrentLevel(0);
+    setMultiplier(1.0);
+    setNextMult(r.data.next_multiplier);
+    onWalletUpdate({ balance: r.data.new_balance });
+  }
+
+  async function pick(col: number) {
+    if (!sessionId || loading) return;
+    setLoading(true);
+    const r = await api<any>('/casino/tower/pick', {
+      method: 'POST', body: JSON.stringify({ session_id: sessionId, col }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+
+    if (r.data.bust) {
+      setBustInfo({ col, safeCols: r.data.safe_cols, level: currentLevel, pattern: r.data.pattern });
+      setRevealed(rr => [...rr, { level: currentLevel, col, safe: false }]);
+      setSessionId(null);
+      setMultiplier(0);
+      notify('💥 Пастка!');
+      return;
+    }
+    setRevealed(rr => [...rr, { level: currentLevel, col, safe: true }]);
+    if (r.data.top) {
+      // Auto-cashout at top
+      setMultiplier(r.data.multiplier);
+      setCurrentLevel(LEVELS);
+      onWalletUpdate({ balance: r.data.new_balance });
+      notify(`🏆 ВЕРШИНА · +${fmtCoins(r.data.win)}`);
+      celebrate('huge');
+      setTimeout(() => setSessionId(null), 800);
+    } else {
+      setCurrentLevel(r.data.level);
+      setMultiplier(r.data.multiplier);
+      setNextMult(r.data.next_multiplier);
+    }
+  }
+
+  async function cashout() {
+    if (!sessionId || currentLevel === 0) return;
+    setLoading(true);
+    const r = await api<any>('/casino/tower/cashout', {
+      method: 'POST', body: JSON.stringify({ session_id: sessionId }),
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error || 'Помилка.'); return; }
+    onWalletUpdate({ balance: r.data.new_balance });
+    notify(`💰 +${fmtCoins(r.data.win)}`);
+    if (r.data.win > bet * 3) celebrate('big');
+    setSessionId(null);
+  }
+
+  const inGame = !!sessionId;
+  // Render levels from top (LEVELS-1) down to 0
+  const rows = Array.from({ length: LEVELS }, (_, i) => LEVELS - 1 - i);
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
+      <div className="flex items-center justify-between rounded-2xl border p-3"
+        style={{ background: '#112A1C', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div>
+          <div className="text-white/50 text-[10px] uppercase tracking-wider">Множник</div>
+          <div className="text-2xl font-black tabular-nums"
+            style={{ color: multiplier > 1 ? '#5BBE8A' : '#E4A24B' }}>
+            ×{multiplier.toFixed(4)}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-white/50 text-[10px] uppercase tracking-wider">Далі</div>
+          <div className="text-lg font-black tabular-nums" style={{ color: '#C678DD' }}>
+            {nextMult ? `×${nextMult.toFixed(4)}` : '—'}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border p-3 flex flex-col gap-1.5"
+        style={{ background: '#0d2218', borderColor: 'rgba(255,255,255,0.06)' }}>
+        {rows.map((lvl) => {
+          const isCurrent = inGame && lvl === currentLevel;
+          const isPast = lvl < currentLevel;
+          const isFuture = lvl > currentLevel;
+          const rev = revealed.find(r => r.level === lvl);
+          const bustAtLvl = bustInfo && bustInfo.level === lvl;
+          const levelMult = Math.pow(cfg.cols / cfg.safe, lvl + 1) * 0.97;
+          return (
+            <div key={lvl} className="flex items-center gap-2">
+              <div className="text-white/30 text-[10px] font-bold w-8 text-right tabular-nums">
+                {(levelMult).toFixed(2)}×
+              </div>
+              <div className="flex-1 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cfg.cols}, 1fr)` }}>
+                {Array.from({ length: cfg.cols }, (_, c) => {
+                  const clicked = rev && rev.col === c;
+                  const bustedHere = bustAtLvl && bustInfo!.col === c;
+                  const revealedSafe = (bustInfo && bustInfo.pattern[lvl]?.includes(c)) || (rev && rev.safe && rev.col === c);
+                  const revealedBust = bustInfo && !bustInfo.pattern[lvl]?.includes(c);
+                  let bg = '#163524';
+                  let content: string | React.ReactElement = '';
+                  if (isPast && clicked) { bg = '#5BBE8A'; content = '✓'; }
+                  else if (bustedHere) { bg = '#E54B5E'; content = '💣'; }
+                  else if (bustInfo && revealedSafe) { bg = '#2a4a35'; content = '○'; }
+                  else if (bustInfo && revealedBust) { bg = '#3a1a1f'; content = '·'; }
+                  else if (isCurrent) { bg = cfg.col + '25'; }
+
+                  return (
+                    <button key={c}
+                      onClick={isCurrent && !loading ? () => pick(c) : undefined}
+                      disabled={!isCurrent || loading}
+                      className="h-10 rounded-lg flex items-center justify-center text-sm font-black transition-all"
+                      style={{
+                        background: bg,
+                        color: isPast && clicked ? '#0a1a12' : bustedHere ? '#fff' : 'rgba(255,255,255,0.4)',
+                        border: isCurrent ? `2px solid ${cfg.col}` : '1px solid rgba(255,255,255,0.05)',
+                        boxShadow: isCurrent ? `0 0 20px ${cfg.col}60` : 'none',
+                        cursor: isCurrent && !loading ? 'pointer' : 'default',
+                        opacity: isFuture && !bustInfo ? 0.5 : 1,
+                      }}>
+                      {content}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {inGame ? (
+        <button onClick={cashout} disabled={loading || currentLevel === 0}
+          className="u24-button py-4 text-base font-black disabled:opacity-40">
+          💰 Забрати {(bet * multiplier).toFixed(2)}
+        </button>
+      ) : (
+        <>
+          <div className="flex gap-2">
+            {(Object.keys(DIFF) as Diff[]).map(d => (
+              <button key={d} onClick={() => setDiff(d)}
+                className="flex-1 py-2 rounded-xl text-xs font-bold transition-all border"
+                style={{
+                  background: diff === d ? DIFF[d].col + '25' : '#112A1C',
+                  color: diff === d ? DIFF[d].col : 'rgba(255,255,255,0.6)',
+                  borderColor: diff === d ? DIFF[d].col + '80' : 'rgba(255,255,255,0.06)',
+                }}>
+                {DIFF[d].label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-white/50 text-xs w-12">Ставка</span>
+            <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
+              className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+              style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+          </div>
+          <div className="flex gap-2">
+            {[10, 50, 100, 500].map(v => (
+              <button key={v} onClick={() => setBet(v)}
+                className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+                style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <button onClick={start} disabled={loading || bet > wallet.balance || bet < 1}
+            className="u24-button py-4 text-base font-black disabled:opacity-40">
+            {loading ? '…' : 'Почати підйом'}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Keno ─────────────────────────────────────────────────────────────────────
+
+function KenoView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const POOL = 40;
+  const [bet, setBet] = useState(10);
+  const [picks, setPicks] = useState<number[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [drawn, setDrawn] = useState<number[]>([]);
+  const [drawnStaged, setDrawnStaged] = useState<number[]>([]);  // animates reveal
+  const [result, setResult] = useState<any>(null);
+
+  // Payout table (must mirror backend)
+  const PAYOUTS: Record<number, number[]> = {
+    1:  [0.00, 3.96],
+    2:  [0.00, 1.90, 4.50],
+    3:  [0.00, 1.00, 3.10, 10.40],
+    4:  [0.00, 0.80, 1.80, 5.00, 22.50],
+    5:  [0.00, 0.25, 1.40, 4.10, 16.50, 36.00],
+    6:  [0.00, 0.00, 1.00, 3.00, 8.00, 16.00, 40.00],
+    7:  [0.00, 0.00, 1.00, 1.55, 3.00, 15.00, 40.00, 90.00],
+    8:  [0.00, 0.00, 0.00, 2.00, 4.00, 11.00, 28.00, 90.00, 185.00],
+    9:  [0.00, 0.00, 0.00, 2.00, 2.50, 5.00, 15.00, 40.00, 90.00, 400.00],
+    10: [0.00, 0.00, 0.00, 1.60, 2.00, 4.00, 7.00, 17.00, 50.00, 200.00, 800.00],
+  };
+
+  function togglePick(n: number) {
+    if (drawnStaged.length > 0 || loading) return;
+    setResult(null); setDrawn([]);
+    setPicks(prev => {
+      if (prev.includes(n)) return prev.filter(p => p !== n);
+      if (prev.length >= 10) return prev;
+      return [...prev, n].sort((a, b) => a - b);
+    });
+  }
+
+  function autoPick(count: number) {
+    if (drawnStaged.length > 0 || loading) return;
+    const pool = Array.from({ length: POOL }, (_, i) => i + 1);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    setPicks(pool.slice(0, count).sort((a, b) => a - b));
+    setResult(null); setDrawn([]);
+  }
+
+  async function play() {
+    if (!picks.length || bet < 1 || bet > wallet.balance) return;
+    setLoading(true); setResult(null); setDrawn([]); setDrawnStaged([]);
+    const r = await api<any>('/casino/keno/play', {
+      method: 'POST', body: JSON.stringify({ bet, picks }),
+    }, token);
+    if (!r.ok) { setLoading(false); notify(r.error || 'Помилка.'); return; }
+    // Animate draw
+    const balls = r.data.drawn as number[];
+    for (let i = 0; i < balls.length; i++) {
+      await new Promise(res => setTimeout(res, 180));
+      setDrawnStaged(s => [...s, balls[i]]);
+    }
+    await new Promise(res => setTimeout(res, 300));
+    setDrawn(balls);
+    setDrawnStaged([]);
+    setResult(r.data);
+    setLoading(false);
+    onWalletUpdate({ balance: r.data.new_balance });
+    if (r.data.win > 0) {
+      notify(`🎯 ${r.data.matches}/${picks.length} · +${fmtCoins(r.data.win)}`);
+      if (r.data.win > bet * 5) celebrate(r.data.win > bet * 50 ? 'huge' : 'big');
+    } else {
+      notify(`❌ ${r.data.matches}/${picks.length}`);
+    }
+  }
+
+  function reset() {
+    setDrawn([]); setDrawnStaged([]); setResult(null);
+  }
+
+  const payoutsFor = picks.length ? PAYOUTS[picks.length] : null;
+  const activeDrawn = drawnStaged.length ? drawnStaged : drawn;
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
+      {/* Grid 5x8 = 40 */}
+      <div className="grid grid-cols-8 gap-1.5">
+        {Array.from({ length: POOL }, (_, i) => i + 1).map(n => {
+          const picked = picks.includes(n);
+          const isDrawn = activeDrawn.includes(n);
+          const hit = picked && isDrawn;
+          const missedDraw = !picked && isDrawn;
+          let bg = '#163524', color = 'rgba(255,255,255,0.7)';
+          if (hit) { bg = 'linear-gradient(135deg, #5BBE8A 0%, #3a8f65 100%)'; color = '#0a1a12'; }
+          else if (picked) { bg = 'linear-gradient(135deg, #E4A24B 0%, #b87d2e 100%)'; color = '#1a1006'; }
+          else if (missedDraw) { bg = 'linear-gradient(135deg, #6DB5D4 0%, #4a8aa8 100%)'; color = '#0a1624'; }
+          return (
+            <button key={n} onClick={() => togglePick(n)}
+              disabled={drawnStaged.length > 0 || loading}
+              className="aspect-square rounded-lg font-black text-sm transition-all"
+              style={{
+                background: bg, color,
+                border: picked ? '2px solid #E4A24B' : '1px solid rgba(255,255,255,0.05)',
+                boxShadow: hit ? '0 0 16px #5BBE8A80' : missedDraw ? '0 0 12px #6DB5D460' : 'none',
+                transform: (drawnStaged.includes(n) && drawnStaged[drawnStaged.length - 1] === n) ? 'scale(1.15)' : 'scale(1)',
+              }}>
+              {n}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl border p-3"
+        style={{ background: '#112A1C', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div>
+          <div className="text-white/50 text-[10px] uppercase">Вибрано</div>
+          <div className="text-lg font-black text-white">{picks.length}/10</div>
+        </div>
+        {result && (
+          <div className="text-center">
+            <div className="text-white/50 text-[10px] uppercase">Співпало</div>
+            <div className="text-lg font-black" style={{ color: result.win > 0 ? '#5BBE8A' : '#E54B5E' }}>
+              {result.matches} · ×{result.mult}
+            </div>
+          </div>
+        )}
+        <div className="text-right">
+          <div className="text-white/50 text-[10px] uppercase">Макс</div>
+          <div className="text-lg font-black" style={{ color: '#E4A24B' }}>
+            {payoutsFor ? `×${payoutsFor[payoutsFor.length - 1]}` : '—'}
+          </div>
+        </div>
+      </div>
+
+      {/* Payout table preview */}
+      {payoutsFor && (
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${payoutsFor.length}, 1fr)` }}>
+          {payoutsFor.map((m, i) => (
+            <div key={i} className="rounded-lg px-1 py-1.5 text-center"
+              style={{
+                background: result && result.matches === i ? '#5BBE8A20' : '#112A1C',
+                border: result && result.matches === i ? '1px solid #5BBE8A80' : '1px solid rgba(255,255,255,0.05)',
+              }}>
+              <div className="text-white/40 text-[9px]">{i}</div>
+              <div className="text-[10px] font-black" style={{ color: m > 1 ? '#E4A24B' : m > 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+                {m > 0 ? `×${m}` : '—'}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        {[3, 5, 8, 10].map(n => (
+          <button key={n} onClick={() => autoPick(n)}
+            disabled={drawnStaged.length > 0 || loading}
+            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+            style={{ background: '#163524', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            Авто {n}
+          </button>
+        ))}
+        <button onClick={() => { setPicks([]); reset(); }}
+          disabled={drawnStaged.length > 0 || loading}
+          className="flex-1 py-2 rounded-xl text-xs font-bold"
+          style={{ background: '#3a1a1f', color: '#E54B5E', border: '1px solid #E54B5E30' }}>
+          Очистити
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-white/50 text-xs w-12">Ставка</span>
+        <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
+          className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+      </div>
+      <div className="flex gap-2">
+        {[10, 50, 100, 500].map(v => (
+          <button key={v} onClick={() => setBet(v)}
+            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+            style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {v}
+          </button>
+        ))}
+      </div>
+
+      <button onClick={play} disabled={loading || picks.length < 1 || bet > wallet.balance || bet < 1}
+        className="u24-button py-4 text-base font-black disabled:opacity-40">
+        {loading ? '…' : drawn.length ? 'Нова гра' : `Грати (${picks.length})`}
+      </button>
     </div>
   );
 }
@@ -3165,6 +3697,8 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
     { key: 'limbo',     label: 'Limbo',        tag: 'Instant', hint: '×1000', accent: '#C678DD', emoji: '🚀' },
     { key: 'wheel',     label: 'Wheel',        tag: 'Arcade',  hint: '×49',   accent: '#E54B5E', emoji: '🎡' },
     { key: 'hilo',      label: 'Hi-Lo',        tag: 'Classic', hint: 'Cards', accent: '#5BBE8A', emoji: '🎴' },
+    { key: 'tower',     label: 'Tower',        tag: 'Arcade',  hint: '×9',    accent: '#E54B5E', emoji: '🗼' },
+    { key: 'keno',      label: 'Keno',         tag: 'Jackpot', hint: '×800',  accent: '#6DB5D4', emoji: '🎯' },
   ];
 
   const CATS = ['Всі', 'Table', 'Arcade', 'Instant', 'Classic', 'Jackpot'] as const;
@@ -5012,6 +5546,18 @@ export default function App() {
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎴" title="Hi-Lo" sub="Вище чи нижче · Множник ×∞" />
             <HiloView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'tower' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🗼" title="Tower" sub="Піднімись на 9 поверхів · 4 рівні складності" />
+            <TowerView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'keno' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🎯" title="Keno" sub="Обери до 10 · 10 з 40 випадкових · До ×800" />
+            <KenoView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'deposit' && (

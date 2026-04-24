@@ -603,3 +603,77 @@ def hilo_cashout():
         return jsonify({'ok': True, 'data': result})
     except ValueError as exc:
         return api_error(str(exc))
+
+
+# ── Tower ─────────────────────────────────────────────────────────────────────
+
+@casino_bp.post('/tower/start')
+@auth_required
+@rate_limit(20, 10, key_func=_casino_rate_key)
+def tower_start():
+    data = request.get_json(force=True) or {}
+    try:
+        bet = float(data.get('bet', 10))
+    except (TypeError, ValueError):
+        return api_error('Невірна ставка.')
+    difficulty = (data.get('difficulty') or 'medium').strip()
+    try:
+        result = casino_service.start_tower(g.current_user['id'], bet, difficulty)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+@casino_bp.post('/tower/pick')
+@auth_required
+def tower_pick():
+    data = request.get_json(force=True) or {}
+    session_id = (data.get('session_id') or '').strip()
+    try:
+        col = int(data.get('col', -1))
+    except (TypeError, ValueError):
+        return api_error('Невірна колонка.')
+    if not session_id:
+        return api_error('session_id обовʼязковий.')
+    try:
+        result = casino_service.pick_tower(g.current_user['id'], session_id, col)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+@casino_bp.post('/tower/cashout')
+@auth_required
+def tower_cashout():
+    data = request.get_json(force=True) or {}
+    session_id = (data.get('session_id') or '').strip()
+    if not session_id:
+        return api_error('session_id обовʼязковий.')
+    try:
+        result = casino_service.cashout_tower(g.current_user['id'], session_id)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+# ── Keno ──────────────────────────────────────────────────────────────────────
+
+@casino_bp.post('/keno/play')
+@auth_required
+@rate_limit(30, 10, key_func=_casino_rate_key)
+def keno_play():
+    data = request.get_json(force=True) or {}
+    try:
+        bet = float(data.get('bet', 10))
+    except (TypeError, ValueError):
+        return api_error('Невірна ставка.')
+    picks = data.get('picks') or []
+    try:
+        picks = [int(p) for p in picks]
+    except (TypeError, ValueError):
+        return api_error('Невірні числа.')
+    try:
+        result = casino_service.play_keno(g.current_user['id'], bet, picks)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))

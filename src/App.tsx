@@ -3714,215 +3714,315 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
 
   const LANG_FLAGS: Record<LangCode, string> = { en: '🇬🇧', uk: '🇺🇦', ru: '🇷🇺', es: '🇪🇸', it: '🇮🇹', de: '🇩🇪' };
 
-  // Design tokens (dark casino theme)
-  const bg0 = '#080e12', bg1 = '#0e1b14', bg2 = '#152012';
-  const hairline = 'rgba(255,255,255,0.08)';
-  const textDim = 'rgba(232,242,234,0.55)';
-  const amber = '#F0B93A';
-  const mint = '#5BBE8A';
+  // Casino design tokens
+  const C = {
+    bg:       '#07090d',
+    panel:    'rgba(12,18,14,0.95)',
+    card:     '#0d1a10',
+    border:   'rgba(200,160,60,0.22)',
+    borderHi: 'rgba(240,185,58,0.7)',
+    gold:     '#F0B93A',
+    goldDim:  '#c9962e',
+    text:     '#F0EDE6',
+    textDim:  'rgba(240,237,230,0.5)',
+    textMute: 'rgba(240,237,230,0.3)',
+    input:    'rgba(0,0,0,0.4)',
+    error:    '#FF5A6E',
+    green:    '#4ecb8d',
+  };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '11px 14px',
-    background: 'rgba(0,0,0,0.35)', border: `1px solid ${hairline}`,
-    borderRadius: 12, color: '#E8F2EA',
+  const inp: React.CSSProperties = {
+    width: '100%', padding: '12px 15px',
+    background: C.input,
+    border: `1.5px solid ${C.border}`,
+    borderRadius: 10, color: C.text,
     fontSize: 14, fontFamily: 'inherit', outline: 'none',
+    transition: 'border-color 0.2s',
+  };
+  const lbl: React.CSSProperties = {
+    display: 'block', fontSize: 10, fontWeight: 700,
+    color: C.textMute, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 7,
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: `radial-gradient(ellipse 100% 70% at 50% 0%, rgba(228,162,75,0.12) 0%, transparent 55%), radial-gradient(ellipse 60% 40% at 10% 90%, rgba(91,190,138,0.07) 0%, transparent 50%), #060b0e` }}>
+    <div className="min-h-screen flex items-center justify-center p-3 relative overflow-hidden"
+      style={{ background: C.bg }}>
 
-      {/* Decorative suit symbols */}
+      {/* Full-screen bg texture */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: `
+          radial-gradient(ellipse 120% 50% at 50% -10%, rgba(200,150,40,0.13) 0%, transparent 60%),
+          radial-gradient(ellipse 80% 80% at 80% 110%, rgba(14,80,40,0.18) 0%, transparent 55%),
+          radial-gradient(ellipse 60% 60% at -10% 50%, rgba(14,60,30,0.15) 0%, transparent 55%)
+        `
+      }} />
+
+      {/* Floating suit decorations */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
         {[
-          { s: '♠', x: '8%',  y: '12%', size: 80, rot: -15, op: 0.045 },
-          { s: '♥', x: '88%', y: '8%',  size: 64, rot: 12,  op: 0.05  },
-          { s: '♦', x: '5%',  y: '78%', size: 72, rot: -8,  op: 0.04  },
-          { s: '♣', x: '85%', y: '75%', size: 88, rot: 20,  op: 0.04  },
-          { s: '♠', x: '50%', y: '5%',  size: 48, rot: 5,   op: 0.03  },
+          { s: '♠', x: '4%',  y: '8%',  sz: 100, rot: -18, op: 0.04  },
+          { s: '♥', x: '87%', y: '5%',  sz: 80,  rot: 14,  op: 0.05  },
+          { s: '♦', x: '2%',  y: '72%', sz: 90,  rot: -10, op: 0.035 },
+          { s: '♣', x: '84%', y: '70%', sz: 110, rot: 22,  op: 0.04  },
+          { s: '♥', x: '48%', y: '3%',  sz: 55,  rot: 6,   op: 0.025 },
+          { s: '♦', x: '92%', y: '40%', sz: 65,  rot: -5,  op: 0.03  },
+          { s: '♣', x: '0%',  y: '42%', sz: 70,  rot: 12,  op: 0.03  },
         ].map((d, i) => (
-          <div key={i} className="absolute font-black"
-            style={{ left: d.x, top: d.y, fontSize: d.size, color: `rgba(240,185,58,${d.op})`, transform: `rotate(${d.rot}deg)`, lineHeight: 1 }}>
-            {d.s}
-          </div>
+          <div key={i} className="absolute" style={{
+            left: d.x, top: d.y, fontSize: d.sz,
+            color: `rgba(220,170,50,${d.op})`,
+            transform: `rotate(${d.rot}deg)`, lineHeight: 1,
+            fontWeight: 900,
+          }}>{d.s}</div>
         ))}
       </div>
 
-      {/* Top gold glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-40 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse, rgba(240,185,58,0.14) 0%, transparent 70%)' }} />
+      {/* Main layout — left brand panel + right form on wide, stacked on mobile */}
+      <div className="relative z-10 w-full max-w-[860px] flex gap-0 rounded-3xl overflow-hidden"
+        style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.85), 0 0 0 1px rgba(200,160,60,0.18)' }}>
 
-      <div className="w-full max-w-[400px] relative z-10 flex flex-col gap-6">
+        {/* ── Left brand panel (hidden on very small screens) ── */}
+        <div className="hidden md:flex flex-col justify-between p-10 flex-1"
+          style={{ background: 'linear-gradient(155deg,#0a1a0d 0%,#071209 60%,#060f09 100%)', borderRight: `1px solid ${C.border}` }}>
 
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center hb-hover"
-              style={{ background: bg2, border: `1px solid rgba(228,162,75,0.3)`, boxShadow: `0 8px 32px rgba(228,162,75,0.2)` }}>
-              <HummingbirdLogo size={42} />
+          {/* Top: logo */}
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg,#163524,#0d1f18)', border: `1px solid rgba(200,160,60,0.35)`, boxShadow: `0 0 24px rgba(200,160,60,0.15)` }}>
+                <HummingbirdLogo size={32} />
+              </div>
+              <div>
+                <div style={{ fontFamily: '"Space Grotesk",system-ui', fontWeight: 800, fontSize: 20, letterSpacing: 3, color: C.text }}>
+                  {APP_NAME.toUpperCase()}
+                </div>
+                <div style={{ fontSize: 10, color: C.textMute, letterSpacing: 2, textTransform: 'uppercase' }}>Casino & Messenger</div>
+              </div>
             </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2"
-              style={{ background: mint, borderColor: bg0, boxShadow: `0 0 8px ${mint}` }} />
+
+            {/* Casino features */}
+            <div className="flex flex-col gap-3 mt-4">
+              {[
+                { icon: '🎰', title: '9 ігор', sub: 'Crash · Blackjack · Plinko та ін.' },
+                { icon: '💎', title: 'Provably Fair', sub: 'Верифіковані результати HMAC-SHA256' },
+                { icon: '🔒', title: 'E2E шифрування', sub: 'Захищені повідомлення Fernet' },
+                { icon: '🎁', title: '+200₮ бонус', sub: 'При першій реєстрації одразу' },
+              ].map(f => (
+                <div key={f.title} className="flex items-start gap-3 p-3 rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
+                  <span className="text-xl mt-0.5">{f.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{f.title}</div>
+                    <div style={{ fontSize: 11, color: C.textDim, marginTop: 1 }}>{f.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="text-center">
-            <div style={{ fontFamily: '"Space Grotesk", system-ui', fontWeight: 700, fontSize: 22, letterSpacing: 3, color: '#E8F2EA' }}>
+
+          {/* Bottom: playing cards decoration */}
+          <div className="flex items-end justify-center mt-8 select-none">
+            {[
+              { v: 'A', s: '♠', rot: -12, bg: '#fff', col: '#111' },
+              { v: 'K', s: '♥', rot: -4,  bg: '#fff', col: '#cc2200' },
+              { v: 'Q', s: '♦', rot: 5,   bg: '#fff', col: '#cc2200' },
+              { v: 'J', s: '♣', rot: 13,  bg: '#fff', col: '#111' },
+            ].map((card, i) => (
+              <div key={i} className="rounded-xl p-2 flex flex-col justify-between -ml-6 first:ml-0"
+                style={{ width: 64, height: 90, background: card.bg, transform: `rotate(${card.rot}deg) translateY(${Math.abs(card.rot) * 0.5}px)`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', border: '1px solid rgba(0,0,0,0.1)', zIndex: i }}>
+                <div style={{ fontSize: 15, fontWeight: 900, color: card.col, lineHeight: 1 }}>{card.v}</div>
+                <div style={{ fontSize: 22, textAlign: 'center', color: card.col, lineHeight: 1 }}>{card.s}</div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: card.col, lineHeight: 1, textAlign: 'right', transform: 'rotate(180deg)' }}>{card.v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Right: Auth form ── */}
+        <div className="flex-1 flex flex-col p-6 md:p-9" style={{ background: C.panel, minWidth: 0 }}>
+
+          {/* Mobile logo */}
+          <div className="flex md:hidden items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg,#163524,#0d1f18)', border: `1px solid rgba(200,160,60,0.35)` }}>
+              <HummingbirdLogo size={24} />
+            </div>
+            <span style={{ fontFamily: '"Space Grotesk",system-ui', fontWeight: 800, fontSize: 17, letterSpacing: 2.5, color: C.text }}>
               {APP_NAME.toUpperCase()}
+            </span>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-5">
+            <div style={{ fontSize: 22, fontWeight: 800, color: C.text, letterSpacing: 0.3 }}>
+              {tab === 'login' ? 'Ласкаво просимо!' : 'Створити акаунт'}
             </div>
-            <div style={{ fontSize: 11, color: textDim, letterSpacing: 2, textTransform: 'uppercase', marginTop: 3 }}>
-              {t.tagline}
+            <div style={{ fontSize: 13, color: C.textDim, marginTop: 4 }}>
+              {tab === 'login' ? 'Увійдіть, щоб продовжити гру' : 'Реєстрація займає 30 секунд'}
             </div>
           </div>
-        </div>
 
-        {/* Lang flags */}
-        <div className="flex justify-center gap-3">
-          {(Object.keys(I18N) as LangCode[]).map(l => (
-            <button key={l} type="button" onClick={() => setLang(l)} className="cursor-pointer transition-all duration-200"
-              style={{ transform: lang === l ? 'scale(1.2)' : 'scale(1)', opacity: lang === l ? 1 : 0.35, filter: lang === l ? `drop-shadow(0 0 6px ${amber})` : 'none' }}>
-              <span className="text-2xl">{LANG_FLAGS[l]}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Card */}
-        <div style={{ background: bg1, border: `1px solid rgba(240,185,58,0.15)`, borderRadius: 24, overflow: 'hidden', boxShadow: '0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(240,185,58,0.06)' }}>
-
-          {/* Main tabs */}
-          <div className="flex p-1.5 gap-1.5" style={{ background: bg0 }}>
+          {/* Tab pills */}
+          <div className="flex gap-2 mb-6 p-1 rounded-xl" style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${C.border}` }}>
             {(['login', 'register'] as const).map(tab_ => (
-              <button key={tab_} type="button"
-                onClick={() => { setTab(tab_); setError(''); }}
-                className="flex-1 py-3 font-bold text-sm cursor-pointer transition-all duration-200 rounded-xl"
+              <button key={tab_} type="button" onClick={() => { setTab(tab_); setError(''); }}
+                className="flex-1 py-2.5 text-sm font-bold cursor-pointer transition-all duration-200 rounded-lg"
                 style={{
-                  background: tab === tab_ ? bg2 : 'transparent',
-                  color: tab === tab_ ? '#E8F2EA' : textDim,
-                  border: `1px solid ${tab === tab_ ? hairline : 'transparent'}`,
+                  background: tab === tab_ ? `linear-gradient(135deg,${C.goldDim},${C.gold})` : 'transparent',
+                  color: tab === tab_ ? '#140e00' : C.textDim,
+                  border: 'none',
+                  boxShadow: tab === tab_ ? '0 2px 12px rgba(200,150,40,0.4)' : 'none',
                 }}>
-                {tab_ === 'login' ? t.login : t.register}
+                {tab_ === 'login' ? '🔑 ' + t.login : '✨ ' + t.register}
               </button>
             ))}
           </div>
 
-          <form onSubmit={submit} style={{ padding: '20px 20px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Lang selector */}
+          <div className="flex gap-2 mb-5">
+            {(Object.keys(I18N) as LangCode[]).map(l => (
+              <button key={l} type="button" onClick={() => setLang(l)}
+                className="cursor-pointer transition-all duration-150 rounded-lg px-2 py-1"
+                style={{
+                  background: lang === l ? 'rgba(200,150,40,0.15)' : 'transparent',
+                  border: `1px solid ${lang === l ? C.borderHi : 'transparent'}`,
+                  transform: lang === l ? 'scale(1.1)' : 'scale(1)',
+                }}>
+                <span className="text-xl">{LANG_FLAGS[l]}</span>
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={submit} className="flex flex-col gap-4">
 
             {/* ── REGISTER fields ── */}
             {tab === 'register' && (<>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.fullName}</label>
-                <input style={inputStyle} placeholder={t.namePlaceholder} value={form.full_name} onChange={set('full_name')} required autoFocus
-                  onFocus={e => e.target.style.borderColor = amber} onBlur={e => e.target.style.borderColor = hairline} />
+                <label style={lbl}>{t.fullName}</label>
+                <input style={inp} placeholder={t.namePlaceholder} value={form.full_name} onChange={set('full_name')} required autoFocus
+                  onFocus={e => e.target.style.borderColor = C.gold} onBlur={e => e.target.style.borderColor = C.border} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.country}</label>
+                <label style={lbl}>{t.country}</label>
                 <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.phone}</label>
-                <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: `1px solid ${hairline}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', background: bg2, flexShrink: 0 }}>
-                    <span style={{ fontSize: 18 }}>{country.flag}</span>
-                    <span style={{ fontFamily: '"Space Grotesk",system-ui', fontSize: 13, fontWeight: 600, color: amber }}>{country.dialCode}</span>
+                <label style={lbl}>{t.phone}</label>
+                <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1.5px solid ${C.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', background: 'rgba(0,0,0,0.5)', flexShrink: 0, borderRight: `1px solid ${C.border}` }}>
+                    <span style={{ fontSize: 17 }}>{country.flag}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>{country.dialCode}</span>
                   </div>
-                  <input style={{ ...inputStyle, borderRadius: 0, border: 'none', borderLeft: `1px solid ${hairline}`, flex: 1 }}
+                  <input style={{ ...inp, borderRadius: 0, border: 'none', flex: 1 }}
                     placeholder={t.phonePlaceholder} value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" />
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.email}</label>
-                <input style={inputStyle} type="email" placeholder={t.emailPlaceholder} value={form.email} onChange={set('email')} required autoComplete="email"
-                  onFocus={e => e.target.style.borderColor = amber} onBlur={e => e.target.style.borderColor = hairline} />
+                <label style={lbl}>{t.email}</label>
+                <input style={inp} type="email" placeholder={t.emailPlaceholder} value={form.email} onChange={set('email')} required autoComplete="email"
+                  onFocus={e => e.target.style.borderColor = C.gold} onBlur={e => e.target.style.borderColor = C.border} />
               </div>
             </>)}
 
             {/* ── LOGIN fields ── */}
             {tab === 'login' && (<>
-              {/* Method switcher */}
-              <div style={{ display: 'flex', gap: 6, background: bg0, borderRadius: 10, padding: 4 }}>
+              <div className="flex gap-2 p-0.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.25)', border: `1px solid ${C.border}` }}>
                 {(['email', 'phone'] as const).map(m => (
                   <button key={m} type="button" onClick={() => { setLoginMethod(m); setError(''); }}
-                    className="flex-1 cursor-pointer transition-all duration-200"
-                    style={{ padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, border: 'none',
-                      background: loginMethod === m ? bg2 : 'transparent',
-                      color: loginMethod === m ? '#E8F2EA' : textDim }}>
+                    className="flex-1 cursor-pointer transition-all duration-150 rounded-md py-2"
+                    style={{ fontSize: 12, fontWeight: 600, border: 'none',
+                      background: loginMethod === m ? 'rgba(200,150,40,0.12)' : 'transparent',
+                      color: loginMethod === m ? C.gold : C.textDim }}>
                     {m === 'email' ? '✉️ Email' : '📱 ' + t.phone}
                   </button>
                 ))}
               </div>
-
               {loginMethod === 'email' ? (
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.email}</label>
-                  <input style={inputStyle} type="email" placeholder={t.emailPlaceholder}
+                  <label style={lbl}>{t.email}</label>
+                  <input style={inp} type="email" placeholder={t.emailPlaceholder}
                     value={form.login_email} onChange={set('login_email')} required autoFocus autoComplete="email"
-                    onFocus={e => e.target.style.borderColor = amber} onBlur={e => e.target.style.borderColor = hairline} />
+                    onFocus={e => e.target.style.borderColor = C.gold} onBlur={e => e.target.style.borderColor = C.border} />
                 </div>
-              ) : (
-                <>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.country}</label>
-                    <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.phone}</label>
-                    <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: `1px solid ${hairline}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', background: bg2, flexShrink: 0 }}>
-                        <span style={{ fontSize: 18 }}>{country.flag}</span>
-                        <span style={{ fontFamily: '"Space Grotesk",system-ui', fontSize: 13, fontWeight: 600, color: amber }}>{country.dialCode}</span>
-                      </div>
-                      <input style={{ ...inputStyle, borderRadius: 0, border: 'none', borderLeft: `1px solid ${hairline}`, flex: 1 }}
-                        placeholder={t.phonePlaceholder} value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" autoFocus />
+              ) : (<>
+                <div>
+                  <label style={lbl}>{t.country}</label>
+                  <CountryPicker value={country} onChange={c => setCountry(c)} t={t} />
+                </div>
+                <div>
+                  <label style={lbl}>{t.phone}</label>
+                  <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1.5px solid ${C.border}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', background: 'rgba(0,0,0,0.5)', flexShrink: 0, borderRight: `1px solid ${C.border}` }}>
+                      <span style={{ fontSize: 17 }}>{country.flag}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>{country.dialCode}</span>
                     </div>
+                    <input style={{ ...inp, borderRadius: 0, border: 'none', flex: 1 }}
+                      placeholder={t.phonePlaceholder} value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" autoFocus />
                   </div>
-                </>
-              )}
+                </div>
+              </>)}
             </>)}
 
             {/* Password */}
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{t.password}</label>
-              <input style={inputStyle} type="password" placeholder="••••••••" value={form.password} onChange={set('password')} required
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+                <label style={{ ...lbl, marginBottom: 0 }}>{t.password}</label>
+                {tab === 'login' && <span style={{ fontSize: 10, color: C.textMute, cursor: 'pointer' }}>Забули пароль?</span>}
+              </div>
+              <input style={inp} type="password" placeholder="Мін. 8 символів" value={form.password} onChange={set('password')} required
                 autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
-                onFocus={e => e.target.style.borderColor = amber} onBlur={e => e.target.style.borderColor = hairline} />
+                onFocus={e => e.target.style.borderColor = C.gold} onBlur={e => e.target.style.borderColor = C.border} />
             </div>
 
-            {/* Error */}
-            {error && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(229,75,94,0.1)', border: '1px solid rgba(229,75,94,0.3)', fontSize: 13, color: '#E54B5E' }}>
-                <span>⚠️</span> {error}
-              </div>
-            )}
-
-            {/* Register bonus banner */}
+            {/* Register bonus */}
             {tab === 'register' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(228,162,75,0.1)', border: `1px solid rgba(228,162,75,0.25)` }}>
-                <span style={{ fontSize: 20 }}>🎁</span>
+              <div className="flex items-center gap-3 rounded-xl p-3"
+                style={{ background: 'linear-gradient(135deg,rgba(200,150,40,0.1),rgba(200,150,40,0.05))', border: `1px solid rgba(200,150,40,0.3)` }}>
+                <div className="text-2xl">🎁</div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: amber }}>Бонус при реєстрації</div>
-                  <div style={{ fontSize: 11, color: textDim, marginTop: 1 }}>+200₮ на баланс одразу після входу</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>Вітальний бонус +200₮</div>
+                  <div style={{ fontSize: 11, color: C.textDim, marginTop: 1 }}>Зараховується одразу після реєстрації</div>
                 </div>
               </div>
             )}
 
-            {/* Submit button */}
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl px-4 py-3"
+                style={{ background: 'rgba(255,90,110,0.1)', border: `1px solid rgba(255,90,110,0.3)`, fontSize: 13, color: C.error }}>
+                <span>⚠</span> {error}
+              </div>
+            )}
+
+            {/* Submit */}
             <button type="submit" disabled={loading}
-              style={{ width: '100%', padding: '13px', borderRadius: 14, border: 'none', cursor: loading ? 'default' : 'pointer',
-                background: loading ? bg2 : `linear-gradient(135deg, #c9962e 0%, ${amber} 100%)`,
-                color: loading ? textDim : '#1a1006',
-                fontSize: 15, fontWeight: 700, letterSpacing: 0.3,
-                boxShadow: loading ? 'none' : '0 4px 20px rgba(228,162,75,0.35)',
-                transition: 'all 0.2s', marginTop: 2 }}>
-              {loading
-                ? t.loading
-                : tab === 'login' ? `${t.loginBtn} →` : `${t.registerBtn} →`}
+              className="relative overflow-hidden"
+              style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+                cursor: loading ? 'default' : 'pointer',
+                background: loading ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg,${C.goldDim} 0%,${C.gold} 50%,${C.goldDim} 100%)`,
+                backgroundSize: loading ? '' : '200% 100%',
+                color: loading ? C.textDim : '#120c00',
+                fontSize: 15, fontWeight: 800, letterSpacing: 0.5,
+                boxShadow: loading ? 'none' : `0 4px 24px rgba(200,150,40,0.45), 0 1px 0 rgba(255,255,255,0.15) inset`,
+                transition: 'all 0.2s',
+              }}>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  {t.loading}
+                </span>
+              ) : (
+                tab === 'login' ? `${t.loginBtn} →` : `${t.registerBtn} →`
+              )}
             </button>
           </form>
 
-          {/* Footer */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, padding: '0 20px 16px' }}>
-            <span style={{ fontSize: 11 }}>🔒</span>
-            <span style={{ fontSize: 10, color: textDim, textTransform: 'uppercase', letterSpacing: 1.2 }}>
-              {t.e2e} · {APP_NAME}
-            </span>
+          {/* Footer badges */}
+          <div className="flex items-center justify-center gap-3 mt-6 pt-5"
+            style={{ borderTop: `1px solid ${C.border}` }}>
+            {['🔒 SSL', '✅ Provably Fair', '⚡ 24/7'].map(b => (
+              <span key={b} style={{ fontSize: 10, color: C.textMute, letterSpacing: 0.8 }}>{b}</span>
+            ))}
           </div>
         </div>
       </div>
@@ -3979,12 +4079,39 @@ export default function App() {
   const [waking, setWaking] = useState(false);
 
   // Keep Render free tier awake + show wake-up screen on cold start
+  // Also try to restore saved session from localStorage
   useEffect(() => {
     let wakeTimer: ReturnType<typeof setTimeout>;
     wakeTimer = setTimeout(() => setWaking(true), 1800);
+
     fetch('/api/ping')
       .catch(() => {})
-      .finally(() => { clearTimeout(wakeTimer); setWaking(false); });
+      .finally(() => {
+        clearTimeout(wakeTimer);
+        setWaking(false);
+
+        // After server is awake, try to restore saved session
+        try {
+          const savedToken = localStorage.getItem('nexus_token');
+          const savedUser = localStorage.getItem('nexus_user');
+          if (savedToken && savedUser) {
+            const u = JSON.parse(savedUser) as User;
+            // Verify token is still valid
+            fetch('/api/auth/me', { headers: { Authorization: `Bearer ${savedToken}` } })
+              .then(r => r.json())
+              .then(j => {
+                if (j.ok) {
+                  setUser(u); setToken(savedToken); setScreen('app');
+                } else {
+                  localStorage.removeItem('nexus_token');
+                  localStorage.removeItem('nexus_user');
+                }
+              })
+              .catch(() => {});
+          }
+        } catch {}
+      });
+
     const interval = setInterval(() => fetch('/api/ping').catch(() => {}), 10 * 60 * 1000);
     return () => { clearTimeout(wakeTimer); clearInterval(interval); };
   }, []);
@@ -4040,15 +4167,21 @@ export default function App() {
   function handleAuth(u: User, t: string, isNew = false) {
     setUser(u); setToken(t); setScreen('app');
     setSidebarTab('profile');
+    try {
+      localStorage.setItem('nexus_token', t);
+      localStorage.setItem('nexus_user', JSON.stringify(u));
+    } catch {}
     if (isNew) {
-      // Welcome bonus: animate +200
       setTimeout(() => {
         setWallet(prev => ({ ...prev, balance: prev.balance + 200 }));
         notify('🎁 Вітаємо! +200₮ бонус нараховано!');
       }, 800);
     }
   }
-  function handleLogout() { setUser(null); setToken(''); setScreen('auth'); setSidebarTab('profile'); }
+  function handleLogout() {
+    setUser(null); setToken(''); setScreen('auth'); setSidebarTab('profile');
+    try { localStorage.removeItem('nexus_token'); localStorage.removeItem('nexus_user'); } catch {}
+  }
 
   function selectChat(chat: Chat) {
     setActiveChat(chat);

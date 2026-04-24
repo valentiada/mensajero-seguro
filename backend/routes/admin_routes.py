@@ -87,7 +87,7 @@ def list_users():
 def set_role(user_id: int):
     data = request.get_json(force=True) or {}
     role = data.get('role', '').strip()
-    allowed = {'soldier', 'operator', 'admin', 'banned'}
+    allowed = {'user', 'operator', 'admin', 'banned'}
     if role not in allowed:
         return api_error(f'Невірна роль. Допустимо: {allowed}')
     # Protect: cannot demote yourself
@@ -111,7 +111,7 @@ def ban_user(user_id: int):
 @auth_required
 @role_required('admin', 'operator')
 def unban_user(user_id: int):
-    execute("UPDATE users SET role = 'soldier' WHERE id = ? AND role = 'banned'", (user_id,))
+    execute("UPDATE users SET role = 'user' WHERE id = ? AND role = 'banned'", (user_id,))
     return jsonify({'ok': True})
 
 

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone           TEXT        NOT NULL UNIQUE,
     email           TEXT        NOT NULL UNIQUE,
     password_hash   TEXT        NOT NULL,
-    role            TEXT        NOT NULL DEFAULT 'soldier',
+    role            TEXT        NOT NULL DEFAULT 'user',
     is_online       BOOLEAN     NOT NULL DEFAULT FALSE,
     last_seen_at    TIMESTAMPTZ DEFAULT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()

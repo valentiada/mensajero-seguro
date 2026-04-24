@@ -410,6 +410,39 @@ def list_withdrawals():
     return jsonify({'ok': True, 'data': rows})
 
 
+@casino_bp.post('/fiat-deposit')
+@auth_required
+@rate_limit(5, 60, key_func=_casino_rate_key)
+def fiat_deposit():
+    """Demo fiat deposit — simulates card payment, credits balance immediately."""
+    data = request.get_json(force=True) or {}
+    try:
+        amount = float(data.get('amount', 0))
+    except (TypeError, ValueError):
+        return api_error('Невірна сума.')
+
+    if amount < 10:
+        return api_error('Мінімальна сума поповнення: 10 USDT.')
+    if amount > 10000:
+        return api_error('Максимальна сума: 10 000 USDT.')
+
+    card = (data.get('card') or '').replace(' ', '')
+    if len(card) < 13 or not card.isdigit():
+        return api_error('Невірний номер картки.')
+
+    new_balance = casino_service.repo.update_balance(g.current_user['id'], amount)
+    execute(
+        'INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)',
+        (g.current_user['id'], 'fiat_deposit', f'amount={amount} card=****{card[-4:]}'),
+    )
+    return jsonify({'ok': True, 'data': {
+        'amount': amount,
+        'new_balance': new_balance,
+        'card_last4': card[-4:],
+        'message': f'Зараховано {amount:.2f} USDT на баланс.',
+    }})
+
+
 # ── Blackjack ─────────────────────────────────────────────────────────────────
 
 @casino_bp.post('/blackjack/start')

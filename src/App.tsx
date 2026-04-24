@@ -277,13 +277,13 @@ interface SupportTicket {
 
 const DEMO_CHATS: Chat[] = [
   {
-    id: 1, title: 'Штаб — оперативний', is_group: true, members: [],
-    last_message: { id: 5, chat_id: 1, sender_id: 2, sender_name: 'Олексій Коваль', body: 'Підтверджую. Виконуємо.', created_at: new Date(Date.now() - 120000).toISOString(), read_by: [1, 2] },
-    unread_count: 3, muted: false, pinned: true,
+    id: 1, title: 'Nexus Команда', is_group: true, members: [],
+    last_message: { id: 5, chat_id: 1, sender_id: 2, sender_name: 'Олексій', body: 'Хтось уже пробував новий Crash?', created_at: new Date(Date.now() - 120000).toISOString(), read_by: [1, 2] },
+    unread_count: 2, muted: false, pinned: true,
   },
   {
-    id: 2, title: 'Марина Петренко', is_group: false, members: [],
-    last_message: { id: 9, chat_id: 2, sender_id: 1, sender_name: 'Ви', body: 'Все добре, не хвилюйся.', created_at: new Date(Date.now() - 3600000).toISOString(), read_by: [1, 3] },
+    id: 2, title: 'Дмитро В.', is_group: false, members: [],
+    last_message: { id: 9, chat_id: 2, sender_id: 1, sender_name: 'Ви', body: 'Побачимось у лобі 👍', created_at: new Date(Date.now() - 3600000).toISOString(), read_by: [1, 3] },
     unread_count: 0, muted: false, pinned: false,
   },
   {
@@ -295,19 +295,18 @@ const DEMO_CHATS: Chat[] = [
 
 const DEMO_MESSAGES: Record<number, Message[]> = {
   1: [
-    { id: 1, chat_id: 1, sender_id: 2, sender_name: 'Олексій Коваль', body: 'Усі на зв\'язку?', created_at: new Date(Date.now() - 600000).toISOString(), read_by: [1, 2, 3] },
-    { id: 2, chat_id: 1, sender_id: 3, sender_name: 'Наталя', body: 'На зв\'язку.', created_at: new Date(Date.now() - 540000).toISOString(), read_by: [1, 2, 3] },
-    { id: 3, chat_id: 1, sender_id: 1, sender_name: 'Ви', body: 'Готовий.', created_at: new Date(Date.now() - 480000).toISOString(), read_by: [1, 2, 3] },
-    { id: 4, chat_id: 1, sender_id: 2, sender_name: 'Олексій Коваль', body: 'Завдання: забезпечити периметр до 18:00.', created_at: new Date(Date.now() - 300000).toISOString(), read_by: [1, 2] },
-    { id: 5, chat_id: 1, sender_id: 1, sender_name: 'Ви', body: 'Підтверджую. Виконуємо.', created_at: new Date(Date.now() - 120000).toISOString(), read_by: [1] },
+    { id: 1, chat_id: 1, sender_id: 2, sender_name: 'Олексій', body: 'Всім привіт! 👋', created_at: new Date(Date.now() - 600000).toISOString(), read_by: [1, 2, 3] },
+    { id: 2, chat_id: 1, sender_id: 3, sender_name: 'Катерина', body: 'Привіт! Що нового?', created_at: new Date(Date.now() - 540000).toISOString(), read_by: [1, 2, 3] },
+    { id: 3, chat_id: 1, sender_id: 1, sender_name: 'Ви', body: 'Є новий Plinko — дуже затягує 🎰', created_at: new Date(Date.now() - 480000).toISOString(), read_by: [1, 2, 3] },
+    { id: 4, chat_id: 1, sender_id: 2, sender_name: 'Олексій', body: 'Хтось уже пробував новий Crash?', created_at: new Date(Date.now() - 120000).toISOString(), read_by: [1, 2] },
   ],
   2: [
-    { id: 8, chat_id: 2, sender_id: 3, sender_name: 'Марина Петренко', body: 'Як ти там? Все добре?', created_at: new Date(Date.now() - 7200000).toISOString(), read_by: [1, 3] },
-    { id: 9, chat_id: 2, sender_id: 1, sender_name: 'Ви', body: 'Все добре, не хвилюйся.', created_at: new Date(Date.now() - 3600000).toISOString(), read_by: [1, 3] },
+    { id: 8, chat_id: 2, sender_id: 3, sender_name: 'Дмитро В.', body: 'Йо! Сьогодні грати будеш?', created_at: new Date(Date.now() - 7200000).toISOString(), read_by: [1, 3] },
+    { id: 9, chat_id: 2, sender_id: 1, sender_name: 'Ви', body: 'Побачимось у лобі 👍', created_at: new Date(Date.now() - 3600000).toISOString(), read_by: [1, 3] },
   ],
   3: [
-    { id: 13, chat_id: 3, sender_id: 1, sender_name: 'Ви', body: 'Доброго дня! Маю питання щодо роботи месенджера.', created_at: new Date(Date.now() - 900000).toISOString(), read_by: [1, 99] },
-    { id: 14, chat_id: 3, sender_id: 99, sender_name: 'Служба підтримки', body: 'Дякуємо за звернення! Ми відповімо найближчим часом. 🛡️', created_at: new Date(Date.now() - 600000).toISOString(), read_by: [99] },
+    { id: 13, chat_id: 3, sender_id: 1, sender_name: 'Ви', body: 'Доброго дня! Маю питання щодо поповнення балансу.', created_at: new Date(Date.now() - 900000).toISOString(), read_by: [1, 99] },
+    { id: 14, chat_id: 3, sender_id: 99, sender_name: 'Служба підтримки', body: 'Дякуємо за звернення! Ми відповімо найближчим часом.', created_at: new Date(Date.now() - 600000).toISOString(), read_by: [99] },
   ],
 };
 
@@ -2329,12 +2328,20 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
   token: string;
   notify: (m: string) => void;
 }) {
+  const [payMethod, setPayMethod] = useState<'card' | 'crypto'>('card');
   const [tab, setTab] = useState<'deposit' | 'withdraw'>('deposit');
   const [address, setAddress] = useState<string>('');
   const [addrLoading, setAddrLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
   const [deposits, setDeposits] = useState<CryptoDeposit[]>([]);
   const [copied, setCopied] = useState(false);
+  // Fiat card state
+  const [cardNum, setCardNum] = useState('');
+  const [cardExp, setCardExp] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [fiatAmt, setFiatAmt] = useState('');
+  const [fiatLoading, setFiatLoading] = useState(false);
   // Withdrawal state
   const [wdAmount, setWdAmount] = useState('');
   const [wdAddr, setWdAddr] = useState('');
@@ -2401,6 +2408,32 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
 
   const shortTx = (hash: string) => `${hash.slice(0, 8)}…${hash.slice(-6)}`;
 
+  function fmtCard(v: string) {
+    return v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
+  }
+  function fmtExp(v: string) {
+    const d = v.replace(/\D/g, '').slice(0, 4);
+    return d.length > 2 ? `${d.slice(0,2)}/${d.slice(2)}` : d;
+  }
+
+  async function submitFiatDeposit() {
+    const amt = parseFloat(fiatAmt);
+    if (!amt || amt < 10) { notify('Мінімальна сума: 10 USDT.'); return; }
+    const rawCard = cardNum.replace(/\s/g, '');
+    if (rawCard.length < 13) { notify('Введіть номер картки.'); return; }
+    if (!cardExp || cardExp.length < 5) { notify('Введіть термін дії картки.'); return; }
+    if (!cardCvv || cardCvv.length < 3) { notify('Введіть CVV.'); return; }
+    setFiatLoading(true);
+    const res = await api<{ amount: number; new_balance: number; card_last4: string }>(
+      '/casino/fiat-deposit', { method: 'POST', body: JSON.stringify({ amount: amt, card: rawCard }) }, token,
+    );
+    setFiatLoading(false);
+    if (!res.ok) { notify(res.error || 'Помилка оплати.'); return; }
+    onWalletUpdate({ balance: res.data!.new_balance });
+    setFiatAmt(''); setCardNum(''); setCardExp(''); setCardCvv(''); setCardName('');
+    notify(`✅ Поповнено на ${res.data!.amount.toFixed(2)} USDT`);
+  }
+
   async function submitWithdraw() {
     const amt = parseFloat(wdAmount);
     if (!amt || amt <= 0) { notify('Вкажіть суму.'); return; }
@@ -2419,6 +2452,112 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      {/* Balance strip */}
+      <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0d1f11,#1d2e20)', border: '1.5px solid rgba(168,121,42,0.35)' }}>
+        <div>
+          <div className="font-mono text-[9px] text-[#6b7c6d] uppercase mb-0.5">Ваш баланс</div>
+          <div className="font-black text-xl text-[#a8792a]">{wallet.balance.toFixed(2)} USDT</div>
+        </div>
+        <div className="text-2xl">💎</div>
+      </div>
+
+      {/* Payment method selector */}
+      <div className="flex gap-2">
+        {([
+          { key: 'card', label: '💳 Картка', sub: 'Visa / MC' },
+          { key: 'crypto', label: '₿ Крипто', sub: 'USDT BEP-20' },
+        ] as const).map(m => (
+          <button key={m.key} onClick={() => setPayMethod(m.key)}
+            className="flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-0.5 transition-all cursor-pointer"
+            style={{
+              background: payMethod === m.key ? 'rgba(168,121,42,0.15)' : 'rgba(255,255,255,0.03)',
+              border: `1.5px solid ${payMethod === m.key ? 'rgba(168,121,42,0.7)' : 'rgba(255,255,255,0.08)'}`,
+            }}>
+            <span className="text-base">{m.label}</span>
+            <span className="font-mono text-[9px]" style={{ color: payMethod === m.key ? '#a8792a' : '#6b7c6d' }}>{m.sub}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ─── Fiat card form ─── */}
+      {payMethod === 'card' && (
+        <div className="flex flex-col gap-3">
+          <div className="font-black text-[10px] uppercase tracking-widest text-[#e8f2ea] flex items-center gap-2">
+            <span>Поповнення карткою</span>
+            <span className="font-mono text-[9px] text-[#4caf7d] border border-[#4caf7d40] px-1.5 py-0.5 rounded">DEMO</span>
+          </div>
+          {/* Card visual */}
+          <div className="rounded-2xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)', border: '1px solid rgba(255,255,255,0.1)', minHeight: 140 }}>
+            <div className="absolute top-4 right-4 flex gap-1">
+              <div className="w-6 h-6 rounded-full opacity-80" style={{ background: '#eb001b' }} />
+              <div className="w-6 h-6 rounded-full opacity-80 -ml-3" style={{ background: '#f79e1b' }} />
+            </div>
+            <div className="font-mono text-[10px] text-white/40 uppercase mb-4">Debit / Credit</div>
+            <div className="font-mono text-base text-white tracking-widest mb-4">
+              {cardNum || '•••• •••• •••• ••••'}
+            </div>
+            <div className="flex justify-between items-end">
+              <div>
+                <div className="font-mono text-[8px] text-white/40 uppercase mb-0.5">Власник</div>
+                <div className="font-mono text-xs text-white uppercase">{cardName || 'CARDHOLDER NAME'}</div>
+              </div>
+              <div className="text-right">
+                <div className="font-mono text-[8px] text-white/40 uppercase mb-0.5">Термін</div>
+                <div className="font-mono text-xs text-white">{cardExp || 'MM/YY'}</div>
+              </div>
+            </div>
+          </div>
+          {/* Fields */}
+          <div>
+            <label className="block font-mono text-[10px] text-[#6b7c6d] uppercase mb-1">Номер картки</label>
+            <input className="u24-input font-mono tracking-widest" placeholder="0000 0000 0000 0000"
+              value={cardNum} onChange={e => setCardNum(fmtCard(e.target.value))} maxLength={19} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block font-mono text-[10px] text-[#6b7c6d] uppercase mb-1">Термін дії</label>
+              <input className="u24-input font-mono" placeholder="MM/YY"
+                value={cardExp} onChange={e => setCardExp(fmtExp(e.target.value))} maxLength={5} />
+            </div>
+            <div>
+              <label className="block font-mono text-[10px] text-[#6b7c6d] uppercase mb-1">CVV</label>
+              <input className="u24-input font-mono" placeholder="•••" type="password"
+                value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g,'').slice(0,4))} maxLength={4} />
+            </div>
+          </div>
+          <div>
+            <label className="block font-mono text-[10px] text-[#6b7c6d] uppercase mb-1">Ім'я власника</label>
+            <input className="u24-input uppercase" placeholder="IVAN PETRENKO"
+              value={cardName} onChange={e => setCardName(e.target.value.toUpperCase())} />
+          </div>
+          <div>
+            <label className="block font-mono text-[10px] text-[#6b7c6d] uppercase mb-1">Сума поповнення (USDT)</label>
+            <input className="u24-input" type="number" placeholder="Від 10 USDT" min={10} step={10}
+              value={fiatAmt} onChange={e => setFiatAmt(e.target.value)} />
+            <div className="flex gap-1.5 mt-1.5">
+              {[50, 100, 250, 500].map(v => (
+                <button key={v} onClick={() => setFiatAmt(String(v))}
+                  className="flex-1 font-mono text-xs rounded-lg py-1.5 transition-all cursor-pointer"
+                  style={{ border: '1px solid rgba(255,255,255,0.08)', color: '#6b7c6d' }}
+                  onMouseEnter={e => { e.currentTarget.style.background='#1d2e20'; e.currentTarget.style.color='#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#6b7c6d'; }}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button className="u24-button-gold py-3 text-sm flex items-center justify-center gap-2"
+            onClick={submitFiatDeposit} disabled={fiatLoading}>
+            {fiatLoading ? '⏳ Обробка…' : `💳 Поповнити ${fiatAmt ? `${fiatAmt} USDT` : ''}`}
+          </button>
+          <div className="font-mono text-[9px] text-[#6b7c6d] text-center leading-relaxed">
+            🔒 Demo-режим · Реальні кошти не списуються · Баланс зараховується одразу
+          </div>
+        </div>
+      )}
+
+      {/* ─── Crypto section ─── */}
+      {payMethod === 'crypto' && <>
       {/* Tabs */}
       <div className="flex rounded-xl overflow-hidden border border-[#2f4a37]">
         {(['deposit', 'withdraw'] as const).map(t => (
@@ -2496,15 +2635,6 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
       )}
 
       {tab === 'deposit' && <>
-      {/* Balance */}
-      <div className="border-2 border-[#a8792a] bg-[#1d2e20] text-white p-4 flex items-center justify-between">
-        <div>
-          <div className="font-mono text-[10px] text-[#6b7c6d] uppercase mb-0.5">Баланс</div>
-          <div className="font-black text-2xl text-[#a8792a]">{wallet.balance.toFixed(2)} USDT</div>
-        </div>
-        <div className="text-3xl">💵</div>
-      </div>
-
       {/* Network badge */}
       <div className="flex items-center gap-2 px-3 py-2 border border-[#26a17b40] bg-[#26a17b0a] rounded">
         <span className="w-2 h-2 rounded-full bg-[#26a17b] shrink-0" />
@@ -2610,6 +2740,7 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
           </div>
         </div>
       )}
+      </>}
       </>}
     </div>
   );
@@ -3326,16 +3457,33 @@ function AdminAdjust({ token, notify }: { token: string; notify: (m: string) => 
 
 // ─── Player Profile ───────────────────────────────────────────────────────────
 
-function ProfileView({ user, wallet, notify, onLogout }: {
+function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory, onGoSupport, achievements }: {
   user: User;
   wallet: CasinoWallet;
   tickets?: SupportTicket[];
   notify: (m: string) => void;
   onLogout?: () => void;
+  onGoDeposit?: () => void;
+  onGoHistory?: () => void;
+  onGoSupport?: () => void;
+  achievements?: string[];
 }) {
+  const [showAch, setShowAch] = useState(false);
+  const achList = achievements || [];
+
   const winRate = wallet.total_bet > 0 ? Math.round((wallet.total_won / wallet.total_bet) * 100) : 0;
   const initial = (user.full_name || 'U')[0].toUpperCase();
   const handle = user.phone || user.email || 'user';
+
+  const ALL_ACHIEVEMENTS: Record<string, { label: string; emoji: string }> = {
+    big_winner:          { label: 'Великий переможець',  emoji: '💰' },
+    roulette_zero:       { label: 'Зеро!',               emoji: '🎡' },
+    roulette_straight_win:{ label: 'Ставка на число',    emoji: '🎯' },
+    slots_jackpot:       { label: 'Джекпот у слотах',    emoji: '🎰' },
+    first_game:          { label: 'Перша гра',           emoji: '🎮' },
+    high_roller:         { label: 'Хай-ролер',           emoji: '🃏' },
+    lucky_streak:        { label: 'Серія удачі',         emoji: '🔥' },
+  };
 
   const T = {
     bg0: '#0B1A12', bg1: '#112A1C', bg2: '#163524',
@@ -3345,10 +3493,10 @@ function ProfileView({ user, wallet, notify, onLogout }: {
   };
 
   const settingsItems = [
-    { icon: <Coins size={15} />, label: 'Поповнення', detail: '', onClick: () => notify('Перейдіть до Казино → Поповнення') },
-    { icon: <BarChart2 size={15} />, label: 'Транзакції', detail: '', onClick: () => notify('Транзакції — в розробці') },
-    { icon: <Trophy size={15} />, label: 'Досягнення', detail: '7/24', onClick: () => notify('Досягнення — в розробці') },
-    { icon: <LifeBuoy size={15} />, label: 'Підтримка', detail: '', onClick: () => notify('Перейдіть до чату підтримки') },
+    { icon: <Coins size={15} />, label: 'Поповнення', detail: '', onClick: () => onGoDeposit?.() },
+    { icon: <BarChart2 size={15} />, label: 'Транзакції', detail: '', onClick: () => onGoHistory?.() },
+    { icon: <Trophy size={15} />, label: 'Досягнення', detail: '', onClick: () => setShowAch(v => !v) },
+    { icon: <LifeBuoy size={15} />, label: 'Підтримка', detail: '', onClick: () => onGoSupport?.() },
     { icon: <LogOut size={15} />, label: 'Вийти', detail: '', onClick: onLogout || (() => notify('Виходимо…')), danger: true },
   ];
 
@@ -3407,6 +3555,33 @@ function ProfileView({ user, wallet, notify, onLogout }: {
             </div>
           ))}
         </div>
+
+        {/* Achievements panel */}
+        {showAch && (
+          <div style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: T.text, letterSpacing: '0.5px' }}>🏆 Досягнення</span>
+              <span style={{ fontSize: 11, color: T.textDim }}>{achList.length} / {Object.keys(ALL_ACHIEVEMENTS).length}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 p-3">
+              {Object.entries(ALL_ACHIEVEMENTS).map(([key, ach]) => {
+                const unlocked = achList.includes(key);
+                return (
+                  <div key={key} style={{
+                    background: unlocked ? T.bg2 : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${unlocked ? 'rgba(228,162,75,0.3)' : T.hairline}`,
+                    borderRadius: 10, padding: '10px 12px',
+                    opacity: unlocked ? 1 : 0.45,
+                  }}>
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>{ach.emoji}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: unlocked ? T.amber : T.textMute, lineHeight: 1.3 }}>{ach.label}</div>
+                    {!unlocked && <div style={{ fontSize: 9, color: T.textMute, marginTop: 2 }}>не відкрито</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
@@ -3829,6 +4004,7 @@ export default function App() {
 
   // Casino
   const [wallet, setWallet] = useState<CasinoWallet>(DEMO_WALLET);
+  const [achievements, setAchievements] = useState<string[]>([]);
 
   // Call
   const [call, setCall] = useState<CallState | null>(null);
@@ -3850,6 +4026,16 @@ export default function App() {
   const notify = useCallback((msg: string) => setToast(msg), []);
 
   function updateWallet(delta: Partial<CasinoWallet>) { setWallet(prev => ({ ...prev, ...delta })); }
+
+  useEffect(() => {
+    if (!token) return;
+    api<{ wallet: CasinoWallet; achievements: string[] }>('/casino/profile', {}, token).then(r => {
+      if (r.ok && r.data) {
+        setWallet(prev => ({ ...prev, ...r.data!.wallet }));
+        setAchievements(r.data!.achievements);
+      }
+    });
+  }, [token]);
 
   function handleAuth(u: User, t: string, isNew = false) {
     setUser(u); setToken(t); setScreen('app');
@@ -4302,7 +4488,13 @@ export default function App() {
 
         {/* PROFILE TAB */}
         {sidebarTab === 'profile' && user && (
-          <ProfileView user={user} wallet={wallet} tickets={tickets} notify={notify} onLogout={handleLogout} />
+          <ProfileView
+            user={user} wallet={wallet} tickets={tickets} notify={notify} onLogout={handleLogout}
+            achievements={achievements}
+            onGoDeposit={() => { setSidebarTab('casino'); setCasinoView('deposit'); }}
+            onGoHistory={() => { setSidebarTab('casino'); setCasinoView('history'); }}
+            onGoSupport={() => setShowSupport(true)}
+          />
         )}
 
         {/* ADMIN TAB */}

@@ -1644,23 +1644,10 @@ function CrashView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
       {/* Bet controls */}
       {serverPhase === 'waiting' && !betPlaced && (
         <>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-mono text-[10px] text-[#E8F2EA]/40 uppercase mb-1.5">Ставка ₮</label>
-              <input type="number" className="u24-input" value={bet} onChange={e => setBet(+e.target.value)} min={1} />
-            </div>
-            <div>
-              <label className="block font-mono text-[10px] text-[#E8F2EA]/40 uppercase mb-1.5">Auto Cash ×</label>
-              <input type="number" className="u24-input" value={autoCashout} onChange={e => setAutoCashout(+e.target.value)} min={1.01} step={0.1} />
-            </div>
-          </div>
-          <div className="flex gap-1.5">
-            {[10, 50, 100, 500, 1000].map(v => (
-              <button key={v} onClick={() => setBet(v)}
-                className="flex-1 font-mono text-xs border border-[#1d2e20]/40 rounded-lg py-1.5 hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer">
-                {v}
-              </button>
-            ))}
+          <BetInput value={bet} onChange={setBet} balance={wallet.balance} presets={[10,50,100,500,1000]} />
+          <div className="flex items-center gap-2">
+            <label className="font-mono text-[10px] text-[#E8F2EA]/40 uppercase whitespace-nowrap">Auto ×</label>
+            <input type="number" className="u24-input flex-1" value={autoCashout} onChange={e => setAutoCashout(+e.target.value)} min={1.01} step={0.1} />
           </div>
           <button className="u24-button py-4 text-base" onClick={placeBet} disabled={!connected || bet < 1}>
             🚀 Поставити {fmtCoins(bet)}₮
@@ -1844,24 +1831,12 @@ function MinesView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
 
       {['idle', 'won', 'lost'].includes(phase) && (
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#6b7c6d]">Ставка ₮</label>
-              <input type="number" className="u24-input" value={bet} onChange={e => setBet(+e.target.value)} min={1} />
-            </div>
-            <div>
-              <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#6b7c6d]">Кількість мін</label>
-              <select className="u24-input" value={mineCount} onChange={e => setMineCount(+e.target.value)}>
-                {[1,2,3,5,8,10,15,20,24].map(v => <option key={v} value={v}>{v} 💣</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {[10, 50, 100, 500].map(v => (
-              <button key={v} onClick={() => setBet(v)} className="flex-1 font-mono text-xs border border-[#1d2e20]/40 rounded-lg px-2 py-1.5 hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer">
-                {v}₮
-              </button>
-            ))}
+          <BetInput value={bet} onChange={setBet} balance={wallet.balance} presets={[10,50,100,500]} disabled={loading} />
+          <div>
+            <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#6b7c6d]">Кількість мін</label>
+            <select className="u24-input" value={mineCount} onChange={e => setMineCount(+e.target.value)}>
+              {[1,2,3,5,8,10,15,20,24].map(v => <option key={v} value={v}>{v} 💣</option>)}
+            </select>
           </div>
           <button className="u24-button py-4 text-base" onClick={startGame} disabled={bet < 1 || loading}>
             {loading ? '⏳ Старт…' : `💣 Нова гра (${fmtCoins(bet)})`}
@@ -2221,18 +2196,7 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
       </div>
 
       {/* Bet */}
-      <div>
-        <label className="block font-black text-[10px] uppercase tracking-widest mb-1.5 text-[#6b7c6d]">Ставка ₮</label>
-        <input type="number" className="u24-input" value={bet} onChange={e => setBet(+e.target.value)} disabled={rolling} min={1} />
-        <div className="flex gap-1.5 mt-1.5">
-          {[10, 50, 100, 500, 1000].map(v => (
-            <button key={v} onClick={() => setBet(v)} disabled={rolling}
-              className="font-mono text-xs border border-[#1d2e20]/40 rounded-lg px-2 py-1.5 hover:bg-[#1d2e20] hover:text-white transition-all cursor-pointer disabled:opacity-40 flex-1">
-              {v}
-            </button>
-          ))}
-        </div>
-      </div>
+      <BetInput value={bet} onChange={setBet} balance={wallet.balance} presets={[10,50,100,500,1000]} disabled={rolling} />
 
       <button className="u24-button py-4 text-base" onClick={roll} disabled={rolling || bet < 1}>
         {rolling ? <><span className="animate-blink">🎲</span> Кидок…</> : `🎲 Кинути (${fmtCoins(bet)})`}
@@ -6632,103 +6596,103 @@ export default function App() {
         {sidebarTab === 'casino' && casinoView === 'roulette' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎡" title="Рулетка" sub="Європейська · До ×35" />
-            <RouletteView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><RouletteView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'slots' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎰" title="Слоти" sub="3 барабани · Джекпот ×50" />
-            <SlotsView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><SlotsView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'crash' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🚀" title="Crash" sub="Забери до краху" />
-            <CrashView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><CrashView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'mines' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="💣" title="Mines" sub="5×5 мінне поле" />
-            <MinesView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><MinesView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'chicken' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🐔" title="Chicken Road" sub="Перейди дорогу · До ×30" />
-            <ChickenRoadView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><ChickenRoadView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'dice' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎲" title="Dice" sub="Більше / менше" />
-            <DiceView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><DiceView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'blackjack' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🃏" title="Blackjack" sub="Блекджек 3:2 · Дилер стоїть на 17" />
-            <BlackjackView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><BlackjackView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'baccarat' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎴" title="Baccarat" sub="Гравець · Банкір · Нічия 8:1" />
-            <BaccaratView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><BaccaratView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'plinko' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🔮" title="Plinko" sub="8 / 12 / 16 рядків · До ×999" />
-            <PlinkoView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><PlinkoView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'limbo' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🚀" title="Limbo" sub="Цільовий множник · Provably Fair" />
-            <LimboView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><LimboView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'wheel' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎡" title="Wheel" sub="Колесо фортуни · 3 рівні ризику" />
-            <WheelView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><WheelView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'hilo' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎴" title="Hi-Lo" sub="Вище чи нижче · Множник ×∞" />
-            <HiloView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><HiloView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'tower' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🗼" title="Tower" sub="Піднімись на 9 поверхів · 4 рівні складності" />
-            <TowerView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><TowerView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'keno' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎯" title="Keno" sub="Обери до 10 · 10 з 40 випадкових · До ×800" />
-            <KenoView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><KenoView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'videopoker' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🂡" title="Video Poker" sub="Jacks or Better · Тримай · Тягни · Виграй" />
-            <VideoPokerView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><VideoPokerView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'dragontiger' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🐉" title="Dragon Tiger" sub="Дракон проти Тигра · Нічия ×8" />
-            <DragonTigerView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><DragonTigerView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'scratch' && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎴" title="Scratch Card" sub="Білет на удачу · До ×50" />
-            <ScratchView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+            <ErrorBoundary><ScratchView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} /></ErrorBoundary>
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'deposit' && (

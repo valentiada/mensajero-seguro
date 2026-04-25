@@ -297,6 +297,7 @@ interface CasinoWallet {
   total_won: number;
   level: number;
   xp: number;
+  games_count?: number;
 }
 
 interface RouletteResult {
@@ -614,7 +615,7 @@ function BetInput({
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
         {presets.map(v => (
-          <button key={v} onClick={() => onChange(clamp(v))} disabled={disabled}
+          <button key={v} onClick={() => { sfx.click(); onChange(clamp(v)); }} disabled={disabled}
             style={{
               flex: 1, padding: '7px 0', borderRadius: 8, fontWeight: 800, fontSize: 11,
               background: value === v ? accentColor : 'rgba(255,255,255,0.04)',
@@ -625,7 +626,7 @@ function BetInput({
             {v >= 1000 ? `${v/1000}k` : v}
           </button>
         ))}
-        <button onClick={() => onChange(clamp(balance))} disabled={disabled}
+        <button onClick={() => { sfx.click(); onChange(clamp(balance)); }} disabled={disabled}
           style={{
             flex: 1, padding: '7px 0', borderRadius: 8, fontWeight: 800, fontSize: 10,
             background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)',
@@ -2160,6 +2161,13 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
     fetchSeed();
     setClientSeed(Math.random().toString(36).slice(2, 10));
   }
+
+  // Enter key → roll
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Enter' && !rolling && bet >= 1) roll(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [rolling, bet, dir, target]);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
@@ -4854,6 +4862,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
   }, [token]);
 
   async function claimBonus() {
+    sfx.click();
     setClaiming(true);
     const r = await api<BonusStatus & { amount: number; new_balance: number }>(
       '/casino/daily-bonus/claim', { method: 'POST' }, token,
@@ -5040,7 +5049,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
           };
           const pat = patternMap[g.key] || '';
           return (
-            <button key={g.key} onClick={() => onSelectGame(g.key)}
+            <button key={g.key} onClick={() => { sfx.click(); onSelectGame(g.key); }}
               className="rounded-2xl overflow-hidden text-left cursor-pointer active:scale-[0.96] group"
               style={{
                 background: `#0f2018`,
@@ -5232,6 +5241,9 @@ function HistoryView({ token }: { token: string }) {
 
   const GAME_EMOJI: Record<string, string> = {
     roulette: '🎡', slots: '🎰', crash: '🚀', mines: '💣', dice: '🎲', chicken: '🐔',
+    blackjack: '🃏', baccarat: '🎴', plinko: '🔮', limbo: '🚀', wheel: '🎡',
+    hilo: '🎴', tower: '🗼', keno: '🎯', videopoker: '🂡', dragontiger: '🐉',
+    scratch: '🎴',
   };
 
   const totalBet = rows.reduce((s, r) => s + r.bet_amount, 0);
@@ -5565,6 +5577,8 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
   const winRate = wallet.total_bet > 0 ? Math.round((wallet.total_won / wallet.total_bet) * 100) : 0;
   const initial = (user.full_name || 'U')[0].toUpperCase();
   const handle = user.phone || user.email || 'user';
+  const xpToNext = wallet.level * 100;
+  const xpPct = Math.min(100, Math.round((wallet.xp % xpToNext) / xpToNext * 100));
 
   const ALL_ACHIEVEMENTS: Record<string, { label: string; emoji: string }> = {
     big_winner:          { label: 'Великий переможець',  emoji: '💰' },
@@ -5609,12 +5623,24 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
           <div style={{ fontSize: 13, color: T.textDim, textAlign: 'center' }}>{handle} · Level {wallet.level}</div>
         </div>
 
+        {/* XP progress */}
+        <div style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 14 }} className="px-4 py-3 flex flex-col gap-2">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: T.textDim }}>Рівень {wallet.level}</div>
+            <div style={{ fontSize: 11, color: T.amber, fontFamily: 'monospace' }}>{wallet.xp % xpToNext} / {xpToNext} XP</div>
+          </div>
+          <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${xpPct}%`, background: 'linear-gradient(90deg,#5BBE8A,#E4A24B)', borderRadius: 99, transition: 'width 0.6s cubic-bezier(0.22,1,0.36,1)' }} />
+          </div>
+          <div style={{ fontSize: 10, color: T.textMute }}>{xpToNext - (wallet.xp % xpToNext)} XP до {wallet.level + 1} рівня</div>
+        </div>
+
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Ігор зіграно', val: wallet.total_bet > 0 ? String(Math.round(wallet.total_bet / 100)) : '0' },
-            { label: 'Найбільший виграш', val: fmtCoins(wallet.total_won) },
-            { label: 'Рейтинг перемог', val: `${winRate}%` },
+            { label: 'Ігор зіграно', val: String(wallet.games_count ?? 0) },
+            { label: 'Виграно всього', val: fmtCoins(wallet.total_won) },
+            { label: 'Win Rate', val: `${winRate}%` },
           ].map(s => (
             <div key={s.label} style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 12 }} className="p-3 flex flex-col gap-1">
               <div className="font-grotesk" style={{ fontSize: 17, fontWeight: 600, color: T.text }}>{s.val}</div>
@@ -6390,7 +6416,7 @@ export default function App() {
   const AppTabBar = () => {
     const tabs: { key: SidebarTab; icon: React.ReactNode; label: string; badge: number }[] = [
       { key: 'chats',   icon: <MessageCircle size={17} />, label: 'Чати',    badge: totalUnread },
-      { key: 'casino',  icon: <Zap size={17} />,           label: 'Казино',  badge: 0 },
+      { key: 'casino',  icon: <Zap size={17} />,           label: casinoView !== 'lobby' ? '← Казино' : 'Казино',  badge: 0 },
       { key: 'profile', icon: <Award size={17} />,          label: 'Профіль', badge: 0 },
     ];
     if (user?.role === 'admin' || user?.role === 'operator') {
@@ -6405,7 +6431,7 @@ export default function App() {
         {tabs.map(tab => {
           const active = sidebarTab === tab.key;
           return (
-            <button key={tab.key} onClick={() => setSidebarTab(tab.key)}
+            <button key={tab.key} onClick={() => { sfx.click(); setSidebarTab(tab.key); }}
               style={{
                 flex: 1, height: 42, borderRadius: 12,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,

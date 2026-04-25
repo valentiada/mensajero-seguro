@@ -125,9 +125,13 @@ class CasinoService:
     # ── Wallet ────────────────────────────────────────────────────────────────
 
     def get_profile(self, user_id: int) -> dict:
+        from db import query_one
         wallet = self.repo.ensure_wallet(user_id)
         history = self.repo.list_history(user_id, limit=10)
         achievements = self.repo.list_achievements(user_id)
+        # Attach games_count from leaderboard table
+        lb = query_one('SELECT games_count FROM casino_leaderboard WHERE user_id = ?', (user_id,))
+        wallet['games_count'] = lb['games_count'] if lb else 0
         return {
             'wallet': wallet,
             'recent_games': history,

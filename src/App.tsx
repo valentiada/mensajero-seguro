@@ -2,6 +2,44 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { io, Socket } from 'socket.io-client';
 import confetti from 'canvas-confetti';
 
+// ─── Sound engine (Web Audio API, no deps) ────────────────────────────────────
+const _audioCtx = (() => {
+  try { return new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)(); }
+  catch { return null; }
+})();
+
+let _soundEnabled = (() => { try { return localStorage.getItem('sound_on') !== '0'; } catch { return true; } })();
+function setSoundEnabled(v: boolean) {
+  _soundEnabled = v;
+  try { localStorage.setItem('sound_on', v ? '1' : '0'); } catch {}
+}
+function isSoundEnabled() { return _soundEnabled; }
+
+function _playTone(freq: number, type: OscillatorType, gainVal: number, decay: number, delay = 0) {
+  if (!_audioCtx || !_soundEnabled) return;
+  try {
+    const osc = _audioCtx.createOscillator();
+    const gain = _audioCtx.createGain();
+    osc.connect(gain); gain.connect(_audioCtx.destination);
+    osc.type = type; osc.frequency.value = freq;
+    const t = _audioCtx.currentTime + delay;
+    gain.gain.setValueAtTime(gainVal, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+    osc.start(t); osc.stop(t + decay);
+  } catch {}
+}
+
+const sfx = {
+  click:  () => _playTone(660, 'sine', 0.15, 0.06),
+  tick:   () => _playTone(880, 'square', 0.06, 0.04),
+  win:    () => { _playTone(523, 'sine', 0.25, 0.15); _playTone(659, 'sine', 0.2, 0.15, 0.1); _playTone(784, 'sine', 0.2, 0.2, 0.2); },
+  bigwin: () => { [523,659,784,1047].forEach((f,i)=>_playTone(f,'sine',0.3,0.3,i*0.08)); },
+  lose:   () => { _playTone(200, 'sawtooth', 0.2, 0.25); _playTone(150, 'sawtooth', 0.15, 0.3, 0.1); },
+  flip:   () => _playTone(440, 'triangle', 0.12, 0.08),
+  cashout:() => { _playTone(880, 'sine', 0.3, 0.1); _playTone(1100, 'sine', 0.25, 0.15, 0.1); },
+  spin:   () => { for (let i = 0; i < 6; i++) _playTone(200 + i * 80, 'sawtooth', 0.05, 0.06, i * 0.05); },
+};
+
 function celebrate(intensity: 'small' | 'big' | 'huge' = 'big') {
   const count = intensity === 'huge' ? 300 : intensity === 'big' ? 150 : 60;
   const defaults = { origin: { y: 0.7 }, colors: ['#E4A24B', '#5BBE8A', '#E54B5E', '#C678DD', '#6DB5D4'] };
@@ -10,6 +48,11 @@ function celebrate(intensity: 'small' | 'big' | 'huge' = 'big') {
   if (intensity === 'huge') {
     setTimeout(() => confetti({ ...defaults, particleCount: 120, spread: 100, startVelocity: 45 }), 250);
     setTimeout(() => confetti({ ...defaults, particleCount: 120, spread: 100, startVelocity: 45 }), 500);
+    sfx.bigwin();
+  } else if (intensity === 'big') {
+    sfx.win();
+  } else {
+    sfx.cashout();
   }
 }
 import {
@@ -828,6 +871,7 @@ function RouletteView({ wallet, onWalletUpdate, token, notify }: {
 
   async function spin() {
     if (spinning || totalBet === 0) return;
+    sfx.spin();
     setSpinning(true);
     setResult(null);
     await new Promise(r => setTimeout(r, 2000));
@@ -850,8 +894,8 @@ function RouletteView({ wallet, onWalletUpdate, token, notify }: {
     setHistory(h => [res, ...h.slice(0, 9)]);
     onWalletUpdate({ balance: res.new_balance, xp: wallet.xp + (res.xp_gained || 0) });
     setBets({});
-    if (res.net > 0) notify(`🎉 Виграш ${fmtCoins(res.total_win)}! Число: ${res.number}`);
-    else notify(`Число ${res.number} — програш ${fmtCoins(Math.abs(res.net))}`);
+    if (res.net > 0) { celebrate(res.net > totalBet * 5 ? 'huge' : 'big'); notify(`🎉 Виграш ${fmtCoins(res.total_win)}! Число: ${res.number}`); }
+    else { sfx.lose(); notify(`Число ${res.number} — програш ${fmtCoins(Math.abs(res.net))}`); }
   }
 
   return (
@@ -1114,6 +1158,7 @@ function SlotsView({ wallet, onWalletUpdate, token, notify }: {
 
   async function spin() {
     if (spinning) return;
+    sfx.spin();
     setSpinning(true);
     setLastResult(null);
 
@@ -1143,6 +1188,8 @@ function SlotsView({ wallet, onWalletUpdate, token, notify }: {
     if (res.win > 0) {
       notify(`🎰 ×${res.multiplier} = +${fmtCoins(res.win)}`);
       celebrate(res.multiplier >= 50 ? 'huge' : res.multiplier >= 10 ? 'big' : 'small');
+    } else {
+      sfx.lose();
     }
     // auto-spin
     if (autoRef.current) {
@@ -1722,7 +1769,7 @@ function MinesView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
       setMines(new Set(res.data!.mines ?? []));
       setRevealed(prev => new Set([...prev, idx]));
       setPhase('lost');
-      notify(`💣 Міна! Втрачено ${fmtCoins(bet)}`);
+      sfx.lose(); notify(`💣 Міна! Втрачено ${fmtCoins(bet)}`);
     } else {
       setRevealed(prev => new Set([...prev, idx]));
       setMult(res.data!.mult ?? mult);
@@ -2108,7 +2155,7 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
     onWalletUpdate({ balance: new_balance, ...(won ? { total_won: wallet.total_won + win } : {}) });
     if (server_seed) setPfRevealed({ server_seed, client_seed: cs || clientSeed, result: val });
     if (won) notify(`🎲 ${val} — Виграш! +${fmtCoins(win)}`);
-    else notify(`🎲 ${val} — Програш!`);
+    else { sfx.lose(); notify(`🎲 ${val} — Програш!`); }
     // Fetch new seed for next round
     fetchSeed();
     setClientSeed(Math.random().toString(36).slice(2, 10));
@@ -5847,7 +5894,7 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
             {/* Casino features */}
             <div className="flex flex-col gap-3 mt-4">
               {[
-                { icon: '🎰', title: '9 ігор', sub: 'Crash · Blackjack · Plinko та ін.' },
+                { icon: '🎰', title: '17 ігор', sub: 'Crash · Slots · Blackjack · Plinko та ін.' },
                 { icon: '💎', title: 'Provably Fair', sub: 'Верифіковані результати HMAC-SHA256' },
                 { icon: '🔒', title: 'E2E шифрування', sub: 'Захищені повідомлення Fernet' },
                 { icon: '🎁', title: '+200₮ бонус', sub: 'При першій реєстрації одразу' },
@@ -6279,31 +6326,54 @@ export default function App() {
   };
 
   // ── AppHeader ─────────────────────────────────────────────
+  const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const AppHeader = () => (
     <div style={{
       display: 'flex', alignItems: 'center',
-      padding: '6px 18px 14px',
+      padding: '6px 14px 10px',
       borderBottom: `1px solid ${T.hairline}`,
       background: T.bg0,
-      flexShrink: 0,
+      flexShrink: 0, gap: 10,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 }}>
         <HummingbirdLogo size={20} />
         <span style={{
           fontFamily: 'var(--font-grotesk)', fontWeight: 700,
-          letterSpacing: '2.2px', fontSize: 17, color: T.text,
+          letterSpacing: '2.2px', fontSize: 16, color: T.text,
         }}>КОЛІБРІ</span>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
+      {/* Live balance pill — always visible */}
+      {wallet && (
+        <button onClick={() => { setSidebarTab('casino'); setCasinoView('deposit'); }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '5px 11px', borderRadius: 10,
+            background: 'linear-gradient(135deg,rgba(228,162,75,0.13),rgba(228,162,75,0.07))',
+            border: `1px solid rgba(228,162,75,0.3)`,
+            color: T.amber, fontSize: 13, fontWeight: 800,
+            cursor: 'pointer', fontFamily: 'monospace', flexShrink: 0,
+            letterSpacing: 0.2,
+          }}>
+          <Coins size={13} />
+          <AnimatedBalance value={wallet.balance} />
+        </button>
+      )}
+      <div style={{ display: 'flex', gap: 6 }}>
+        {/* Sound toggle */}
+        <button onClick={() => { const v = !soundOn; setSoundOn(v); setSoundEnabled(v); if (v) sfx.click(); }}
+          title={soundOn ? 'Звук увімкнено' : 'Звук вимкнено'}
+          style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.hairline}`, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', color: soundOn ? T.amber : T.textDim, cursor: 'pointer', fontSize: 15 }}>
+          {soundOn ? '🔊' : '🔇'}
+        </button>
         {[
-          { icon: <LifeBuoy size={17} />, onClick: () => setShowSupport(v => !v), title: 'Підтримка' },
-          { icon: <LogOut size={17} />, onClick: handleLogout, title: 'Вийти' },
+          { icon: <LifeBuoy size={16} />, onClick: () => setShowSupport(v => !v), title: 'Підтримка' },
+          { icon: <LogOut size={16} />, onClick: handleLogout, title: 'Вийти' },
         ].map((btn, i) => (
           <button key={i} onClick={btn.onClick} title={btn.title} style={{
-            width: 36, height: 36,
+            width: 34, height: 34,
             background: 'rgba(255,255,255,0.04)',
             border: `1px solid ${T.hairline}`,
-            borderRadius: 10,
+            borderRadius: 9,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: T.textDim, cursor: 'pointer',
           }}
@@ -6458,18 +6528,28 @@ export default function App() {
   // ── Game sub-view header ──────────────────────────────────
   const GameHeader = ({ emoji, title, sub }: { emoji: string; title: string; sub: string }) => (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 18px', borderBottom: `1px solid ${T.hairline}`,
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '10px 14px', borderBottom: `1px solid ${T.hairline}`,
       background: T.bg0, flexShrink: 0,
     }}>
-      <button onClick={() => setCasinoView('lobby')}
-        style={{ color: T.amber, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+      <button onClick={() => { sfx.click(); setCasinoView('lobby'); }}
+        style={{ color: T.amber, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
         <ChevronLeft size={22} />
       </button>
-      <span style={{ fontSize: 22 }}>{emoji}</span>
-      <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{title}</div>
-        <div style={{ fontSize: 11, color: T.textDim }}>{sub}</div>
+      <span style={{ fontSize: 20, flexShrink: 0 }}>{emoji}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{title}</div>
+        <div style={{ fontSize: 10, color: T.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>
+      </div>
+      {/* Live balance in game header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        padding: '4px 10px', borderRadius: 8,
+        background: 'rgba(228,162,75,0.08)', border: `1px solid rgba(228,162,75,0.2)`,
+        color: T.amber, fontSize: 12, fontWeight: 800,
+        fontFamily: 'monospace', flexShrink: 0,
+      }}>
+        <AnimatedBalance value={wallet.balance} />
       </div>
     </div>
   );

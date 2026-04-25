@@ -742,102 +742,334 @@ const SLOTS_PAY: Record<string, number> = {
   '7️⃣,7️⃣,7️⃣': 50,'💎,💎,💎': 25,'⭐,⭐,⭐': 15,'🍇,🍇,🍇': 10,'🍊,🍊,🍊': 8,'🍋,🍋,🍋': 5,'🍒,🍒,🍒': 3,
 };
 
+// ─── Slot symbols: each maps emoji → rich SVG ────────────────────────────────
+
+const SLOT_SVG: Record<string, (size: number) => React.ReactElement> = {
+  '🍒': (s) => (
+    <svg width={s} height={s} viewBox="0 0 64 64" style={{ filter: 'drop-shadow(0 2px 6px rgba(220,50,50,0.5))' }}>
+      <circle cx="22" cy="38" r="12" fill="#e53935" stroke="#b71c1c" strokeWidth="2"/>
+      <circle cx="38" cy="42" r="12" fill="#c62828" stroke="#b71c1c" strokeWidth="2"/>
+      <circle cx="22" cy="38" r="5" fill="#ef9a9a" opacity="0.4"/>
+      <path d="M24 26 Q32 12 44 10" stroke="#2e7d32" strokeWidth="3" fill="none" strokeLinecap="round"/>
+      <path d="M37 30 Q36 18 44 10" stroke="#388e3c" strokeWidth="3" fill="none" strokeLinecap="round"/>
+      <ellipse cx="46" cy="9" rx="4" ry="3" fill="#4caf50"/>
+    </svg>
+  ),
+  '🍋': (s) => (
+    <svg width={s} height={s} viewBox="0 0 64 64" style={{ filter: 'drop-shadow(0 2px 6px rgba(255,220,0,0.5))' }}>
+      <ellipse cx="32" cy="34" rx="20" ry="16" fill="#fdd835" stroke="#f9a825" strokeWidth="2"/>
+      <ellipse cx="24" cy="28" rx="8" ry="6" fill="#fff176" opacity="0.5"/>
+      <ellipse cx="44" cy="18" rx="5" ry="4" fill="#fdd835" stroke="#f9a825" strokeWidth="1.5" transform="rotate(-30 44 18)"/>
+      <path d="M32 18 Q34 12 38 10" stroke="#a5d6a7" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+      <ellipse cx="38" cy="9" rx="3" ry="2" fill="#66bb6a"/>
+    </svg>
+  ),
+  '🍊': (s) => (
+    <svg width={s} height={s} viewBox="0 0 64 64" style={{ filter: 'drop-shadow(0 2px 6px rgba(255,140,0,0.5))' }}>
+      <circle cx="32" cy="36" r="20" fill="#fb8c00" stroke="#e65100" strokeWidth="2"/>
+      <circle cx="24" cy="28" r="8" fill="#ffcc80" opacity="0.4"/>
+      <path d="M32 16 Q33 8 36 6" stroke="#2e7d32" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+      <ellipse cx="36" cy="5" rx="4" ry="2.5" fill="#4caf50"/>
+      <path d="M20 36 L44 36M32 24 L32 48M25 27 L39 45M39 27 L25 45" stroke="#e65100" strokeWidth="1" opacity="0.3"/>
+    </svg>
+  ),
+  '🍇': (s) => (
+    <svg width={s} height={s} viewBox="0 0 64 64" style={{ filter: 'drop-shadow(0 2px 8px rgba(130,50,200,0.5))' }}>
+      {[[24,46],[38,46],[31,36],[18,36],[44,36],[25,26],[39,26]].map(([cx,cy], i) => (
+        <g key={i}>
+          <circle cx={cx} cy={cy} r="9" fill="#8e24aa" stroke="#6a1b9a" strokeWidth="1.5"/>
+          <circle cx={cx-3} cy={cy-3} r="3" fill="#ce93d8" opacity="0.5"/>
+        </g>
+      ))}
+      <path d="M32 17 Q36 10 42 8" stroke="#43a047" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+      <ellipse cx="43" cy="7" rx="4" ry="2.5" fill="#66bb6a"/>
+    </svg>
+  ),
+  '💎': (s) => (
+    <svg width={s} height={s} viewBox="0 0 64 64" style={{ filter: 'drop-shadow(0 2px 12px rgba(100,180,255,0.7))' }}>
+      <polygon points="32,8 58,26 32,58 6,26" fill="#42a5f5" stroke="#1565c0" strokeWidth="2"/>
+      <polygon points="32,8 58,26 32,28 6,26" fill="#90caf9" stroke="#1565c0" strokeWidth="1.5"/>
+      <polygon points="32,8 44,26 32,28 20,26" fill="#e3f2fd"/>
+      <polygon points="32,28 6,26 32,58" fill="#1976d2"/>
+      <polygon points="32,28 58,26 32,58" fill="#2196f3"/>
+      <line x1="32" y1="8" x2="32" y2="58" stroke="#bbdefb" strokeWidth="1" opacity="0.4"/>
+    </svg>
+  ),
+  '⭐': (s) => (
+    <svg width={s} height={s} viewBox="0 0 64 64" style={{ filter: 'drop-shadow(0 2px 10px rgba(255,200,0,0.7))' }}>
+      <polygon points="32,6 38,24 58,24 43,36 49,54 32,42 15,54 21,36 6,24 26,24" fill="#ffd600" stroke="#f57f17" strokeWidth="2"/>
+      <polygon points="32,6 38,24 58,24 43,36 49,54 32,42 15,54 21,36 6,24 26,24" fill="url(#starGrad)"/>
+      <defs>
+        <radialGradient id="starGrad" cx="40%" cy="35%">
+          <stop offset="0%" stopColor="#fff59d"/>
+          <stop offset="100%" stopColor="#ffd600"/>
+        </radialGradient>
+      </defs>
+      <circle cx="26" cy="20" r="4" fill="#fff" opacity="0.5"/>
+    </svg>
+  ),
+  '7️⃣': (s) => (
+    <svg width={s} height={s} viewBox="0 0 64 64" style={{ filter: 'drop-shadow(0 2px 14px rgba(255,50,50,0.8))' }}>
+      <rect x="6" y="6" width="52" height="52" rx="10" fill="#d32f2f" stroke="#b71c1c" strokeWidth="2.5"/>
+      <rect x="6" y="6" width="52" height="26" rx="10" fill="#ef5350" opacity="0.5"/>
+      <text x="32" y="46" textAnchor="middle" fontFamily="Arial Black,sans-serif" fontSize="36" fontWeight="900" fill="#fff" stroke="#ffcdd2" strokeWidth="1">7</text>
+    </svg>
+  ),
+  '🔔': (s) => (
+    <svg width={s} height={s} viewBox="0 0 64 64" style={{ filter: 'drop-shadow(0 2px 8px rgba(255,193,7,0.6))' }}>
+      <path d="M32 8 Q48 8 50 28 L54 48 L10 48 L14 28 Q16 8 32 8Z" fill="#ffc107" stroke="#f57f17" strokeWidth="2"/>
+      <path d="M32 8 Q40 8 42 24" fill="none" stroke="#fff9c4" strokeWidth="3" strokeLinecap="round" opacity="0.6"/>
+      <ellipse cx="32" cy="49" rx="10" ry="4" fill="#f9a825"/>
+      <circle cx="32" cy="55" r="5" fill="#ff8f00" stroke="#e65100" strokeWidth="1.5"/>
+      <circle cx="32" cy="14" r="4" fill="#fff" opacity="0.3"/>
+    </svg>
+  ),
+  '🃏': (s) => (
+    <svg width={s} height={s} viewBox="0 0 64 64" style={{ filter: 'drop-shadow(0 2px 10px rgba(255,255,255,0.4))' }}>
+      <rect x="6" y="4" width="52" height="56" rx="6" fill="#fff" stroke="#e0e0e0" strokeWidth="2"/>
+      <text x="32" y="40" textAnchor="middle" fontFamily="Georgia,serif" fontSize="32" fontWeight="900" fill="#c62828">♥</text>
+      <text x="12" y="18" fontFamily="Georgia,serif" fontSize="12" fontWeight="900" fill="#c62828">A</text>
+      <text x="50" y="54" fontFamily="Georgia,serif" fontSize="12" fontWeight="900" fill="#c62828" transform="rotate(180 50 54)">A</text>
+    </svg>
+  ),
+};
+const SYM_FALLBACK = (sym: string, size: number) => (
+  <div style={{ width: size, height: size, fontSize: size * 0.7, display:'flex', alignItems:'center', justifyContent:'center' }}>{sym}</div>
+);
+function SlotSymbol({ sym, size }: { sym: string; size: number }) {
+  const fn = SLOT_SVG[sym];
+  return fn ? fn(size) : SYM_FALLBACK(sym, size);
+}
+
+// ─── SlotsView ─────────────────────────────────────────────────────────────────
+
 function SlotsView({ wallet, onWalletUpdate, token, notify }: {
   wallet: CasinoWallet;
   onWalletUpdate: (w: Partial<CasinoWallet>) => void;
   token: string;
   notify: (m: string) => void;
 }) {
+  const ALL_SYMS = ['🍒','🍋','🍊','🍇','💎','⭐','7️⃣','🔔'];
+  const REEL_COUNT = 3;
+  const VISIBLE = 3;
+  const CELL_H = 90; // px per symbol cell
+
   const [bet, setBet] = useState(10);
   const [spinning, setSpinning] = useState(false);
   const [reels, setReels] = useState<string[][]>([['🍒','🍋','🍊'],['💎','⭐','7️⃣'],['🍊','🍒','🍋']]);
   const [lastResult, setLastResult] = useState<SlotsResult | null>(null);
   const [history, setHistory] = useState<SlotsResult[]>([]);
-  const [animReels, setAnimReels] = useState([false, false, false]);
+  const stripRefs = useRef<(HTMLDivElement | null)[]>([null, null, null]);
+
+  // Build a random-looking strip of symbols with finalSyms at positions (end-2, end-1, end)
+  function buildStrip(finalSyms: string[], extraRows = 20): string[] {
+    const strip: string[] = [];
+    for (let i = 0; i < extraRows; i++) {
+      strip.push(ALL_SYMS[Math.floor(Math.random() * ALL_SYMS.length)]);
+    }
+    // last 3 are the final visible result
+    strip.push(...finalSyms);
+    return strip;
+  }
+
+  async function spinReel(reelIdx: number, finalSyms: string[], durationMs: number): Promise<void> {
+    const strip = buildStrip(finalSyms, 22 + reelIdx * 6);
+    const el = stripRefs.current[reelIdx];
+    if (!el) return;
+
+    // Clear and rebuild strip DOM
+    el.innerHTML = '';
+    strip.forEach(sym => {
+      const cell = document.createElement('div');
+      cell.style.cssText = `height:${CELL_H}px;display:flex;align-items:center;justify-content:center;`;
+      const inner = document.createElement('div');
+      inner.style.cssText = `font-size:52px;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;`;
+      inner.textContent = sym;
+      cell.appendChild(inner);
+      el.appendChild(cell);
+    });
+
+    const totalH = strip.length * CELL_H;
+    // We want to land so the last 3 symbols (finalSyms) are centered in the visible 3-row window
+    // End position: top = -(totalH - VISIBLE * CELL_H)
+    const endY = -(totalH - VISIBLE * CELL_H);
+
+    // Web Animations API — same technique as html5-slot-machine (johakr/html5-slot-machine ★605)
+    const anim = el.animate(
+      [
+        { top: '0px', filter: 'blur(0px)' },
+        { filter: `blur(4px)`, offset: 0.4 },
+        { top: `${endY}px`, filter: 'blur(0px)' },
+      ],
+      {
+        duration: durationMs,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        fill: 'forwards',
+      }
+    );
+
+    return new Promise(resolve => { anim.onfinish = () => resolve(); });
+  }
 
   async function spin() {
     if (spinning) return;
     setSpinning(true);
     setLastResult(null);
 
-    for (let i = 0; i < 3; i++) {
-      setAnimReels(prev => { const next = [...prev]; next[i] = true; return next; });
-      await new Promise(r => setTimeout(r, 300));
-    }
-    await new Promise(r => setTimeout(r, 500));
-
     const apiRes = await api<SlotsResult>('/casino/slots/spin', {
       method: 'POST', body: JSON.stringify({ bet }),
     }, token);
 
-    setAnimReels([false, false, false]);
-    setSpinning(false);
-    if (!apiRes.ok) { notify(apiRes.error || 'Помилка.'); return; }
+    if (!apiRes.ok) {
+      setSpinning(false);
+      notify(apiRes.error || 'Помилка.');
+      return;
+    }
     const res = apiRes.data!;
+
+    // Animate reels in cascade — same staggered timing as original project
+    await Promise.all(
+      Array.from({ length: REEL_COUNT }, (_, i) =>
+        spinReel(i, res.reels[i], 1400 + i * 500)
+      )
+    );
+
     setReels(res.reels);
     setLastResult(res);
+    setSpinning(false);
     setHistory(h => [res, ...h.slice(0, 9)]);
     onWalletUpdate({ balance: res.new_balance, xp: wallet.xp + (res.xp_gained || 0) });
-    if (res.win > 0) notify(`🎰 Виграш ×${res.multiplier} = ${fmtCoins(res.win)}!`);
-    else notify('Без виграшу. Спробуйте ще!');
+    if (res.win > 0) {
+      notify(`🎰 ×${res.multiplier} = +${fmtCoins(res.win)}`);
+      celebrate(res.multiplier >= 50 ? 'huge' : res.multiplier >= 10 ? 'big' : 'small');
+    } else {
+      notify('Без виграшу');
+    }
   }
 
-  return (
-    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+  const winSyms = lastResult && lastResult.multiplier > 0
+    ? reels.map(r => r[1])
+    : [];
 
-      {/* Slot machine */}
-      <div className="rounded-3xl overflow-hidden" style={{ background: 'linear-gradient(160deg, #1d2e20 0%, #0d1f11 100%)', border: '2px solid rgba(168,121,42,0.4)', boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-        {/* Machine top */}
-        <div className="flex items-center justify-between px-5 py-3" style={{ background: 'rgba(168,121,42,0.12)', borderBottom: '1px solid rgba(168,121,42,0.25)' }}>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🎰</span>
-            <span className="font-black text-[#a8792a] text-sm uppercase tracking-widest">Колібрі Slots</span>
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-3 py-4" style={{ background: '#0B1A12' }}>
+
+      {/* MACHINE BODY */}
+      <div className="rounded-3xl overflow-hidden" style={{
+        background: 'linear-gradient(170deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+        border: '3px solid rgba(228,162,75,0.5)',
+        boxShadow: '0 0 60px rgba(228,162,75,0.15), 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
+      }}>
+        {/* Header banner */}
+        <div className="px-4 py-3 flex items-center justify-between" style={{
+          background: 'linear-gradient(90deg, #1a1a1a 0%, #2d1a00 50%, #1a1a1a 100%)',
+          borderBottom: '2px solid rgba(228,162,75,0.4)',
+        }}>
+          <div className="flex items-center gap-3">
+            <span style={{ fontSize: 24, filter: 'drop-shadow(0 0 8px #E4A24B)' }}>🎰</span>
+            <div>
+              <div className="font-black text-[#E4A24B] text-sm uppercase tracking-widest" style={{ letterSpacing: '0.2em' }}>
+                NEXUS SLOTS
+              </div>
+              <div className="text-[#E4A24B]/50 text-[9px] uppercase tracking-wider">Provably Fair · RTP 97%</div>
+            </div>
           </div>
-          <div className="font-mono text-sm font-bold text-[#4caf7d]">{fmtCoins(wallet.balance)}</div>
+          <div className="text-right">
+            <div className="text-[#E4A24B]/50 text-[9px] uppercase">Баланс</div>
+            <div className="font-mono font-black text-[#5BBE8A] text-sm">{fmtCoins(wallet.balance)}</div>
+          </div>
         </div>
 
-        {/* Reel window */}
-        <div className="px-5 py-5">
-          <div className="relative rounded-2xl overflow-hidden" style={{ background: '#070f09', border: '2px solid rgba(168,121,42,0.5)', boxShadow: 'inset 0 4px 16px rgba(0,0,0,0.6)' }}>
-            {/* Win line indicator */}
-            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-16 pointer-events-none z-10"
-              style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(168,121,42,0.08) 50%, transparent 100%)', borderTop: '1px solid rgba(168,121,42,0.3)', borderBottom: '1px solid rgba(168,121,42,0.3)' }} />
+        {/* REEL WINDOW */}
+        <div className="px-4 pt-5 pb-3">
+          <div className="relative rounded-2xl overflow-hidden" style={{
+            background: 'linear-gradient(180deg, #000 0%, #050d15 100%)',
+            border: '2px solid rgba(228,162,75,0.4)',
+            height: VISIBLE * CELL_H,
+            boxShadow: 'inset 0 0 40px rgba(0,0,0,0.8)',
+          }}>
+            {/* Top/bottom shadow vignette */}
+            <div style={{ position:'absolute',inset:0,pointerEvents:'none',zIndex:10,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.6) 100%)' }} />
+            {/* Win-line stripe */}
+            <div style={{
+              position:'absolute',left:0,right:0,
+              top: CELL_H, height: CELL_H, pointerEvents:'none', zIndex:5,
+              background: lastResult && lastResult.multiplier > 0
+                ? 'rgba(228,162,75,0.08)' : 'rgba(255,255,255,0.02)',
+              borderTop: '1px solid rgba(228,162,75,0.3)',
+              borderBottom: '1px solid rgba(228,162,75,0.3)',
+            }} />
 
-            <div className="flex gap-0">
-              {reels.map((reel, ri) => (
-                <div key={ri} className={`flex-1 flex flex-col items-center justify-center py-2 ${ri < 2 ? 'border-r border-[#a8792a]/20' : ''}`}>
-                  {reel.map((sym, si) => (
-                    <div key={si} className={`flex items-center justify-center w-full transition-all duration-150
-                      ${si === 1 ? 'text-5xl py-3' : 'text-2xl py-1 opacity-40'}
-                      ${animReels[ri] ? 'animate-blink' : ''}
-                      ${si === 1 && lastResult && lastResult.multiplier > 0 && !spinning ? 'win-flash' : ''}`}
-                      style={{ filter: si === 1 ? 'drop-shadow(0 0 8px rgba(168,121,42,0.5))' : undefined }}>
-                      {sym}
-                    </div>
-                  ))}
+            {/* Reel separators */}
+            <div style={{ position:'absolute',inset:0,display:'flex',zIndex:6,pointerEvents:'none' }}>
+              <div style={{ flex:1 }} />
+              <div style={{ width:2,background:'rgba(228,162,75,0.2)',margin:'8px 0' }} />
+              <div style={{ flex:1 }} />
+              <div style={{ width:2,background:'rgba(228,162,75,0.2)',margin:'8px 0' }} />
+              <div style={{ flex:1 }} />
+            </div>
+
+            {/* Reels */}
+            <div style={{ display:'flex',height:'100%' }}>
+              {Array.from({ length: REEL_COUNT }, (_, ri) => (
+                <div key={ri} style={{ flex:1,overflow:'hidden',position:'relative' }}>
+                  <div
+                    ref={el => { stripRefs.current[ri] = el; }}
+                    style={{ position:'absolute',top:0,left:0,right:0 }}>
+                    {/* Default display when not spinning */}
+                    {reels[ri].map((sym, si) => (
+                      <div key={si} style={{
+                        height: CELL_H,
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                      }}>
+                        <div style={{
+                          fontSize: si === 1 ? 56 : 36,
+                          opacity: si === 1 ? 1 : 0.35,
+                          filter: si === 1 && winSyms.includes(sym) && winSyms[0] === winSyms[1] && winSyms[1] === winSyms[2]
+                            ? 'drop-shadow(0 0 18px rgba(228,162,75,1)) drop-shadow(0 0 36px rgba(228,162,75,0.6))' : undefined,
+                          transform: si === 1 ? 'scale(1)' : 'scale(0.8)',
+                          transition: 'all 0.3s ease',
+                        }}>
+                          {sym}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Win result */}
-          {lastResult && !spinning && (
-            <div className={`mt-3 py-2 px-4 rounded-xl text-center font-black text-sm animate-slide-up ${lastResult.net >= 0 ? 'text-[#4caf7d]' : 'text-[#c0392b]'}`}
-              style={{ background: lastResult.net >= 0 ? 'rgba(76,175,125,0.15)' : 'rgba(192,57,43,0.1)' }}>
-              {lastResult.multiplier > 0 ? `🎉 ×${lastResult.multiplier} = ${fmtCoins(lastResult.win)}` : '😞 Без виграшу'}
-            </div>
-          )}
+          {/* Result banner */}
+          <div style={{ height: 40, marginTop: 8, display:'flex',alignItems:'center',justifyContent:'center' }}>
+            {lastResult && !spinning && (
+              <div className="font-black text-center text-sm rounded-xl px-6 py-2"
+                style={{
+                  background: lastResult.multiplier > 0 ? 'rgba(228,162,75,0.15)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${lastResult.multiplier > 0 ? 'rgba(228,162,75,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                  color: lastResult.multiplier > 0 ? '#E4A24B' : 'rgba(255,255,255,0.3)',
+                  letterSpacing: '0.05em',
+                }}>
+                {lastResult.multiplier > 0 ? `🎉 ×${lastResult.multiplier} · +${fmtCoins(lastResult.win)}` : 'Без виграшу'}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Bet selector inside machine */}
-        <div className="px-5 pb-4 flex flex-col gap-3">
+        {/* BET + SPIN controls */}
+        <div className="px-4 pb-5 flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] text-[#6b7c6d] uppercase flex-shrink-0">Ставка:</span>
-            <div className="flex gap-1 flex-1 flex-wrap">
-              {[5, 10, 25, 50, 100, 250].map(v => (
+            <span className="text-white/40 text-[10px] uppercase tracking-wider w-12">Ставка</span>
+            <div className="flex gap-1 flex-1">
+              {[5,10,25,50,100,250].map(v => (
                 <button key={v} onClick={() => setBet(v)} disabled={spinning}
-                  className={`flex-1 py-1.5 rounded-lg font-mono text-xs cursor-pointer transition-all ${bet === v ? 'text-white font-bold' : 'text-[#6b7c6d] hover:text-white'}`}
-                  style={{ background: bet === v ? 'linear-gradient(135deg, #c9962e, #a8792a)' : 'rgba(29,46,32,0.8)', border: `1px solid ${bet === v ? '#a8792a' : 'rgba(168,121,42,0.2)'}` }}>
+                  className="flex-1 py-2 rounded-lg text-xs font-black transition-all"
+                  style={{
+                    background: bet === v ? 'linear-gradient(135deg, #E4A24B, #b87d2e)' : 'rgba(255,255,255,0.05)',
+                    color: bet === v ? '#1a0d00' : 'rgba(255,255,255,0.5)',
+                    border: `1px solid ${bet === v ? '#E4A24B' : 'rgba(255,255,255,0.06)'}`,
+                  }}>
                   {v}
                 </button>
               ))}
@@ -845,39 +1077,54 @@ function SlotsView({ wallet, onWalletUpdate, token, notify }: {
           </div>
 
           <button onClick={spin} disabled={spinning || bet > wallet.balance}
-            className="w-full py-4 rounded-2xl font-black text-lg uppercase tracking-widest transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-40"
             style={{
-              background: spinning ? 'rgba(29,46,32,0.8)' : 'linear-gradient(135deg, #c9962e 0%, #a8792a 100%)',
-              boxShadow: spinning ? 'none' : '0 4px 20px rgba(168,121,42,0.5)',
-              color: 'white'
+              width:'100%', padding:'18px', borderRadius: 16,
+              fontWeight: 900, fontSize: 18, letterSpacing: '0.15em',
+              textTransform: 'uppercase', cursor: spinning ? 'not-allowed' : 'pointer',
+              background: spinning ? 'rgba(255,255,255,0.04)' : 'linear-gradient(135deg, #E4A24B 0%, #c97d1a 50%, #E4A24B 100%)',
+              backgroundSize: '200% auto',
+              color: spinning ? 'rgba(255,255,255,0.3)' : '#1a0a00',
+              border: spinning ? '2px solid rgba(255,255,255,0.08)' : '2px solid #E4A24B',
+              boxShadow: spinning ? 'none' : '0 0 30px rgba(228,162,75,0.5), 0 4px 16px rgba(0,0,0,0.4)',
+              transition: 'all 0.2s ease',
+              display:'flex', alignItems:'center', justifyContent:'center', gap: 12,
             }}>
             {spinning
-              ? <><RefreshCw size={18} className="animate-spin" /> Крутимо…</>
-              : <>🎰 SPIN <span className="font-mono text-sm opacity-80">({fmtCoins(bet)})</span></>}
+              ? <><RefreshCw size={20} style={{ animation:'spin 0.6s linear infinite' }} /> Крутимо…</>
+              : `🎰 SPIN · ${fmtCoins(bet)}`}
           </button>
         </div>
       </div>
 
-      {/* Paytable */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(168,121,42,0.2)' }}>
-        <div className="px-4 py-2 font-black text-[10px] uppercase tracking-widest text-[#a8792a]" style={{ background: 'rgba(168,121,42,0.08)' }}>
+      {/* PAYTABLE */}
+      <div className="rounded-2xl overflow-hidden" style={{ border:'1px solid rgba(228,162,75,0.2)', background:'rgba(255,255,255,0.02)' }}>
+        <div className="px-4 py-2 font-black text-[10px] uppercase tracking-widest text-[#E4A24B]"
+          style={{ background:'rgba(228,162,75,0.06)', borderBottom:'1px solid rgba(228,162,75,0.15)' }}>
           Таблиця виплат
         </div>
-        <div className="grid grid-cols-2 gap-0">
+        <div className="grid grid-cols-2">
           {Object.entries(SLOTS_PAY).map(([combo, m], idx) => (
-            <div key={combo} className="px-3 py-2 flex items-center justify-between" style={{ background: idx % 2 === 0 ? 'rgba(29,46,32,0.3)' : 'transparent', borderBottom: '1px solid rgba(168,121,42,0.08)' }}>
-              <div className="flex gap-0.5 text-base">{combo.split(',').map((s, i) => <span key={i}>{s}</span>)}</div>
-              <div className="font-black text-sm text-[#a8792a]">×{m}</div>
+            <div key={combo} className="px-3 py-2 flex items-center justify-between gap-2"
+              style={{ background: idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+              <div className="flex gap-0.5">{combo.split(',').map((s, i) => (
+                <span key={i} style={{ fontSize: 18 }}>{s}</span>
+              ))}</div>
+              <div className="font-black text-sm text-[#E4A24B]">×{m}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Recent */}
+      {/* History chips */}
       {history.length > 0 && (
         <div className="flex gap-1.5 flex-wrap">
           {history.map((r, i) => (
-            <div key={i} className={`rounded-lg w-9 h-9 flex items-center justify-center font-mono text-[10px] font-bold border ${r.net >= 0 ? 'border-[#4caf7d] text-[#4caf7d] bg-[#4caf7d10]' : 'border-[#c0392b] text-[#c0392b] bg-[#c0392b10]'}`}>
+            <div key={i} className="rounded-lg w-10 h-10 flex items-center justify-center font-mono text-[10px] font-black"
+              style={{
+                background: r.net >= 0 ? 'rgba(91,190,138,0.12)' : 'rgba(229,75,94,0.1)',
+                border: `1px solid ${r.net >= 0 ? '#5BBE8A60' : '#E54B5E40'}`,
+                color: r.net >= 0 ? '#5BBE8A' : '#E54B5E',
+              }}>
               {r.multiplier > 0 ? `×${r.multiplier}` : '—'}
             </div>
           ))}

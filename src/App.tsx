@@ -336,11 +336,18 @@ const BASE = '/api';
 
 async function api<T = unknown>(path: string, opts: RequestInit = {}, token?: string): Promise<{ ok: boolean; data?: T; error?: string }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(opts.headers as Record<string, string> || {}) };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const res = await fetch(`${BASE}${path}`, { ...opts, headers });
-    return await res.json() as { ok: boolean; data?: T; error?: string };
-  } catch {
-    return { ok: false, error: 'Мережева помилка.' };
+    const res = await fetch(`${BASE}${path}`, { ...opts, headers, signal: controller.signal });
+    clearTimeout(timeout);
+    const json = await res.json() as { ok: boolean; data?: T; error?: string };
+    if (!json.ok && !json.error) json.error = `Помилка ${res.status}`;
+    return json;
+  } catch (e: unknown) {
+    clearTimeout(timeout);
+    if (e instanceof DOMException && e.name === 'AbortError') return { ok: false, error: 'Час очікування вийшов.' };
+    return { ok: false, error: 'Мережева помилка. Перевір підключення.' };
   }
 }
 
@@ -388,11 +395,202 @@ function Avatar({ name, size = 40, online }: { name: string; size?: number; onli
   );
 }
 
-function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
-  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
+// ─── Toast (queue, progress bar, win/loss/info/error) ────────────────────────
+
+type ToastItem = { id: number; msg: string };
+const _toastListeners: Set<(item: ToastItem) => void> = new Set();
+let _toastId = 0;
+function pushToast(msg: string) {
+  const item: ToastItem = { id: ++_toastId, msg };
+  _toastListeners.forEach(fn => fn(item));
+}
+
+function useToastQueue() {
+  const [queue, setQueue] = useState<ToastItem[]>([]);
+  useEffect(() => {
+    const handler = (item: ToastItem) => setQueue(q => [...q.slice(-2), item]);
+    _toastListeners.add(handler);
+    return () => { _toastListeners.delete(handler); };
+  }, []);
+  const remove = (id: number) => setQueue(q => q.filter(t => t.id !== id));
+  return { queue, remove };
+}
+
+function ToastItem({ item, onDone }: { item: ToastItem; onDone: () => void }) {
+  const [pct, setPct] = useState(100);
+  const DURATION = 3500;
+  useEffect(() => {
+    const start = performance.now();
+    const raf = (now: number) => {
+      const elapsed = now - start;
+      setPct(Math.max(0, 100 - (elapsed / DURATION) * 100));
+      if (elapsed < DURATION) requestAnimationFrame(raf);
+      else onDone();
+    };
+    requestAnimationFrame(raf);
+  }, [onDone]);
+
+  const msg = item.msg;
+  const isWin  = /^[🎉🏆💰✅🎰🚀🂡🎯🎡🎴🐉🃏💎⭐]|Виграш|Win|\+\d/.test(msg);
+  const isError = /^[⚠️❌💥🚫]|Помилка|Error|error/.test(msg);
+  const isLoss  = !isWin && !isError && /^[😞💸]|Програш|Без виграшу|Міна|Збила|💣/.test(msg);
+
+  const accent = isWin ? '#5BBE8A' : isError ? '#E54B5E' : isLoss ? '#888' : '#E4A24B';
+  const bg     = isWin ? '#0d2a1a' : isError ? '#2a0d0d' : isLoss ? '#1a1a1a' : '#1a1608';
+  const icon   = isWin ? '💰' : isError ? '⚠️' : isLoss ? '💸' : 'ℹ️';
+
   return (
-    <div className="fixed bottom-6 right-6 z-[9998] animate-slide-up">
-      <div className="bg-[#1d2e20] text-white border-2 border-black px-5 py-3 font-mono text-sm shadow-[4px_4px_0px_0px_#a8792a]">{msg}</div>
+    <div style={{
+      background: bg, border: `1.5px solid ${accent}50`,
+      borderRadius: 14, overflow: 'hidden', minWidth: 260, maxWidth: 320,
+      boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px ${accent}20`,
+      animation: 'slideInRight 0.25s cubic-bezier(0.22,1,0.36,1)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', lineHeight: 1.4, flex: 1 }}>{msg}</span>
+        <button onClick={onDone} style={{ color: 'rgba(255,255,255,0.3)', fontSize: 16, lineHeight: 1, cursor: 'pointer', background: 'none', border: 'none', padding: 0, flexShrink: 0 }}>✕</button>
+      </div>
+      <div style={{ height: 3, background: 'rgba(255,255,255,0.06)' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: accent, transition: 'width 0.1s linear', borderRadius: 2 }} />
+      </div>
+    </div>
+  );
+}
+
+function ToastStack({ queue, remove }: { queue: ToastItem[]; remove: (id: number) => void }) {
+  if (!queue.length) return null;
+  return (
+    <div style={{
+      position: 'fixed', bottom: 24, right: 16, zIndex: 9999,
+      display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end',
+    }}>
+      <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
+      {queue.map(item => (
+        <ToastItem key={item.id} item={item} onDone={() => remove(item.id)} />
+      ))}
+    </div>
+  );
+}
+
+// Legacy shim — kept for compatibility
+function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
+  useEffect(() => { pushToast(msg); onDone(); }, [msg]);
+  return null;
+}
+
+// ─── Animated balance counter ─────────────────────────────────────────────────
+
+function AnimatedBalance({ value, currency = ' ₮' }: { value: number; currency?: string }) {
+  const [display, setDisplay] = useState(value);
+  const prevRef = useRef(value);
+
+  useEffect(() => {
+    const from = prevRef.current;
+    const to = value;
+    prevRef.current = to;
+    if (from === to) return;
+    const duration = Math.min(600, Math.abs(to - from) / Math.max(1, Math.abs(to)) * 400 + 200);
+    const start = performance.now();
+    const raf = (now: number) => {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(from + (to - from) * eased);
+      if (p < 1) requestAnimationFrame(raf);
+      else setDisplay(to);
+    };
+    requestAnimationFrame(raf);
+  }, [value]);
+
+  return <>{Math.round(display).toLocaleString('uk')}{currency}</>;
+}
+
+// ─── Error boundary ───────────────────────────────────────────────────────────
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(e: Error) { return { error: e }; }
+  render() {
+    if (this.state.error) {
+      return this.props.fallback ?? (
+        <div style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 40 }}>⚠️</div>
+          <div style={{ color: '#E54B5E', fontWeight: 700, marginTop: 8 }}>Помилка компонента</div>
+          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>{this.state.error.message}</div>
+          <button onClick={() => this.setState({ error: null })}
+            style={{ marginTop: 16, padding: '8px 20px', borderRadius: 10, background: '#E4A24B', color: '#1a0d00', fontWeight: 700, cursor: 'pointer', border: 'none' }}>
+            Спробувати знову
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ─── BetInput — shared bet control with ½, ×2, presets ───────────────────────
+
+function BetInput({
+  value, onChange, min = 1, max = 10000, balance = 10000,
+  presets = [10, 50, 100, 500], disabled = false,
+  accentColor = '#E4A24B',
+}: {
+  value: number; onChange: (v: number) => void;
+  min?: number; max?: number; balance?: number;
+  presets?: number[]; disabled?: boolean; accentColor?: string;
+}) {
+  const clamp = (v: number) => Math.max(min, Math.min(max, Math.min(balance, v)));
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', width: 44, flexShrink: 0 }}>Ставка</span>
+        <input
+          type="number" value={value}
+          onChange={e => onChange(clamp(+e.target.value || min))}
+          min={min} max={Math.min(max, balance)} disabled={disabled}
+          style={{
+            flex: 1, background: '#163524', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 10, padding: '8px 10px', color: '#fff', fontFamily: 'monospace',
+            fontSize: 14, outline: 'none',
+          }}
+        />
+        <button onClick={() => onChange(clamp(value / 2))} disabled={disabled}
+          style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', fontWeight: 800, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.08)' }}>
+          ½
+        </button>
+        <button onClick={() => onChange(clamp(value * 2))} disabled={disabled}
+          style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', fontWeight: 800, fontSize: 12, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.08)' }}>
+          ×2
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {presets.map(v => (
+          <button key={v} onClick={() => onChange(clamp(v))} disabled={disabled}
+            style={{
+              flex: 1, padding: '7px 0', borderRadius: 8, fontWeight: 800, fontSize: 11,
+              background: value === v ? accentColor : 'rgba(255,255,255,0.04)',
+              color: value === v ? '#1a0d00' : 'rgba(255,255,255,0.5)',
+              border: `1px solid ${value === v ? accentColor : 'rgba(255,255,255,0.06)'}`,
+              cursor: 'pointer',
+            }}>
+            {v >= 1000 ? `${v/1000}k` : v}
+          </button>
+        ))}
+        <button onClick={() => onChange(clamp(balance))} disabled={disabled}
+          style={{
+            flex: 1, padding: '7px 0', borderRadius: 8, fontWeight: 800, fontSize: 10,
+            background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)',
+            border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer',
+          }}>
+          MAX
+        </button>
+      </div>
     </div>
   );
 }
@@ -856,6 +1054,9 @@ function SlotsView({ wallet, onWalletUpdate, token, notify }: {
 
   const [bet, setBet] = useState(10);
   const [spinning, setSpinning] = useState(false);
+  const [autoSpin, setAutoSpin] = useState(false);
+  const [autoCount, setAutoCount] = useState(0);
+  const autoRef = useRef(false);
   const [reels, setReels] = useState<string[][]>([['🍒','🍋','🍊'],['💎','⭐','7️⃣'],['🍊','🍒','🍋']]);
   const [lastResult, setLastResult] = useState<SlotsResult | null>(null);
   const [history, setHistory] = useState<SlotsResult[]>([]);
@@ -942,8 +1143,28 @@ function SlotsView({ wallet, onWalletUpdate, token, notify }: {
     if (res.win > 0) {
       notify(`🎰 ×${res.multiplier} = +${fmtCoins(res.win)}`);
       celebrate(res.multiplier >= 50 ? 'huge' : res.multiplier >= 10 ? 'big' : 'small');
+    }
+    // auto-spin
+    if (autoRef.current) {
+      setAutoCount(c => c - 1);
+      if (autoCount > 1 && res.new_balance >= bet) {
+        setTimeout(spin, 500);
+      } else {
+        autoRef.current = false;
+        setAutoSpin(false);
+      }
+    }
+  }
+
+  function toggleAuto(n: number) {
+    if (autoSpin) {
+      autoRef.current = false;
+      setAutoSpin(false);
     } else {
-      notify('Без виграшу');
+      autoRef.current = true;
+      setAutoSpin(true);
+      setAutoCount(n);
+      spin();
     }
   }
 
@@ -1059,40 +1280,43 @@ function SlotsView({ wallet, onWalletUpdate, token, notify }: {
 
         {/* BET + SPIN controls */}
         <div className="px-4 pb-5 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-white/40 text-[10px] uppercase tracking-wider w-12">Ставка</span>
-            <div className="flex gap-1 flex-1">
-              {[5,10,25,50,100,250].map(v => (
-                <button key={v} onClick={() => setBet(v)} disabled={spinning}
-                  className="flex-1 py-2 rounded-lg text-xs font-black transition-all"
-                  style={{
-                    background: bet === v ? 'linear-gradient(135deg, #E4A24B, #b87d2e)' : 'rgba(255,255,255,0.05)',
-                    color: bet === v ? '#1a0d00' : 'rgba(255,255,255,0.5)',
-                    border: `1px solid ${bet === v ? '#E4A24B' : 'rgba(255,255,255,0.06)'}`,
-                  }}>
-                  {v}
+          <BetInput value={bet} onChange={setBet} balance={wallet.balance} presets={[5,25,50,100]} disabled={spinning||autoSpin} />
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={spin} disabled={spinning || bet > wallet.balance || autoSpin}
+              style={{
+                flex: 1, padding:'16px', borderRadius: 16, fontWeight: 900, fontSize: 16,
+                letterSpacing: '0.1em', textTransform: 'uppercase', cursor: spinning || autoSpin ? 'not-allowed' : 'pointer',
+                background: spinning ? 'rgba(255,255,255,0.04)' : 'linear-gradient(135deg, #E4A24B 0%, #c97d1a 50%, #E4A24B 100%)',
+                color: spinning ? 'rgba(255,255,255,0.3)' : '#1a0a00',
+                border: spinning ? '2px solid rgba(255,255,255,0.08)' : '2px solid #E4A24B',
+                boxShadow: spinning ? 'none' : '0 0 28px rgba(228,162,75,0.4)',
+                display:'flex', alignItems:'center', justifyContent:'center', gap: 10,
+                opacity: autoSpin ? 0.4 : 1,
+              }}>
+              {spinning
+                ? <><RefreshCw size={18} style={{ animation:'spin 0.6s linear infinite' }} /> {autoSpin ? `Авто ${autoCount}` : 'Крутимо…'}</>
+                : `🎰 SPIN`}
+            </button>
+            {/* Auto-spin toggle */}
+            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              {autoSpin ? (
+                <button onClick={() => { autoRef.current=false; setAutoSpin(false); }}
+                  style={{ padding:'16px 14px', borderRadius:14, background:'rgba(229,75,94,0.15)', color:'#E54B5E', fontWeight:800, fontSize:11, border:'1px solid #E54B5E60', cursor:'pointer', whiteSpace:'nowrap', height:'100%' }}>
+                  ⏹ {autoCount}
                 </button>
-              ))}
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                  {[10,25,50].map(n => (
+                    <button key={n} onClick={() => toggleAuto(n)} disabled={spinning || bet > wallet.balance}
+                      style={{ padding:'4px 10px', borderRadius:8, background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.5)', fontWeight:700, fontSize:10, border:'1px solid rgba(255,255,255,0.08)', cursor:'pointer' }}>
+                      A×{n}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-
-          <button onClick={spin} disabled={spinning || bet > wallet.balance}
-            style={{
-              width:'100%', padding:'18px', borderRadius: 16,
-              fontWeight: 900, fontSize: 18, letterSpacing: '0.15em',
-              textTransform: 'uppercase', cursor: spinning ? 'not-allowed' : 'pointer',
-              background: spinning ? 'rgba(255,255,255,0.04)' : 'linear-gradient(135deg, #E4A24B 0%, #c97d1a 50%, #E4A24B 100%)',
-              backgroundSize: '200% auto',
-              color: spinning ? 'rgba(255,255,255,0.3)' : '#1a0a00',
-              border: spinning ? '2px solid rgba(255,255,255,0.08)' : '2px solid #E4A24B',
-              boxShadow: spinning ? 'none' : '0 0 30px rgba(228,162,75,0.5), 0 4px 16px rgba(0,0,0,0.4)',
-              transition: 'all 0.2s ease',
-              display:'flex', alignItems:'center', justifyContent:'center', gap: 12,
-            }}>
-            {spinning
-              ? <><RefreshCw size={20} style={{ animation:'spin 0.6s linear infinite' }} /> Крутимо…</>
-              : `🎰 SPIN · ${fmtCoins(bet)}`}
-          </button>
         </div>
       </div>
 
@@ -4647,7 +4871,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
             </button>
           </div>
           <div className="text-[#E8F2EA]" style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, letterSpacing: -1, lineHeight: 1 }}>
-            {fmtCoins(wallet.balance)}
+            <AnimatedBalance value={wallet.balance} />
           </div>
         </div>
         <div className="relative mt-4 flex items-center gap-2.5">
@@ -4782,36 +5006,78 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
       </div>
 
       {/* Games grid */}
-      <div className="grid grid-cols-2 gap-2.5">
-        {visibleGames.map(g => (
-          <button key={g.key} onClick={() => onSelectGame(g.key)}
-            className="rounded-xl overflow-hidden text-left cursor-pointer transition-all hover:-translate-y-0.5 active:scale-[0.97]"
-            style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="h-[84px] relative flex items-center justify-center"
+      <div className="grid grid-cols-2 gap-3">
+        {visibleGames.map(g => {
+          const patternMap: Record<string, string> = {
+            crash:      'repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,0.025) 6px 12px)',
+            slots:      'repeating-linear-gradient(90deg, transparent 0 10px, rgba(255,255,255,0.02) 10px 11px)',
+            roulette:   'repeating-conic-gradient(rgba(255,255,255,0.02) 0deg 10deg, transparent 10deg 20deg)',
+            blackjack:  'repeating-linear-gradient(-45deg, transparent 0 8px, rgba(255,255,255,0.025) 8px 16px)',
+            baccarat:   'repeating-linear-gradient(0deg, transparent 0 10px, rgba(255,255,255,0.02) 10px 11px)',
+            plinko:     'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.04) 1px, transparent 2px) 0 0/14px 14px',
+            mines:      'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04) 1px, transparent 2px) 0 0/18px 18px',
+            dice:       'repeating-linear-gradient(30deg, transparent 0 8px, rgba(255,255,255,0.02) 8px 10px)',
+            chicken:    'repeating-linear-gradient(60deg, transparent 0 10px, rgba(255,255,255,0.02) 10px 12px)',
+            limbo:      'radial-gradient(ellipse at 50% 100%, rgba(198,120,221,0.1) 0%, transparent 70%)',
+            wheel:      'repeating-conic-gradient(rgba(255,255,255,0.03) 0deg 15deg, transparent 15deg 30deg)',
+            hilo:       'repeating-linear-gradient(135deg, transparent 0 8px, rgba(255,255,255,0.02) 8px 16px)',
+            tower:      'repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 16px)',
+            keno:       'radial-gradient(circle at 25% 25%, rgba(255,255,255,0.03) 1px, transparent 2px) 0 0/12px 12px, radial-gradient(circle at 75% 75%, rgba(255,255,255,0.03) 1px, transparent 2px) 0 0/12px 12px',
+            videopoker: 'repeating-linear-gradient(-30deg, transparent 0 10px, rgba(91,190,138,0.04) 10px 12px)',
+            dragontiger:'radial-gradient(ellipse at 0% 100%, rgba(229,75,94,0.15) 0%, transparent 60%)',
+            scratch:    'repeating-linear-gradient(45deg, rgba(198,120,221,0.04) 0 2px, transparent 2px 12px)',
+          };
+          const pat = patternMap[g.key] || '';
+          return (
+            <button key={g.key} onClick={() => onSelectGame(g.key)}
+              className="rounded-2xl overflow-hidden text-left cursor-pointer active:scale-[0.96] group"
               style={{
-                background: `radial-gradient(circle at 65% 35%, ${g.accent}28 0%, transparent 65%), linear-gradient(180deg, #163524 0%, #0f1e14 100%)`,
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                background: `#0f2018`,
+                border: `1px solid ${g.accent}30`,
+                boxShadow: `0 2px 12px rgba(0,0,0,0.3)`,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow=`0 0 20px ${g.accent}30, 0 4px 16px rgba(0,0,0,0.4)`; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow=`0 2px 12px rgba(0,0,0,0.3)`; }}>
+              {/* Card art */}
+              <div style={{
+                height: 100,
+                background: `${pat}, radial-gradient(ellipse at 60% 30%, ${g.accent}22 0%, transparent 65%), linear-gradient(180deg, ${g.accent}15 0%, #0a1a10 100%)`,
+                position: 'relative', display:'flex', alignItems:'center', justifyContent:'center',
+                borderBottom: `1px solid ${g.accent}20`,
+                overflow: 'hidden',
               }}>
-              <span className="text-[38px] leading-none select-none" style={{ filter: `drop-shadow(0 4px 12px ${g.accent}60)` }}>
-                {g.emoji}
-              </span>
-              {g.live && (
-                <span className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(91,190,138,0.15)', border: '1px solid rgba(91,190,138,0.3)' }}>
-                  <span className="w-1 h-1 rounded-full animate-pulse" style={{ background: '#5BBE8A' }} />
-                  <span className="font-black text-[8px] uppercase tracking-widest" style={{ color: '#5BBE8A' }}>LIVE</span>
+                {/* Big dim accent circle */}
+                <div style={{
+                  position:'absolute', right:-20, bottom:-20, width:80, height:80, borderRadius:'50%',
+                  background: `radial-gradient(circle, ${g.accent}20 0%, transparent 70%)`,
+                  filter: 'blur(8px)',
+                }} />
+                <span style={{ fontSize: 44, lineHeight: 1, filter: `drop-shadow(0 0 16px ${g.accent}80) drop-shadow(0 4px 8px rgba(0,0,0,0.4))`, position:'relative', zIndex:1 }}>
+                  {g.emoji}
                 </span>
-              )}
-              <span className="absolute bottom-2 right-2 font-black text-xs" style={{ color: g.accent }}>
-                {g.hint}
-              </span>
-            </div>
-            <div className="px-3 py-2.5">
-              <div className="font-black text-xs text-[#E8F2EA] uppercase tracking-tight">{g.label}</div>
-              <div className="font-mono text-[10px] mt-0.5" style={{ color: 'rgba(232,242,234,0.4)' }}>{g.tag}</div>
-            </div>
-          </button>
-        ))}
+                {g.live && (
+                  <span style={{
+                    position:'absolute', top:8, left:8,
+                    display:'flex', alignItems:'center', gap:4, padding:'3px 7px', borderRadius:20,
+                    background:'rgba(91,190,138,0.12)', border:'1px solid rgba(91,190,138,0.35)',
+                  }}>
+                    <span style={{ width:5, height:5, borderRadius:'50%', background:'#5BBE8A', boxShadow:'0 0 4px #5BBE8A', animation:'pulse 1.5s infinite' }} />
+                    <span style={{ fontWeight:900, fontSize:8, letterSpacing:'0.1em', color:'#5BBE8A' }}>LIVE</span>
+                  </span>
+                )}
+                <span style={{ position:'absolute', bottom:7, right:9, fontWeight:900, fontSize:11, color:g.accent, textShadow:`0 0 8px ${g.accent}80` }}>
+                  {g.hint}
+                </span>
+              </div>
+              {/* Label */}
+              <div style={{ padding:'10px 12px' }}>
+                <div style={{ fontWeight:900, fontSize:12, color:'#fff', letterSpacing:'0.02em', textTransform:'uppercase' }}>{g.label}</div>
+                <div style={{ fontWeight:600, fontSize:10, color:`${g.accent}90`, marginTop:2, letterSpacing:'0.06em' }}>{g.tag}</div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Quick links */}
@@ -5958,13 +6224,14 @@ export default function App() {
 
   // Toast
   const [toast, setToast] = useState('');
+  const { queue: toastQueue, remove: removeToast } = useToastQueue();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, activeChat]);
 
-  const notify = useCallback((msg: string) => setToast(msg), []);
+  const notify = useCallback((msg: string) => { pushToast(msg); setToast(msg); }, []);
 
   function updateWallet(delta: Partial<CasinoWallet>) { setWallet(prev => ({ ...prev, ...delta })); }
 
@@ -6358,7 +6625,9 @@ export default function App() {
 
         {/* CASINO TAB */}
         {sidebarTab === 'casino' && casinoView === 'lobby' && (
+          <ErrorBoundary>
           <CasinoLobby wallet={wallet} onSelectGame={v => setCasinoView(v)} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </ErrorBoundary>
         )}
         {sidebarTab === 'casino' && casinoView === 'roulette' && (
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -6546,6 +6815,7 @@ export default function App() {
 
       {/* ── Toast ─────────────────────────────────────────── */}
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+      <ToastStack queue={toastQueue} remove={removeToast} />
     </div>
   );
 }

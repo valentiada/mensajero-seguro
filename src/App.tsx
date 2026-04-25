@@ -205,7 +205,7 @@ function guessCountryFromLang(lang: LangCode): Country {
 
 type Role = 'soldier' | 'operator' | 'admin';
 type SidebarTab = 'chats' | 'casino' | 'profile' | 'admin';
-type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'blackjack' | 'baccarat' | 'plinko' | 'limbo' | 'wheel' | 'hilo' | 'tower' | 'keno' | 'deposit' | 'leaderboard' | 'history';
+type CasinoView = 'lobby' | 'roulette' | 'slots' | 'crash' | 'mines' | 'chicken' | 'dice' | 'blackjack' | 'baccarat' | 'plinko' | 'limbo' | 'wheel' | 'hilo' | 'tower' | 'keno' | 'videopoker' | 'dragontiger' | 'scratch' | 'deposit' | 'leaderboard' | 'history';
 
 interface User {
   id: number;
@@ -2067,7 +2067,7 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
 
 // ─── Playing Card ────────────────────────────────────────────────────────────
 
-function PlayingCard({ card, hidden = false }: { card?: { suit: string; value: string }; hidden?: boolean }) {
+function BJCard({ card, hidden = false }: { card?: { suit: string; value: string }; hidden?: boolean }) {
   if (hidden || !card) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-white/20 text-white/50 text-xl font-bold select-none"
@@ -2164,7 +2164,7 @@ function BlackjackView({ wallet, onWalletUpdate, token, notify }: {
           Дилер {!dealerHidden && dealerValue !== null ? `· ${dealerValue}` : ''}
         </div>
         <div className="flex gap-2 flex-wrap">
-          {dealerCards.map((c, i) => <React.Fragment key={i}><PlayingCard card={c} hidden={dealerHidden && i > 0} /></React.Fragment>)}
+          {dealerCards.map((c, i) => <React.Fragment key={i}><BJCard card={c} hidden={dealerHidden && i > 0} /></React.Fragment>)}
           {dealerCards.length === 0 && <div className="text-white/20 text-sm">Карти ще не роздані</div>}
         </div>
       </div>
@@ -2175,7 +2175,7 @@ function BlackjackView({ wallet, onWalletUpdate, token, notify }: {
           Гравець · {playerValue || '—'}
         </div>
         <div className="flex gap-2 flex-wrap">
-          {playerCards.map((c, i) => <React.Fragment key={i}><PlayingCard card={c} /></React.Fragment>)}
+          {playerCards.map((c, i) => <React.Fragment key={i}><BJCard card={c} /></React.Fragment>)}
           {playerCards.length === 0 && <div className="text-white/20 text-sm">Карти ще не роздані</div>}
         </div>
       </div>
@@ -2276,7 +2276,7 @@ function BaccaratView({ wallet, onWalletUpdate, token, notify }: {
               </div>
               <div className="flex gap-1.5 flex-wrap">
                 {(side === 'player' ? result.player_cards : result.banker_cards).map((c: { suit: string; value: string }, i: number) => (
-                  <React.Fragment key={i}><PlayingCard card={c} /></React.Fragment>
+                  <React.Fragment key={i}><BJCard card={c} /></React.Fragment>
                 ))}
               </div>
             </div>
@@ -3479,6 +3479,640 @@ function KenoView({ wallet, onWalletUpdate, token, notify }: {
   );
 }
 
+// ─── Shared card renderer ─────────────────────────────────────────────────────
+
+function PlayingCard({ card, faceDown = false, highlight = false, size = 'md' }: {
+  card?: { rank: string; suit: string; value?: number };
+  faceDown?: boolean;
+  highlight?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+}) {
+  const w = size === 'lg' ? 100 : size === 'md' ? 76 : 52;
+  const h = Math.round(w * 1.42);
+  const red = card && (card.suit === '♥' || card.suit === '♦');
+  const fs = size === 'lg' ? 28 : size === 'md' ? 22 : 15;
+  const corner = size === 'lg' ? 9 : size === 'md' ? 7 : 5;
+
+  if (faceDown) return (
+    <div style={{
+      width: w, height: h, borderRadius: corner,
+      background: 'linear-gradient(135deg, #1a237e 0%, #283593 50%, #1a237e 100%)',
+      border: '2px solid rgba(255,255,255,0.2)',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        width: w - 12, height: h - 12, borderRadius: corner - 2,
+        border: '1px solid rgba(255,255,255,0.15)',
+        backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 8px)',
+      }} />
+    </div>
+  );
+
+  return (
+    <div style={{
+      width: w, height: h, borderRadius: corner,
+      background: 'linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)',
+      border: highlight ? '2px solid #E4A24B' : '2px solid rgba(0,0,0,0.12)',
+      boxShadow: highlight
+        ? '0 0 20px rgba(228,162,75,0.7), 0 4px 16px rgba(0,0,0,0.3)'
+        : '0 4px 12px rgba(0,0,0,0.3)',
+      display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+      padding: size === 'sm' ? 3 : 5,
+      transition: 'all 0.3s ease',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      {/* Top left */}
+      <div style={{ lineHeight: 1.1 }}>
+        <div style={{ fontFamily: 'Georgia,serif', fontWeight: 900, fontSize: corner, color: red ? '#c62828' : '#1a1a1a', lineHeight: 1 }}>{card?.rank}</div>
+        <div style={{ fontFamily: 'Georgia,serif', fontSize: corner - 1, color: red ? '#c62828' : '#1a1a1a', lineHeight: 1 }}>{card?.suit}</div>
+      </div>
+      {/* Center */}
+      <div style={{ textAlign: 'center', fontSize: fs, lineHeight: 1, color: red ? '#c62828' : '#1a1a1a', fontFamily: 'Georgia,serif' }}>
+        {card?.suit}
+      </div>
+      {/* Bottom right (rotated) */}
+      <div style={{ lineHeight: 1.1, transform: 'rotate(180deg)', alignSelf: 'flex-end' }}>
+        <div style={{ fontFamily: 'Georgia,serif', fontWeight: 900, fontSize: corner, color: red ? '#c62828' : '#1a1a1a', lineHeight: 1 }}>{card?.rank}</div>
+        <div style={{ fontFamily: 'Georgia,serif', fontSize: corner - 1, color: red ? '#c62828' : '#1a1a1a', lineHeight: 1 }}>{card?.suit}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Video Poker (Jacks or Better) ────────────────────────────────────────────
+
+const VP_HAND_NAMES: Record<string, string> = {
+  royal_flush: '🏆 Роял Флеш', straight_flush: '🌟 Стрейт Флеш',
+  four_of_a_kind: '4️⃣ Каре', full_house: '🏠 Фул Хаус',
+  flush: '♠ Флеш', straight: '➡️ Стрейт',
+  three_of_a_kind: '3️⃣ Трійка', two_pair: '2️⃣ Дві пари',
+  jacks_or_better: '👑 Пара J+', nothing: '— Без виграшу',
+};
+const VP_PAYS: [string, number][] = [
+  ['royal_flush',800],['straight_flush',50],['four_of_a_kind',25],
+  ['full_house',9],['flush',6],['straight',4],
+  ['three_of_a_kind',3],['two_pair',2],['jacks_or_better',1],
+];
+
+function VideoPokerView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const [bet, setBet] = useState(10);
+  const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'hold' | 'result'>('idle');
+  const [hand, setHand] = useState<any[]>([]);
+  const [held, setHeld] = useState<boolean[]>([false,false,false,false,false]);
+  const [sessionId, setSessionId] = useState('');
+  const [result, setResult] = useState<any>(null);
+  const [dealAnim, setDealAnim] = useState(false);
+
+  async function deal() {
+    if (loading || bet > wallet.balance) return;
+    setLoading(true); setResult(null); setHeld([false,false,false,false,false]);
+    setDealAnim(true);
+    const r = await api<any>('/casino/videopoker/deal', { method:'POST', body: JSON.stringify({ bet }) }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error||'Помилка'); setDealAnim(false); return; }
+    setHand(r.data.hand);
+    setSessionId(r.data.session_id);
+    onWalletUpdate({ balance: r.data.new_balance });
+    setPhase('hold');
+    setTimeout(() => setDealAnim(false), 400);
+  }
+
+  function toggleHold(i: number) {
+    if (phase !== 'hold') return;
+    setHeld(h => { const n=[...h]; n[i]=!n[i]; return n; });
+  }
+
+  async function draw() {
+    if (loading || phase !== 'hold') return;
+    setLoading(true);
+    const holdIdx = held.map((h,i)=>h?i:-1).filter(i=>i>=0);
+    const r = await api<any>('/casino/videopoker/draw', {
+      method:'POST', body: JSON.stringify({ session_id: sessionId, hold: holdIdx })
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error||'Помилка'); return; }
+    setHand(r.data.hand);
+    setResult(r.data);
+    setPhase('result');
+    onWalletUpdate({ balance: r.data.new_balance });
+    if (r.data.win > 0) {
+      notify(`${VP_HAND_NAMES[r.data.result]} · +${fmtCoins(r.data.win)}`);
+      celebrate(r.data.mult >= 25 ? 'huge' : r.data.mult >= 6 ? 'big' : 'small');
+    } else {
+      notify('Без виграшу');
+    }
+  }
+
+  const BG = 'linear-gradient(160deg, #0d1f0e 0%, #06100a 100%)';
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-3 py-4" style={{ background: '#0B1A12' }}>
+      {/* Machine frame */}
+      <div className="rounded-3xl overflow-hidden" style={{
+        background: BG,
+        border: '2px solid rgba(91,190,138,0.3)',
+        boxShadow: '0 0 40px rgba(91,190,138,0.1), 0 8px 32px rgba(0,0,0,0.5)',
+      }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3" style={{
+          background: 'rgba(91,190,138,0.08)', borderBottom: '1px solid rgba(91,190,138,0.2)',
+        }}>
+          <div>
+            <div className="font-black text-[#5BBE8A] text-sm uppercase tracking-widest">VIDEO POKER</div>
+            <div className="text-[#5BBE8A]/40 text-[9px] uppercase">Jacks or Better · Max ×800</div>
+          </div>
+          <div className="font-mono font-black text-[#5BBE8A]">{fmtCoins(wallet.balance)}</div>
+        </div>
+
+        {/* Hand */}
+        <div className="px-4 py-6 flex justify-center gap-2">
+          {(hand.length ? hand : Array(5).fill(null)).map((card, i) => (
+            <div key={i} className="flex flex-col items-center gap-1.5">
+              <div
+                onClick={() => toggleHold(i)}
+                style={{
+                  cursor: phase === 'hold' ? 'pointer' : 'default',
+                  transform: held[i] ? 'translateY(-10px)' : 'translateY(0)',
+                  transition: 'transform 0.2s ease',
+                  opacity: dealAnim ? 0 : 1,
+                  animation: dealAnim ? `none` : undefined,
+                }}>
+                {card ? (
+                  <PlayingCard card={card} highlight={held[i] || (phase==='result' && result?.mult>0)} size="md" />
+                ) : (
+                  <PlayingCard faceDown size="md" />
+                )}
+              </div>
+              {phase === 'hold' && (
+                <div className="text-[10px] font-black uppercase tracking-wider"
+                  style={{ color: held[i] ? '#5BBE8A' : 'rgba(255,255,255,0.2)' }}>
+                  {held[i] ? 'HOLD' : ''}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Result */}
+        <div style={{ height: 44, display:'flex',alignItems:'center',justifyContent:'center' }}>
+          {result && phase==='result' && (
+            <div className="font-black text-center text-sm px-6 py-2 rounded-xl"
+              style={{
+                background: result.win>0?'rgba(91,190,138,0.15)':'rgba(255,255,255,0.03)',
+                border:`1px solid ${result.win>0?'rgba(91,190,138,0.4)':'rgba(255,255,255,0.07)'}`,
+                color: result.win>0?'#5BBE8A':'rgba(255,255,255,0.3)',
+              }}>
+              {VP_HAND_NAMES[result.result]} {result.win>0?`· +${fmtCoins(result.win)}`:''}
+            </div>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="px-4 pb-5 flex flex-col gap-3">
+          <div className="flex gap-1">
+            {[5,10,25,50,100,250].map(v => (
+              <button key={v} onClick={() => setBet(v)} disabled={phase==='hold'||loading}
+                className="flex-1 py-2 rounded-lg text-xs font-black"
+                style={{
+                  background: bet===v?'linear-gradient(135deg,#5BBE8A,#3a8f65)':'rgba(255,255,255,0.04)',
+                  color: bet===v?'#0a1a12':'rgba(255,255,255,0.4)',
+                  border:`1px solid ${bet===v?'#5BBE8A':'rgba(255,255,255,0.06)'}`,
+                }}>
+                {v}
+              </button>
+            ))}
+          </div>
+          {phase === 'hold' ? (
+            <button onClick={draw} disabled={loading}
+              className="w-full py-4 rounded-2xl font-black text-base uppercase tracking-widest"
+              style={{
+                background: 'linear-gradient(135deg,#5BBE8A,#2e7d55)',
+                color:'#0a1a12', boxShadow:'0 0 24px rgba(91,190,138,0.5)',
+                border:'none', cursor:'pointer',
+              }}>
+              {loading?'…':'🃏 DRAW'}
+            </button>
+          ) : (
+            <button onClick={deal} disabled={loading||bet>wallet.balance}
+              className="w-full py-4 rounded-2xl font-black text-base uppercase tracking-widest disabled:opacity-40"
+              style={{
+                background: 'linear-gradient(135deg,#5BBE8A,#2e7d55)',
+                color:'#0a1a12', boxShadow:'0 0 24px rgba(91,190,138,0.4)',
+                border:'none', cursor:'pointer',
+              }}>
+              {loading?'…':'🂡 DEAL'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Paytable */}
+      <div className="rounded-2xl overflow-hidden" style={{ border:'1px solid rgba(91,190,138,0.15)' }}>
+        <div className="px-4 py-2 text-[#5BBE8A] text-[10px] font-black uppercase tracking-widest"
+          style={{ background:'rgba(91,190,138,0.05)', borderBottom:'1px solid rgba(91,190,138,0.12)' }}>
+          Таблиця виплат (5 монет)
+        </div>
+        <div className="grid grid-cols-2">
+          {VP_PAYS.map(([key, m], idx) => (
+            <div key={key} className="px-3 py-2 flex justify-between items-center"
+              style={{
+                background: result?.result===key ? 'rgba(91,190,138,0.12)' : idx%2===0?'rgba(255,255,255,0.02)':'transparent',
+                border: result?.result===key ? '1px solid rgba(91,190,138,0.4)' : 'none',
+                borderBottom:'1px solid rgba(255,255,255,0.04)',
+              }}>
+              <span className="text-white/60 text-[11px]">{VP_HAND_NAMES[key].replace(/^[^\s]+ /,'')}</span>
+              <span className="font-black text-sm text-[#5BBE8A]">×{m}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Dragon Tiger ──────────────────────────────────────────────────────────────
+
+function DragonTigerView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const [bet, setBet] = useState(10);
+  const [loading, setLoading] = useState(false);
+  const [side, setSide] = useState<'dragon'|'tiger'|'tie'>('dragon');
+  const [result, setResult] = useState<any>(null);
+  const [reveal, setReveal] = useState(false);
+
+  async function play() {
+    if (loading || bet > wallet.balance) return;
+    setLoading(true); setResult(null); setReveal(false);
+    const r = await api<any>('/casino/dragontiger/play', {
+      method:'POST', body: JSON.stringify({ bet, side })
+    }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error||'Помилка'); return; }
+    // Dramatic reveal delay
+    setTimeout(() => {
+      setReveal(true);
+      setResult(r.data);
+      onWalletUpdate({ balance: r.data.new_balance });
+      if (r.data.win > 0) {
+        const label = r.data.outcome === 'tie' ? '🤝 Нічия' : r.data.outcome === 'dragon' ? '🐉 Дракон' : '🐯 Тигр';
+        notify(`${label} · +${fmtCoins(r.data.win)}`);
+        celebrate(r.data.mult >= 8 ? 'huge' : 'big');
+      } else {
+        notify(r.data.outcome === 'tie' ? '🤝 Нічия (×0.5)' : `Програш`);
+      }
+    }, 800);
+  }
+
+  const SIDES = [
+    { key: 'dragon' as const, label: '🐉 Дракон', col: '#E54B5E', sub: '×2' },
+    { key: 'tie'    as const, label: '🤝 Нічия',  col: '#C678DD', sub: '×8' },
+    { key: 'tiger'  as const, label: '🐯 Тигр',   col: '#E4A24B', sub: '×2' },
+  ];
+
+  const won = result && result.win > 0;
+  const outcomeCol = result?.outcome === 'dragon' ? '#E54B5E' : result?.outcome === 'tiger' ? '#E4A24B' : '#C678DD';
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-3 py-4" style={{ background: '#0B1A12' }}>
+      {/* Arena */}
+      <div className="rounded-3xl overflow-hidden" style={{
+        background: 'linear-gradient(160deg, #1a0a0a 0%, #0d0606 100%)',
+        border: '2px solid rgba(229,75,94,0.3)',
+        boxShadow: '0 0 50px rgba(229,75,94,0.1)',
+      }}>
+        <div className="px-4 py-3 flex items-center justify-between" style={{
+          background:'rgba(229,75,94,0.07)', borderBottom:'1px solid rgba(229,75,94,0.2)',
+        }}>
+          <div>
+            <div className="font-black text-[#E54B5E] text-sm uppercase tracking-widest">DRAGON TIGER</div>
+            <div className="text-[#E54B5E]/40 text-[9px]">Дракон проти Тигра · Нічия ×8</div>
+          </div>
+          <div className="font-mono font-black text-[#5BBE8A]">{fmtCoins(wallet.balance)}</div>
+        </div>
+
+        {/* Table */}
+        <div className="px-4 py-6">
+          <div className="relative flex items-end justify-between gap-3" style={{ minHeight: 180 }}>
+            {/* Dragon side */}
+            <div className="flex-1 flex flex-col items-center gap-3">
+              <div className="text-4xl" style={{ filter: result?.outcome==='dragon'?'drop-shadow(0 0 20px #E54B5E)':undefined }}>🐉</div>
+              <div className={`transition-all duration-500 ${reveal ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                {result ? <PlayingCard card={result.dragon} highlight={result.outcome==='dragon'} size="lg" /> : <PlayingCard faceDown size="lg" />}
+              </div>
+              <div className="font-black text-sm" style={{ color: '#E54B5E' }}>ДРАКОН</div>
+            </div>
+
+            {/* VS */}
+            <div className="flex flex-col items-center gap-2 pb-8">
+              <div className="font-black text-white/20 text-2xl">VS</div>
+              {result && reveal && (
+                <div className="font-black text-sm px-3 py-1 rounded-lg animate-slide-up"
+                  style={{ background: outcomeCol+'20', color: outcomeCol, border:`1px solid ${outcomeCol}40` }}>
+                  {result.outcome === 'dragon' ? '🐉 WIN' : result.outcome === 'tiger' ? '🐯 WIN' : '🤝 TIE'}
+                </div>
+              )}
+            </div>
+
+            {/* Tiger side */}
+            <div className="flex-1 flex flex-col items-center gap-3">
+              <div className="text-4xl" style={{ filter: result?.outcome==='tiger'?'drop-shadow(0 0 20px #E4A24B)':undefined }}>🐯</div>
+              <div className={`transition-all duration-500 ${reveal ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                style={{ transitionDelay: '0.15s' }}>
+                {result ? <PlayingCard card={result.tiger} highlight={result.outcome==='tiger'} size="lg" /> : <PlayingCard faceDown size="lg" />}
+              </div>
+              <div className="font-black text-sm" style={{ color: '#E4A24B' }}>ТИГР</div>
+            </div>
+          </div>
+
+          {/* Win banner */}
+          <div style={{ height: 48, display:'flex',alignItems:'center',justifyContent:'center',marginTop:8 }}>
+            {result && reveal && (
+              <div className="font-black text-base px-6 py-2 rounded-xl"
+                style={{
+                  background: won?'rgba(228,162,75,0.15)':'rgba(255,255,255,0.03)',
+                  border:`1px solid ${won?'rgba(228,162,75,0.5)':'rgba(255,255,255,0.07)'}`,
+                  color: won?'#E4A24B':'rgba(255,255,255,0.3)',
+                }}>
+                {won ? `+${fmtCoins(result.win)} · ×${result.mult}` : 'Програш'}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Side selector */}
+        <div className="px-4 flex gap-2">
+          {SIDES.map(s => (
+            <button key={s.key} onClick={() => setSide(s.key)} disabled={loading}
+              className="flex-1 py-3 rounded-xl font-black text-sm transition-all"
+              style={{
+                background: side===s.key?s.col+'25':'rgba(255,255,255,0.03)',
+                color: side===s.key?s.col:'rgba(255,255,255,0.4)',
+                border:`2px solid ${side===s.key?s.col:'rgba(255,255,255,0.06)'}`,
+                boxShadow: side===s.key?`0 0 16px ${s.col}50`:'none',
+              }}>
+              {s.label}<br/>
+              <span style={{ fontSize:11,opacity:0.7 }}>{s.sub}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Bet + Play */}
+        <div className="px-4 py-4 flex flex-col gap-3">
+          <div className="flex gap-1">
+            {[10,25,50,100,250,500].map(v => (
+              <button key={v} onClick={() => setBet(v)} disabled={loading}
+                className="flex-1 py-2 rounded-lg text-xs font-black"
+                style={{
+                  background: bet===v?'linear-gradient(135deg,#E54B5E,#b02035)':'rgba(255,255,255,0.04)',
+                  color: bet===v?'#fff':'rgba(255,255,255,0.4)',
+                  border:`1px solid ${bet===v?'#E54B5E':'rgba(255,255,255,0.06)'}`,
+                }}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <button onClick={play} disabled={loading||bet>wallet.balance}
+            className="w-full py-4 rounded-2xl font-black text-base uppercase tracking-widest disabled:opacity-40"
+            style={{
+              background: `linear-gradient(135deg, ${SIDES.find(s=>s.key===side)?.col||'#E54B5E'}, ${side==='dragon'?'#b02035':side==='tiger'?'#b87d2e':'#9c4fb5'})`,
+              color:'#fff', boxShadow:`0 0 28px ${SIDES.find(s=>s.key===side)?.col||'#E54B5E'}50`,
+              border:'none', cursor: loading?'not-allowed':'pointer',
+            }}>
+            {loading?'…':`🎴 СТАВКА · ${fmtCoins(bet)}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Scratch Card ─────────────────────────────────────────────────────────────
+
+function ScratchView({ wallet, onWalletUpdate, token, notify }: {
+  wallet: CasinoWallet; onWalletUpdate: (w: Partial<CasinoWallet>) => void;
+  token: string; notify: (m: string) => void;
+}) {
+  const [bet, setBet] = useState(10);
+  const [loading, setLoading] = useState(false);
+  const [grid, setGrid] = useState<string[] | null>(null);
+  const [revealed, setRevealed] = useState<boolean[]>(Array(9).fill(false));
+  const [result, setResult] = useState<any>(null);
+  const [revealAll, setRevealAll] = useState(false);
+  const [scratchOrder, setScratchOrder] = useState<number[]>([]);
+
+  const SCRATCH_PAYS: Record<string,number> = {
+    '💎':50,'7️⃣':20,'💰':10,'🍒':5,'🎴':4,'⭐':3,'🔔':2,
+  };
+
+  async function buyCard() {
+    if (loading || bet > wallet.balance) return;
+    setLoading(true); setGrid(null); setRevealed(Array(9).fill(false));
+    setResult(null); setRevealAll(false); setScratchOrder([]);
+    const r = await api<any>('/casino/scratch/play', { method:'POST', body: JSON.stringify({ bet }) }, token);
+    setLoading(false);
+    if (!r.ok) { notify(r.error||'Помилка'); return; }
+    setGrid(r.data.grid);
+    setResult(r.data);
+    onWalletUpdate({ balance: r.data.new_balance });
+  }
+
+  function scratchCell(i: number) {
+    if (!grid || revealed[i] || revealAll) return;
+    setRevealed(prev => { const n=[...prev]; n[i]=true; return n; });
+    setScratchOrder(o => [...o, i]);
+    // After all 9 revealed → show win
+    const count = revealed.filter(Boolean).length + 1;
+    if (count >= 9) {
+      setRevealAll(true);
+      if (result?.win > 0) {
+        setTimeout(() => {
+          notify(`💎 ×${result.mult} · +${fmtCoins(result.win)}`);
+          celebrate(result.mult >= 20 ? 'huge' : result.mult >= 5 ? 'big' : 'small');
+        }, 200);
+      } else {
+        setTimeout(() => notify('Без виграшу'), 200);
+      }
+    }
+  }
+
+  function scratchAll() {
+    if (!grid) return;
+    setRevealAll(true);
+    setRevealed(Array(9).fill(true));
+    if (result?.win > 0) {
+      setTimeout(() => {
+        notify(`💎 ×${result.mult} · +${fmtCoins(result.win)}`);
+        celebrate(result.mult >= 20 ? 'huge' : result.mult >= 5 ? 'big' : 'small');
+      }, 300);
+    } else {
+      setTimeout(() => notify('Без виграшу'), 300);
+    }
+  }
+
+  // Detect winning row
+  const winningRow = (() => {
+    if (!grid || !result?.has_win) return -1;
+    for (let row = 0; row < 3; row++) {
+      const s = grid[row*3];
+      if (s === grid[row*3+1] && s === grid[row*3+2]) return row;
+    }
+    return -1;
+  })();
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-3 py-4" style={{ background: '#0B1A12' }}>
+      {/* Scratch ticket */}
+      <div className="rounded-3xl overflow-hidden" style={{
+        background: 'linear-gradient(145deg, #1a0a2e 0%, #0d0620 100%)',
+        border: '2px solid rgba(198,120,221,0.4)',
+        boxShadow: '0 0 50px rgba(198,120,221,0.1), 0 8px 32px rgba(0,0,0,0.5)',
+      }}>
+        {/* Ticket header */}
+        <div className="px-4 py-3" style={{
+          background: 'linear-gradient(90deg, #C678DD30, #8B5CF620, #C678DD30)',
+          borderBottom: '1px solid rgba(198,120,221,0.3)',
+        }}>
+          <div className="text-center">
+            <div className="font-black text-[#C678DD] text-base uppercase tracking-widest">🎴 SCRATCH & WIN</div>
+            <div className="text-[#C678DD]/40 text-[9px] mt-0.5">Відкрий 3 однакових → ВИГРАШ</div>
+          </div>
+        </div>
+
+        {/* Grid area */}
+        <div className="px-4 py-6">
+          {!grid ? (
+            <div className="flex items-center justify-center" style={{ height: 240 }}>
+              <div className="text-center text-white/20">
+                <div className="text-6xl mb-3">🎴</div>
+                <div className="text-sm font-bold">Купи білет щоб грати</div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {grid.map((sym, i) => {
+                const row = Math.floor(i / 3);
+                const isWinRow = winningRow === row && revealAll;
+                const isRev = revealed[i] || revealAll;
+                return (
+                  <button key={i} onClick={() => scratchCell(i)}
+                    disabled={isRev || !grid}
+                    style={{
+                      aspectRatio: '1',
+                      borderRadius: 14,
+                      border: `2px solid ${isWinRow ? '#E4A24B' : 'rgba(198,120,221,0.3)'}`,
+                      background: isRev
+                        ? isWinRow
+                          ? 'linear-gradient(145deg, #2d1f00, #1a1200)'
+                          : 'linear-gradient(145deg, #1a1030, #0d0820)'
+                        : 'linear-gradient(145deg, #C678DD, #8B5CF6)',
+                      boxShadow: isWinRow
+                        ? '0 0 20px rgba(228,162,75,0.6)'
+                        : isRev ? 'none' : '0 4px 12px rgba(198,120,221,0.4)',
+                      display: 'flex', alignItems:'center', justifyContent:'center',
+                      fontSize: 36, cursor: isRev?'default':'pointer',
+                      transition: 'all 0.2s ease',
+                      transform: isRev?'scale(1)':'scale(1)',
+                      position: 'relative', overflow:'hidden',
+                    }}>
+                    {isRev ? (
+                      <span style={{ filter: isWinRow?'drop-shadow(0 0 8px #E4A24B)':undefined }}>
+                        {sym}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 28, opacity: 0.7 }}>✦</span>
+                    )}
+                    {isWinRow && isRev && (
+                      <div style={{
+                        position:'absolute',inset:0,borderRadius:12,
+                        background:'linear-gradient(135deg, rgba(228,162,75,0.15), transparent)',
+                        pointerEvents:'none',
+                      }}/>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Win / lose result */}
+          <div style={{ height: 44, marginTop: 12, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            {result && revealAll && (
+              <div className="font-black text-sm px-6 py-2 rounded-xl"
+                style={{
+                  background: result.win>0?'rgba(228,162,75,0.15)':'rgba(255,255,255,0.03)',
+                  border:`1px solid ${result.win>0?'rgba(228,162,75,0.5)':'rgba(255,255,255,0.07)'}`,
+                  color: result.win>0?'#E4A24B':'rgba(255,255,255,0.3)',
+                }}>
+                {result.win>0 ? `💎 ×${result.mult} · +${fmtCoins(result.win)}` : '— Без виграшу'}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="px-4 pb-5 flex flex-col gap-3">
+          {grid && !revealAll && (
+            <button onClick={scratchAll}
+              className="w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider"
+              style={{
+                background:'rgba(198,120,221,0.1)',color:'#C678DD',
+                border:'1px solid rgba(198,120,221,0.3)',cursor:'pointer',
+              }}>
+              ✦ Відкрити все
+            </button>
+          )}
+          <div className="flex gap-1">
+            {[5,10,25,50,100].map(v => (
+              <button key={v} onClick={() => setBet(v)} disabled={loading}
+                className="flex-1 py-2 rounded-lg text-xs font-black"
+                style={{
+                  background: bet===v?'linear-gradient(135deg,#C678DD,#8B5CF6)':'rgba(255,255,255,0.04)',
+                  color: bet===v?'#fff':'rgba(255,255,255,0.4)',
+                  border:`1px solid ${bet===v?'#C678DD':'rgba(255,255,255,0.06)'}`,
+                }}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <button onClick={buyCard} disabled={loading||bet>wallet.balance}
+            className="w-full py-4 rounded-2xl font-black text-base uppercase tracking-widest disabled:opacity-40"
+            style={{
+              background: 'linear-gradient(135deg, #C678DD, #8B5CF6)',
+              color:'#fff', border:'none', cursor:'pointer',
+              boxShadow:'0 0 28px rgba(198,120,221,0.5)',
+            }}>
+            {loading?'…':grid?'🎴 НОВИЙ БІЛЕТ':'🎴 КУПИТИ БІЛЕТ · '+fmtCoins(bet)}
+          </button>
+        </div>
+      </div>
+
+      {/* Paytable */}
+      <div className="rounded-2xl overflow-hidden" style={{ border:'1px solid rgba(198,120,221,0.15)' }}>
+        <div className="px-4 py-2 text-[#C678DD] text-[10px] font-black uppercase tracking-widest"
+          style={{ background:'rgba(198,120,221,0.05)', borderBottom:'1px solid rgba(198,120,221,0.12)' }}>
+          Виграші за 3 однакових
+        </div>
+        <div className="grid grid-cols-4 gap-0">
+          {Object.entries(SCRATCH_PAYS).map(([sym, m], idx) => (
+            <div key={sym} className="flex flex-col items-center py-2"
+              style={{ background: idx%2===0?'rgba(255,255,255,0.02)':'transparent', borderRight:'1px solid rgba(255,255,255,0.04)' }}>
+              <div style={{ fontSize:28 }}>{sym}</div>
+              <div className="font-black text-xs text-[#C678DD]">×{m}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Crypto Deposit ────────────────────────────────────────────────────────────
 
 interface CryptoDeposit {
@@ -3946,6 +4580,9 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
     { key: 'hilo',      label: 'Hi-Lo',        tag: 'Classic', hint: 'Cards', accent: '#5BBE8A', emoji: '🎴' },
     { key: 'tower',     label: 'Tower',        tag: 'Arcade',  hint: '×9',    accent: '#E54B5E', emoji: '🗼' },
     { key: 'keno',      label: 'Keno',         tag: 'Jackpot', hint: '×800',  accent: '#6DB5D4', emoji: '🎯' },
+    { key: 'videopoker',label: 'Video Poker',  tag: 'Classic', hint: '×800',  accent: '#5BBE8A', emoji: '🂡' },
+    { key: 'dragontiger',label:'Dragon Tiger', tag: 'Table',   hint: '×8',    accent: '#E54B5E', emoji: '🐉' },
+    { key: 'scratch',   label: 'Scratch',      tag: 'Instant', hint: '×50',   accent: '#C678DD', emoji: '🎴' },
   ];
 
   const CATS = ['Всі', 'Table', 'Arcade', 'Instant', 'Classic', 'Jackpot'] as const;
@@ -5805,6 +6442,24 @@ export default function App() {
           <div className="flex-1 flex flex-col overflow-hidden">
             <GameHeader emoji="🎯" title="Keno" sub="Обери до 10 · 10 з 40 випадкових · До ×800" />
             <KenoView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'videopoker' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🂡" title="Video Poker" sub="Jacks or Better · Тримай · Тягни · Виграй" />
+            <VideoPokerView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'dragontiger' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🐉" title="Dragon Tiger" sub="Дракон проти Тигра · Нічия ×8" />
+            <DragonTigerView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
+          </div>
+        )}
+        {sidebarTab === 'casino' && casinoView === 'scratch' && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <GameHeader emoji="🎴" title="Scratch Card" sub="Білет на удачу · До ×50" />
+            <ScratchView wallet={wallet} onWalletUpdate={updateWallet} token={token} notify={notify} />
           </div>
         )}
         {sidebarTab === 'casino' && casinoView === 'deposit' && (

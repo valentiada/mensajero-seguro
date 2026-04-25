@@ -677,3 +677,77 @@ def keno_play():
         return jsonify({'ok': True, 'data': result})
     except ValueError as exc:
         return api_error(str(exc))
+
+
+# ── Video Poker ───────────────────────────────────────────────────────────────
+
+@casino_bp.post('/videopoker/deal')
+@auth_required
+@rate_limit(20, 10, key_func=_casino_rate_key)
+def vp_deal():
+    data = request.get_json(force=True) or {}
+    try:
+        bet = float(data.get('bet', 10))
+    except (TypeError, ValueError):
+        return api_error('Невірна ставка.')
+    try:
+        result = casino_service.deal_video_poker(g.current_user['id'], bet)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+@casino_bp.post('/videopoker/draw')
+@auth_required
+def vp_draw():
+    data = request.get_json(force=True) or {}
+    session_id = (data.get('session_id') or '').strip()
+    hold = data.get('hold') or []
+    if not session_id:
+        return api_error('session_id обовʼязковий.')
+    try:
+        hold = [int(h) for h in hold]
+    except (TypeError, ValueError):
+        return api_error('hold: список індексів 0–4.')
+    try:
+        result = casino_service.draw_video_poker(g.current_user['id'], session_id, hold)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+# ── Dragon Tiger ──────────────────────────────────────────────────────────────
+
+@casino_bp.post('/dragontiger/play')
+@auth_required
+@rate_limit(30, 10, key_func=_casino_rate_key)
+def dragon_tiger_play():
+    data = request.get_json(force=True) or {}
+    side = (data.get('side') or '').strip()
+    try:
+        bet = float(data.get('bet', 10))
+    except (TypeError, ValueError):
+        return api_error('Невірна ставка.')
+    try:
+        result = casino_service.play_dragon_tiger(g.current_user['id'], bet, side)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))
+
+
+# ── Scratch Card ──────────────────────────────────────────────────────────────
+
+@casino_bp.post('/scratch/play')
+@auth_required
+@rate_limit(30, 10, key_func=_casino_rate_key)
+def scratch_play():
+    data = request.get_json(force=True) or {}
+    try:
+        bet = float(data.get('bet', 10))
+    except (TypeError, ValueError):
+        return api_error('Невірна ставка.')
+    try:
+        result = casino_service.play_scratch(g.current_user['id'], bet)
+        return jsonify({'ok': True, 'data': result})
+    except ValueError as exc:
+        return api_error(str(exc))

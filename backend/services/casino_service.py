@@ -1131,6 +1131,192 @@ class CasinoService:
             'new_balance': new_balance,
         }
 
+    # ── Video Poker — Jacks or Better ────────────────────────────────────────
+    _RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
+    _SUITS = ['♠','♥','♦','♣']
+    _RANK_VAL = {r: i+2 for i, r in enumerate(_RANKS)}
+
+    _VP_PAYOUTS = {
+        'royal_flush':    800,
+        'straight_flush': 50,
+        'four_of_a_kind': 25,
+        'full_house':     9,
+        'flush':          6,
+        'straight':       4,
+        'three_of_a_kind':3,
+        'two_pair':       2,
+        'jacks_or_better':1,
+        'nothing':        0,
+    }
+
+    def _make_deck(self) -> list[dict]:
+        deck = [{'rank': r, 'suit': s, 'value': self._RANK_VAL[r]}
+                for r in self._RANKS for s in self._SUITS]
+        random.Random(secrets.token_bytes(16)).shuffle(deck)
+        return deck
+
+    def _eval_poker(self, cards: list[dict]) -> str:
+        vals = sorted([c['value'] for c in cards], reverse=True)
+        suits = [c['suit'] for c in cards]
+        ranks = [c['rank'] for c in cards]
+        flush = len(set(suits)) == 1
+        vals_set = sorted(set(vals))
+        straight = (len(vals_set) == 5 and vals_set[-1] - vals_set[0] == 4)
+        # Ace-low straight: A-2-3-4-5
+        if set(vals) == {14, 2, 3, 4, 5}:
+            straight = True
+        from collections import Counter
+        cnt = Counter(vals)
+        groups = sorted(cnt.values(), reverse=True)
+        if flush and straight and max(vals) == 14 and min(vals) == 10:
+            return 'royal_flush'
+        if flush and straight:
+            return 'straight_flush'
+        if groups[0] == 4:
+            return 'four_of_a_kind'
+        if groups[:2] == [3, 2]:
+            return 'full_house'
+        if flush:
+            return 'flush'
+        if straight:
+            return 'straight'
+        if groups[0] == 3:
+            return 'three_of_a_kind'
+        if groups[:2] == [2, 2]:
+            return 'two_pair'
+        # Jacks or better: pair of J, Q, K, or A
+        for val, c in cnt.items():
+            if c == 2 and val >= 11:
+                return 'jacks_or_better'
+        return 'nothing'
+
+    _vp_sessions: dict = {}
+
+    def deal_video_poker(self, user_id: int, bet: float) -> dict:
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+        new_balance = self.repo.update_balance(user_id, -bet)
+        deck = self._make_deck()
+        hand = deck[:5]
+        session_id = secrets.token_urlsafe(16)
+        self._vp_sessions[session_id] = {'user_id': user_id, 'bet': bet, 'deck': deck, 'hand': hand}
+        return {'session_id': session_id, 'hand': hand, 'new_balance': new_balance, 'bet': bet}
+
+    def draw_video_poker(self, user_id: int, session_id: str, hold: list[int]) -> dict:
+        s = self._vp_sessions.pop(session_id, None)
+        if not s or s['user_id'] != user_id:
+            raise ValueError('Сесію не знайдено.')
+        if not all(0 <= h <= 4 for h in hold):
+            raise ValueError('hold: список індексів 0–4.')
+        deck = s['deck']
+        hand = list(s['hand'])
+        draw_idx = 5
+        for i in range(5):
+            if i not in hold:
+                hand[i] = deck[draw_idx]
+                draw_idx += 1
+        result = self._eval_poker(hand)
+        mult = self._VP_PAYOUTS[result]
+        win = round(s['bet'] * mult, 2)
+        new_balance = self.repo.update_balance(user_id, win)
+        self.repo.add_bet_stats(user_id, s['bet'], win)
+        self.repo.add_xp(user_id, max(1, int(s['bet'] / 20)))
+        self.repo.save_game(user_id, 'video_poker', s['bet'], win, {
+            'hand': [f"{c['rank']}{c['suit']}" for c in hand],
+            'result': result, 'mult': mult,
+        })
+        if win > 0: self.repo.upsert_leaderboard(user_id, win)
+        if win >= 5000: self.repo.unlock_achievement(user_id, 'big_winner')
+        return {'hand': hand, 'result': result, 'mult': mult, 'win': win, 'new_balance': new_balance}
+
+    # ── Dragon Tiger ──────────────────────────────────────────────────────────
+    def play_dragon_tiger(self, user_id: int, bet: float, side: str) -> dict:
+        if side not in ('dragon', 'tiger', 'tie'):
+            raise ValueError("Ставка: 'dragon', 'tiger' або 'tie'.")
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+        deck = self._make_deck()
+        dragon, tiger = deck[0], deck[1]
+        dv, tv = dragon['value'], tiger['value']
+        if dv > tv:
+            outcome = 'dragon'
+        elif tv > dv:
+            outcome = 'tiger'
+        else:
+            outcome = 'tie'
+        if side == 'tie':
+            mult = 8.0 if outcome == 'tie' else 0.0
+        elif side == outcome:
+            mult = 2.0
+        elif outcome == 'tie':
+            mult = 0.5   # half return on tie when not betting tie
+        else:
+            mult = 0.0
+        win = round(bet * mult, 2)
+        net = win - bet
+        new_balance = self.repo.update_balance(user_id, net)
+        self.repo.add_bet_stats(user_id, bet, win)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+        self.repo.save_game(user_id, 'dragon_tiger', bet, win, {
+            'dragon': f"{dragon['rank']}{dragon['suit']}",
+            'tiger': f"{tiger['rank']}{tiger['suit']}",
+            'side': side, 'outcome': outcome, 'mult': mult,
+        })
+        if win > 0: self.repo.upsert_leaderboard(user_id, win)
+        return {'dragon': dragon, 'tiger': tiger, 'outcome': outcome,
+                'side': side, 'mult': mult, 'win': win, 'net': net, 'new_balance': new_balance}
+
+    # ── Scratch Card ──────────────────────────────────────────────────────────
+    _SCRATCH_SYMS = ['💎','7️⃣','🍒','⭐','🔔','💰','🎴']
+    _SCRATCH_PAYS = {'💎': 50, '7️⃣': 20, '🍒': 5, '⭐': 3, '🔔': 2, '💰': 10, '🎴': 4}
+
+    def play_scratch(self, user_id: int, bet: float) -> dict:
+        wallet = self.repo.ensure_wallet(user_id)
+        self._validate_bet(bet, wallet['balance'])
+        # Build 3x3 grid — guaranteed 0–1 winning lines for house edge
+        rng = random.Random(secrets.token_bytes(16))
+        grid: list[str] = []
+        # ~35% chance of a winning triple
+        has_win = rng.random() < 0.35
+        if has_win:
+            winner = rng.choice(self._SCRATCH_SYMS)
+            winning_row = rng.randint(0, 2)  # which row wins
+            for row in range(3):
+                for col in range(3):
+                    if row == winning_row:
+                        if col < 2:
+                            grid.append(winner)
+                        else:
+                            # Row 3rd col is the winner too
+                            grid.append(winner)
+                    else:
+                        # Make sure no accidental 3-in-row
+                        candidates = [s for s in self._SCRATCH_SYMS if s != winner]
+                        grid.append(rng.choice(candidates))
+            mult = self._SCRATCH_PAYS[winner]
+        else:
+            # No triple match
+            winner = None
+            for _ in range(9):
+                grid.append(rng.choice(self._SCRATCH_SYMS))
+            # Prevent accidental win
+            for row in range(3):
+                row_syms = grid[row*3:(row+1)*3]
+                if row_syms[0] == row_syms[1] == row_syms[2]:
+                    grid[row*3+2] = rng.choice([s for s in self._SCRATCH_SYMS if s != row_syms[0]])
+            mult = 0
+        win = round(bet * mult, 2)
+        net = win - bet
+        new_balance = self.repo.update_balance(user_id, net)
+        self.repo.add_bet_stats(user_id, bet, win)
+        self.repo.add_xp(user_id, max(1, int(bet / 20)))
+        self.repo.save_game(user_id, 'scratch', bet, win, {
+            'grid': grid, 'mult': mult, 'has_win': has_win,
+        })
+        if win > 0: self.repo.upsert_leaderboard(user_id, win)
+        if win >= 5000: self.repo.unlock_achievement(user_id, 'big_winner')
+        return {'grid': grid, 'mult': mult, 'win': win, 'net': net, 'new_balance': new_balance, 'has_win': bool(has_win)}
+
     # ── Achievements ──────────────────────────────────────────────────────────
 
     def _check_roulette_achievements(self, user_id: int, number: int, win: float, bet: float) -> None:

@@ -5923,127 +5923,116 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
 
   const LANG_FLAGS: Record<LangCode, string> = { en: '🇬🇧', uk: '🇺🇦', ru: '🇷🇺', es: '🇪🇸', it: '🇮🇹', de: '🇩🇪' };
 
-  // Design tokens — Deep Space Violet
+  // Design tokens — Neon Noir
   const C = {
-    bg:       '#09090F',
-    panel:    'rgba(13,11,26,0.97)',
-    card:     '#100E1E',
-    border:   'rgba(124,92,252,0.2)',
-    borderHi: 'rgba(155,127,255,0.65)',
-    gold:     '#F5A623',
-    goldDim:  '#D48A15',
-    text:     '#EEEEF2',
-    textDim:  'rgba(238,238,242,0.55)',
-    textMute: 'rgba(238,238,242,0.30)',
-    input:    'rgba(255,255,255,0.05)',
-    error:    '#FF4466',
-    green:    '#00D4FF',
+    bg:        '#06050F',
+    panel:     'rgba(10,8,22,0.98)',
+    card:      '#0E0C1C',
+    border:    'rgba(124,92,252,0.22)',
+    borderHi:  'rgba(155,127,255,0.7)',
+    violet:    '#7C5CFC',
+    violetDim: '#5A3FD4',
+    cyan:      '#00D4FF',
+    gold:      '#F5A623',
+    text:      '#F0F0F6',
+    textDim:   'rgba(240,240,246,0.52)',
+    textMute:  'rgba(240,240,246,0.28)',
+    input:     'rgba(124,92,252,0.06)',
+    error:     '#FF4466',
   };
 
   const inp: React.CSSProperties = {
-    width: '100%', padding: '12px 15px',
+    width: '100%', padding: '13px 16px',
     background: C.input,
     border: `1.5px solid ${C.border}`,
-    borderRadius: 10, color: C.text,
-    fontSize: 14, fontFamily: 'inherit', outline: 'none',
-    transition: 'border-color 0.2s',
+    borderRadius: 12, color: C.text,
+    fontSize: 15, fontFamily: 'inherit', outline: 'none',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+    WebkitTextFillColor: C.text,
   };
   const lbl: React.CSSProperties = {
-    display: 'block', fontSize: 10, fontWeight: 700,
-    color: C.textMute, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 7,
+    display: 'block', fontSize: 10, fontWeight: 800,
+    color: C.textMute, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8,
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: C.bg,
-      overflowY: 'auto',
-      WebkitOverflowScrolling: 'touch',
-    }}>
-      {/* Ambient background glow */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: `
-          radial-gradient(ellipse 120% 40% at 50% 0%, rgba(124,92,252,0.18) 0%, transparent 55%),
-          radial-gradient(ellipse 70% 70% at 90% 100%, rgba(0,212,255,0.10) 0%, transparent 55%),
-          radial-gradient(ellipse 60% 60% at 0% 60%, rgba(124,92,252,0.10) 0%, transparent 55%)
-        `,
-      }} />
+    <div style={{ position: 'fixed', inset: 0, background: C.bg, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
 
-      {/* Floating card suits — decorative */}
+      {/* ── Full-bleed aurora background ── */}
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+        <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '70vw', height: '70vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,92,252,0.22) 0%, transparent 65%)', filter: 'blur(80px)', animation: 'mesh-1 18s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', bottom: '-15%', right: '-10%', width: '60vw', height: '60vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,212,255,0.14) 0%, transparent 65%)', filter: 'blur(70px)', animation: 'mesh-2 22s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', top: '40%', left: '30%', width: '40vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,92,252,0.08) 0%, transparent 65%)', filter: 'blur(60px)', animation: 'mesh-3 16s ease-in-out infinite' }} />
+        {/* Grid overlay */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(124,92,252,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(124,92,252,0.04) 1px, transparent 1px)', backgroundSize: '60px 60px', maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)', WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)' }} />
+      </div>
+
+      {/* ── Floating suits ── */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0, userSelect: 'none' }}>
         {[
-          { s: '♠', x: '3%',  y: '6%',  sz: 90,  rot: -18, op: 0.07 },
-          { s: '♥', x: '85%', y: '4%',  sz: 75,  rot: 14,  op: 0.06 },
-          { s: '♦', x: '1%',  y: '68%', sz: 85,  rot: -10, op: 0.05 },
-          { s: '♣', x: '82%', y: '66%', sz: 100, rot: 22,  op: 0.06 },
-          { s: '♥', x: '45%', y: '2%',  sz: 50,  rot: 6,   op: 0.04 },
+          { s: '♠', x: '4%',  y: '8%',  sz: 110, rot: -18, op: 0.09 },
+          { s: '♥', x: '82%', y: '5%',  sz: 90,  rot: 14,  op: 0.08 },
+          { s: '♦', x: '2%',  y: '65%', sz: 100, rot: -10, op: 0.07 },
+          { s: '♣', x: '80%', y: '62%', sz: 120, rot: 22,  op: 0.08 },
         ].map((d, i) => (
-          <div key={i} style={{
-            position: 'absolute', left: d.x, top: d.y,
-            fontSize: d.sz, color: `rgba(124,92,252,${d.op})`,
-            transform: `rotate(${d.rot}deg)`, lineHeight: 1, fontWeight: 900,
-          }}>{d.s}</div>
+          <div key={i} style={{ position: 'absolute', left: d.x, top: d.y, fontSize: d.sz, color: `rgba(124,92,252,${d.op})`, transform: `rotate(${d.rot}deg)`, lineHeight: 1 }}>{d.s}</div>
         ))}
       </div>
 
-      {/* ── Desktop: two-column card ── */}
-      <div className="hidden md:flex items-center justify-center min-h-screen p-6" style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{
-          width: '100%', maxWidth: 860,
-          display: 'flex', borderRadius: 24, overflow: 'hidden',
-          boxShadow: '0 40px 120px rgba(0,0,0,0.85), 0 0 0 1px rgba(200,160,60,0.18)',
-        }}>
-          {/* Left brand panel */}
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-            padding: '40px 36px',
-            background: 'linear-gradient(155deg,#0D0B1F 0%,#0A0818 60%,#08070F 100%)',
-            borderRight: `1px solid ${C.border}`,
-          }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#2A1F5A,#1A1435)', border: `1px solid rgba(124,92,252,0.4)`, boxShadow: '0 0 24px rgba(124,92,252,0.2)' }}>
-                  <HummingbirdLogo size={30} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: 3, color: C.text }}>{APP_NAME.toUpperCase()}</div>
-                  <div style={{ fontSize: 10, color: C.textMute, letterSpacing: 2, textTransform: 'uppercase' }}>Casino & Messenger</div>
-                </div>
+      {/* ── Desktop two-column ── */}
+      <div className="hidden md:flex items-center justify-center min-h-screen p-8" style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ width: '100%', maxWidth: 900, display: 'flex', borderRadius: 28, overflow: 'hidden', boxShadow: '0 50px 140px rgba(0,0,0,0.9), 0 0 0 1px rgba(124,92,252,0.22)', backdropFilter: 'blur(2px)' }}>
+
+          {/* Left: brand */}
+          <div style={{ flex: '0 0 380px', display: 'flex', flexDirection: 'column', padding: '48px 40px', background: 'linear-gradient(160deg, #120F28 0%, #0A0818 50%, #070614 100%)', borderRight: `1px solid rgba(124,92,252,0.15)`, position: 'relative', overflow: 'hidden' }}>
+            {/* Inner glow */}
+            <div style={{ position: 'absolute', top: -80, left: -60, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,92,252,0.18) 0%, transparent 65%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+
+            {/* Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 48, position: 'relative' }}>
+              <div style={{ width: 52, height: 52, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #3D2A8A, #1E1450)', border: '1.5px solid rgba(124,92,252,0.5)', boxShadow: '0 0 30px rgba(124,92,252,0.3), 0 0 60px rgba(124,92,252,0.1)' }}>
+                <HummingbirdLogo size={32} />
               </div>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: 4, color: '#F0F0F6', fontFamily: 'var(--font-grotesk)', textTransform: 'uppercase' }}>{APP_NAME}</div>
+                <div style={{ fontSize: 9, color: 'rgba(124,92,252,0.7)', letterSpacing: 3, textTransform: 'uppercase', marginTop: 2 }}>Casino & Messenger</div>
+              </div>
+            </div>
+
+            {/* Feature list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, position: 'relative' }}>
               {[
-                { icon: '🎰', title: '17 ігор', sub: 'Crash · Slots · Blackjack · Plinko та ін.' },
-                { icon: '💎', title: 'Provably Fair', sub: 'Верифіковані результати HMAC-SHA256' },
-                { icon: '🔒', title: 'E2E шифрування', sub: 'Захищені повідомлення Fernet' },
-                { icon: '🎁', title: '+200₮ бонус', sub: 'При першій реєстрації одразу' },
+                { icon: Zap, title: '17 ігор', sub: 'Crash · Slots · Blackjack · Plinko', color: '#7C5CFC' },
+                { icon: Shield, title: 'Provably Fair', sub: 'HMAC-SHA256 верифікація', color: '#00D4FF' },
+                { icon: Lock, title: 'E2E шифрування', sub: 'Захищені повідомлення Fernet', color: '#A855F7' },
+                { icon: Gift, title: '+200₮ бонус', sub: 'Одразу після реєстрації', color: '#F5A623' },
               ].map(f => (
-                <div key={f.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'rgba(124,92,252,0.06)', border: `1px solid ${C.border}`, marginBottom: 10 }}>
-                  <span style={{ fontSize: 18, marginTop: 1 }}>{f.icon}</span>
+                <div key={f.title} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 14, background: 'rgba(124,92,252,0.07)', border: '1px solid rgba(124,92,252,0.13)', transition: 'all 0.2s' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: `${f.color}18`, border: `1px solid ${f.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <f.icon size={16} style={{ color: f.color }} />
+                  </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{f.title}</div>
-                    <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>{f.sub}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F6', letterSpacing: 0.3 }}>{f.title}</div>
+                    <div style={{ fontSize: 11, color: 'rgba(240,240,246,0.45)', marginTop: 1 }}>{f.sub}</div>
                   </div>
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginTop: 28, userSelect: 'none' }}>
-              {[
-                { v: 'A', s: '♠', rot: -12, bg: '#fff', col: '#111' },
-                { v: 'K', s: '♥', rot: -4,  bg: '#fff', col: '#cc2200' },
-                { v: 'Q', s: '♦', rot: 5,   bg: '#fff', col: '#cc2200' },
-                { v: 'J', s: '♣', rot: 13,  bg: '#fff', col: '#111' },
-              ].map((card, i) => (
-                <div key={i} style={{ width: 62, height: 88, background: card.bg, borderRadius: 10, padding: 8, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginLeft: i === 0 ? 0 : -22, transform: `rotate(${card.rot}deg) translateY(${Math.abs(card.rot) * 0.4}px)`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', border: '1px solid rgba(0,0,0,0.1)', zIndex: i, position: 'relative' }}>
+
+            {/* Cards */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginTop: 36, userSelect: 'none', position: 'relative' }}>
+              {[{v:'A',s:'♠',rot:-14,col:'#111'},{v:'K',s:'♥',rot:-5,col:'#cc2200'},{v:'Q',s:'♦',rot:5,col:'#cc2200'},{v:'J',s:'♣',rot:14,col:'#111'}].map((card, i) => (
+                <div key={i} style={{ width: 64, height: 92, background: '#fff', borderRadius: 10, padding: 8, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginLeft: i === 0 ? 0 : -24, transform: `rotate(${card.rot}deg) translateY(${Math.abs(card.rot) * 0.5}px)`, boxShadow: '0 12px 32px rgba(0,0,0,0.7)', border: '1px solid rgba(0,0,0,0.1)', zIndex: i, position: 'relative' }}>
                   <div style={{ fontSize: 14, fontWeight: 900, color: card.col, lineHeight: 1 }}>{card.v}</div>
-                  <div style={{ fontSize: 20, textAlign: 'center', color: card.col, lineHeight: 1 }}>{card.s}</div>
+                  <div style={{ fontSize: 22, textAlign: 'center', color: card.col, lineHeight: 1 }}>{card.s}</div>
                   <div style={{ fontSize: 14, fontWeight: 900, color: card.col, lineHeight: 1, textAlign: 'right', transform: 'rotate(180deg)' }}>{card.v}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right form panel */}
-          <div style={{ flex: 1, background: C.panel, padding: '36px 40px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          {/* Right: form */}
+          <div style={{ flex: 1, background: 'rgba(10,8,22,0.98)', padding: '48px 44px', display: 'flex', flexDirection: 'column' }}>
             <AuthFormInner tab={tab} setTab={setTab} lang={lang} setLang={setLang} t={t} LANG_FLAGS={LANG_FLAGS}
               loginMethod={loginMethod} setLoginMethod={setLoginMethod} country={country} setCountry={setCountry}
               phone={phone} setPhone={setPhone} form={form} set={set} loading={loading} error={error}
@@ -6052,48 +6041,24 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
         </div>
       </div>
 
-      {/* ── Mobile: full-screen single column ── */}
+      {/* ── Mobile ── */}
       <div className="flex md:hidden flex-col" style={{ minHeight: '100dvh', position: 'relative', zIndex: 1 }}>
-
-        {/* Top hero section */}
-        <div style={{
-          padding: '52px 24px 28px',
-          background: 'linear-gradient(180deg, rgba(20,14,45,0.98) 0%, transparent 100%)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flexShrink: 0,
-        }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 18,
-            background: 'linear-gradient(135deg,#2A1F5A,#1A1435)',
-            border: `1.5px solid rgba(124,92,252,0.5)`,
-            boxShadow: '0 0 32px rgba(124,92,252,0.25)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <HummingbirdLogo size={40} />
+        {/* Hero */}
+        <div style={{ padding: '56px 24px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ width: 72, height: 72, borderRadius: 22, background: 'linear-gradient(135deg,#3D2A8A,#1E1450)', border: '2px solid rgba(124,92,252,0.5)', boxShadow: '0 0 40px rgba(124,92,252,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+            <HummingbirdLogo size={44} />
           </div>
-          <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: 3.5, color: C.text, textTransform: 'uppercase' }}>
-            {APP_NAME}
-          </div>
-          <div style={{ fontSize: 11, color: C.textMute, letterSpacing: 2, textTransform: 'uppercase' }}>Casino & Messenger</div>
-
-          {/* Mini feature pills */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginTop: 6 }}>
-            {['🎰 17 ігор', '🎁 +200₮', '🔒 E2E'].map(p => (
-              <span key={p} style={{ fontSize: 11, fontWeight: 600, color: C.textDim, background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`, borderRadius: 20, padding: '4px 10px' }}>{p}</span>
+          <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: 5, color: '#F0F0F6', textTransform: 'uppercase', fontFamily: 'var(--font-grotesk)' }}>{APP_NAME}</div>
+          <div style={{ fontSize: 10, color: 'rgba(124,92,252,0.7)', letterSpacing: 3, textTransform: 'uppercase' }}>Casino · Messenger</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {[['⚡','17 ігор'],['🎁','+200₮'],['🔒','E2E']].map(([icon, label]) => (
+              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'rgba(124,92,252,0.8)', background: 'rgba(124,92,252,0.1)', border: '1px solid rgba(124,92,252,0.2)', borderRadius: 20, padding: '4px 12px' }}>{icon} {label}</span>
             ))}
           </div>
         </div>
 
-        {/* Form card — grows to fill remaining space */}
-        <div style={{
-          flex: 1,
-          margin: '0 12px 16px',
-          background: 'rgba(13,11,26,0.97)',
-          borderRadius: 24,
-          border: `1px solid ${C.border}`,
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,92,252,0.08) inset',
-          padding: '24px 20px 28px',
-          display: 'flex', flexDirection: 'column',
-        }}>
+        {/* Form card */}
+        <div style={{ flex: 1, margin: '0 14px 20px', background: 'rgba(10,8,22,0.98)', borderRadius: 28, border: '1px solid rgba(124,92,252,0.2)', boxShadow: '0 -16px 60px rgba(124,92,252,0.12), 0 0 0 1px rgba(124,92,252,0.06) inset', padding: '28px 22px 28px', display: 'flex', flexDirection: 'column' }}>
           <AuthFormInner tab={tab} setTab={setTab} lang={lang} setLang={setLang} t={t} LANG_FLAGS={LANG_FLAGS}
             loginMethod={loginMethod} setLoginMethod={setLoginMethod} country={country} setCountry={setCountry}
             phone={phone} setPhone={setPhone} form={form} set={set} loading={loading} error={error}

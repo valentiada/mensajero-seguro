@@ -4888,7 +4888,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 14px', background: '#060C0F' }}>
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 14px 90px', background: 'transparent' }}>
       {/* Hero balance */}
       <div style={{
         borderRadius: 24, overflow: 'hidden', position: 'relative',
@@ -5033,43 +5033,85 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
         })}
       </div>
 
-      {/* Games grid */}
+      {/* Bento Games Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {visibleGames.map(g => (
-          <button key={g.key} onClick={() => { sfx.click(); onSelectGame(g.key); }}
-            style={{
-              borderRadius: 20, overflow: 'hidden', textAlign: 'left', cursor: 'pointer',
-              background: '#0C1519',
-              border: `1px solid rgba(255,255,255,0.07)`,
-              boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
-              transition: 'all 0.18s ease',
-            }}
-            onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform='translateY(-2px)'; el.style.boxShadow=`0 8px 32px ${g.accent}30, 0 0 0 1px ${g.accent}30`; }}
-            onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform='translateY(0)'; el.style.boxShadow='0 2px 16px rgba(0,0,0,0.4)'; }}>
-            {/* Art area */}
-            <div style={{
-              height: 96, position: 'relative',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-              background: `radial-gradient(ellipse at 60% 30%, ${g.accent}1E 0%, transparent 65%), linear-gradient(170deg, ${g.accent}12 0%, #08101A 100%)`,
-            }}>
-              {/* Glow blob */}
-              <div style={{ position: 'absolute', width: 70, height: 70, borderRadius: '50%', background: `radial-gradient(circle, ${g.accent}25, transparent 70%)`, filter: 'blur(12px)' }} />
-              <span style={{ fontSize: 42, lineHeight: 1, filter: `drop-shadow(0 0 14px ${g.accent}90)`, position: 'relative', zIndex: 1 }}>{g.emoji}</span>
-              {g.live && (
-                <span style={{ position: 'absolute', top: 7, left: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(0,208,132,0.1)', border: '1px solid rgba(0,208,132,0.4)' }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00D084', boxShadow: '0 0 5px #00D084' }} />
-                  <span style={{ fontWeight: 900, fontSize: 8, letterSpacing: '0.12em', color: '#00D084' }}>LIVE</span>
-                </span>
-              )}
-              <span style={{ position: 'absolute', bottom: 7, right: 9, fontWeight: 900, fontSize: 11, color: g.accent, textShadow: `0 0 8px ${g.accent}` }}>{g.hint}</span>
-            </div>
-            {/* Label */}
-            <div style={{ padding: '10px 12px 12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ fontWeight: 800, fontSize: 12, color: '#fff', letterSpacing: 0.3, textTransform: 'uppercase' }}>{g.label}</div>
-              <div style={{ fontWeight: 600, fontSize: 10, color: `${g.accent}99`, marginTop: 2, letterSpacing: 0.5 }}>{g.tag}</div>
-            </div>
-          </button>
-        ))}
+        {visibleGames.map((g, idx) => {
+          // Bento pattern: every 5th card group: [wide, small, small, small, small]
+          const posInGroup = idx % 5;
+          const isWide = posInGroup === 0;
+          const isTall = posInGroup === 1;
+          return (
+            <button key={g.key} onClick={() => { sfx.click(); onSelectGame(g.key); }}
+              style={{
+                gridColumn: isWide ? 'span 2' : 'span 1',
+                borderRadius: 20, overflow: 'hidden', textAlign: 'left', cursor: 'pointer',
+                background: 'linear-gradient(160deg, #0E1B24 0%, #080F16 100%)',
+                border: `1px solid rgba(255,255,255,0.07)`,
+                boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
+                transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s ease',
+                position: 'relative',
+              }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform='translateY(-3px) scale(1.01)'; el.style.boxShadow=`0 12px 40px ${g.accent}28, 0 0 0 1px ${g.accent}28`; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform='translateY(0) scale(1)'; el.style.boxShadow='0 2px 16px rgba(0,0,0,0.4)'; }}>
+              {/* Art area */}
+              <div style={{
+                height: isWide ? 140 : isTall ? 120 : 96, position: 'relative',
+                display: 'flex', alignItems: 'center', justifyContent: isWide ? 'flex-start' : 'center',
+                padding: isWide ? '0 24px' : 0, overflow: 'hidden',
+                background: `radial-gradient(ellipse at ${isWide ? '80% 50%' : '60% 30%'}, ${g.accent}22 0%, transparent 70%), linear-gradient(170deg, ${g.accent}10 0%, #06101A 100%)`,
+              }}>
+                {/* Diagonal stripe texture */}
+                <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(45deg, transparent 0 8px, rgba(255,255,255,0.012) 8px 9px)', pointerEvents: 'none' }} />
+                {/* Glow blob */}
+                <div style={{ position: 'absolute', right: isWide ? '20%' : '50%', top: '50%', transform: 'translate(50%,-50%)', width: isWide ? 120 : 80, height: isWide ? 120 : 80, borderRadius: '50%', background: `radial-gradient(circle, ${g.accent}30, transparent 70%)`, filter: 'blur(16px)' }} />
+                {isWide ? (
+                  <>
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                        {g.live && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(0,208,132,0.12)', border: '1px solid rgba(0,208,132,0.4)' }}>
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00D084', boxShadow: '0 0 6px #00D084', animation: 'pulse 1.5s infinite' }} />
+                            <span style={{ fontWeight: 900, fontSize: 8, letterSpacing: '0.12em', color: '#00D084' }}>LIVE</span>
+                          </span>
+                        )}
+                        <span style={{ padding: '3px 9px', borderRadius: 20, background: `${g.accent}18`, border: `1px solid ${g.accent}40`, fontWeight: 800, fontSize: 9, color: g.accent, letterSpacing: 0.8 }}>{g.hint}</span>
+                      </div>
+                      <div style={{ fontWeight: 900, fontSize: 20, color: '#fff', letterSpacing: -0.5, textTransform: 'uppercase', marginBottom: 4 }}>{g.label}</div>
+                      <div style={{ fontWeight: 600, fontSize: 11, color: `${g.accent}99`, letterSpacing: 0.5 }}>{g.tag}</div>
+                    </div>
+                    <span style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)', fontSize: 64, lineHeight: 1, filter: `drop-shadow(0 0 20px ${g.accent}80)`, opacity: 0.9 }}>{g.emoji}</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: isTall ? 48 : 38, lineHeight: 1, filter: `drop-shadow(0 0 14px ${g.accent}90)`, position: 'relative', zIndex: 1 }}>{g.emoji}</span>
+                    {g.live && (
+                      <span style={{ position: 'absolute', top: 7, left: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(0,208,132,0.1)', border: '1px solid rgba(0,208,132,0.4)' }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00D084', boxShadow: '0 0 5px #00D084' }} />
+                        <span style={{ fontWeight: 900, fontSize: 8, letterSpacing: '0.12em', color: '#00D084' }}>LIVE</span>
+                      </span>
+                    )}
+                    <span style={{ position: 'absolute', bottom: 7, right: 9, fontWeight: 900, fontSize: 11, color: g.accent, textShadow: `0 0 8px ${g.accent}` }}>{g.hint}</span>
+                  </>
+                )}
+              </div>
+              {/* Label row */}
+              <div style={{ padding: isWide ? '10px 16px 12px' : '9px 12px 11px', borderTop: `1px solid ${g.accent}18`, background: `linear-gradient(90deg, ${g.accent}06, transparent)` }}>
+                {!isWide && (
+                  <>
+                    <div style={{ fontWeight: 800, fontSize: 12, color: '#fff', letterSpacing: 0.3, textTransform: 'uppercase' }}>{g.label}</div>
+                    <div style={{ fontWeight: 600, fontSize: 10, color: `${g.accent}80`, marginTop: 2, letterSpacing: 0.5 }}>{g.tag}</div>
+                  </>
+                )}
+                {isWide && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontWeight: 600, fontSize: 10, color: 'rgba(238,244,240,0.4)' }}>Натисни щоб грати</div>
+                    <span style={{ padding: '5px 14px', borderRadius: 20, fontWeight: 800, fontSize: 11, background: `linear-gradient(135deg, ${g.accent}CC, ${g.accent})`, color: '#060C0F', boxShadow: `0 3px 12px ${g.accent}40` }}>Грати →</span>
+                  </div>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Quick links */}
@@ -6552,66 +6594,91 @@ export default function App() {
     </div>
   );
 
-  // ── AppTabBar ─────────────────────────────────────────────
+  // ── AppTabBar — floating bottom pill nav ─────────────────
   const AppTabBar = () => {
     const tabs: { key: SidebarTab; icon: React.ReactNode; label: string; badge: number }[] = [
-      { key: 'chats',   icon: <MessageCircle size={16} />, label: 'Чати',    badge: totalUnread },
-      { key: 'casino',  icon: <Zap size={16} />,           label: 'Казино',  badge: 0 },
-      { key: 'profile', icon: <Award size={16} />,          label: 'Профіль', badge: 0 },
+      { key: 'chats',   icon: <MessageCircle size={20} />, label: 'Чати',    badge: totalUnread },
+      { key: 'casino',  icon: <Zap size={20} />,           label: 'Казино',  badge: 0 },
+      { key: 'profile', icon: <Award size={20} />,          label: 'Профіль', badge: 0 },
     ];
     if (user?.role === 'admin' || user?.role === 'operator') {
-      tabs.push({ key: 'admin', icon: <Shield size={16} />, label: 'Адмін', badge: 0 });
+      tabs.push({ key: 'admin', icon: <Shield size={18} />, label: 'Адмін', badge: 0 });
     }
     return (
       <div style={{
-        display: 'flex', gap: 5, padding: '8px 14px 6px',
-        background: T.bg0,
-        borderBottom: `1px solid ${T.hairline}`,
-        flexShrink: 0,
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+        display: 'flex', justifyContent: 'center',
+        paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+        paddingLeft: 16, paddingRight: 16, paddingTop: 8,
+        background: 'linear-gradient(0deg, rgba(6,12,15,0.98) 60%, transparent)',
+        pointerEvents: 'none',
       }}>
         <div style={{
-          display: 'flex', flex: 1, gap: 4, padding: 4, borderRadius: 16,
-          background: 'rgba(255,255,255,0.03)',
-          border: `1px solid ${T.hairline}`,
+          display: 'flex', gap: 0, padding: '6px 8px',
+          borderRadius: 26,
+          background: 'rgba(14,22,28,0.92)',
+          backdropFilter: 'blur(32px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(32px) saturate(200%)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset',
+          pointerEvents: 'all',
+          width: '100%', maxWidth: 380,
         }}>
           {tabs.map(tab => {
             const active = sidebarTab === tab.key;
+            const isCasino = tab.key === 'casino';
             return (
               <button key={tab.key}
-                onClick={() => { sfx.click(); setSidebarTab(tab.key); if (tab.key === 'casino') setCasinoView('lobby'); }}
+                onClick={() => { sfx.click(); setSidebarTab(tab.key); if (isCasino) setCasinoView('lobby'); }}
                 style={{
-                  flex: 1, height: 38, borderRadius: 11,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  fontSize: 12, fontWeight: active ? 700 : 500,
-                  background: active
-                    ? tab.key === 'casino'
-                      ? `linear-gradient(135deg, rgba(245,197,24,0.2), rgba(245,197,24,0.1))`
-                      : `rgba(255,255,255,0.07)`
-                    : 'transparent',
-                  border: active
-                    ? `1px solid ${tab.key === 'casino' ? 'rgba(245,197,24,0.4)' : T.hairlineHi}`
-                    : '1px solid transparent',
-                  color: active
-                    ? tab.key === 'casino' ? T.gold : T.text
-                    : T.textMute,
+                  flex: 1, height: 52, borderRadius: 20,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
                   cursor: 'pointer', position: 'relative',
-                  transition: 'all 0.2s',
-                  boxShadow: active && tab.key === 'casino' ? '0 0 16px rgba(245,197,24,0.1)' : 'none',
+                  border: 'none',
+                  background: active
+                    ? isCasino
+                      ? 'linear-gradient(135deg, rgba(245,197,24,0.22), rgba(201,155,20,0.14))'
+                      : 'rgba(255,255,255,0.08)'
+                    : 'transparent',
+                  boxShadow: active && isCasino ? '0 0 20px rgba(245,197,24,0.2), inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
+                  transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+                  transform: active ? 'scale(1.04)' : 'scale(1)',
                 }}>
+                {/* Badge */}
                 {tab.badge > 0 && (
                   <span style={{
-                    position: 'absolute', top: 3, right: 8,
-                    minWidth: 16, height: 16, lineHeight: '16px',
-                    background: T.coral, color: '#fff',
-                    fontSize: 10, fontWeight: 800,
+                    position: 'absolute', top: 6, right: 10,
+                    minWidth: 17, height: 17,
+                    background: '#FF3D5C', color: '#fff',
+                    fontSize: 9, fontWeight: 900,
                     borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 4px',
+                    padding: '0 4px', boxShadow: '0 2px 6px rgba(255,61,92,0.6)',
+                    border: '1.5px solid rgba(6,12,15,0.8)',
                   }}>
                     {tab.badge}
                   </span>
                 )}
-                {tab.icon}
-                <span>{tab.label}</span>
+                {/* Icon */}
+                <div style={{ color: active ? (isCasino ? '#F5C518' : '#EEF4F0') : 'rgba(238,244,240,0.38)', transition: 'color 0.2s' }}>
+                  {tab.icon}
+                </div>
+                {/* Label */}
+                <span style={{
+                  fontSize: 9, fontWeight: active ? 700 : 500, letterSpacing: 0.4,
+                  color: active ? (isCasino ? '#F5C518' : 'rgba(238,244,240,0.9)') : 'rgba(238,244,240,0.32)',
+                  transition: 'color 0.2s', textTransform: 'uppercase',
+                }}>
+                  {tab.label}
+                </span>
+                {/* Active dot */}
+                {active && (
+                  <span style={{
+                    position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
+                    width: 4, height: 4, borderRadius: '50%',
+                    background: isCasino ? '#F5C518' : '#EEF4F0',
+                    boxShadow: isCasino ? '0 0 6px #F5C518' : 'none',
+                  }} />
+                )}
               </button>
             );
           })}
@@ -6748,16 +6815,23 @@ export default function App() {
   );
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#060C0F', color: T.text, overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#060C0F', color: T.text, overflow: 'hidden', position: 'relative' }}>
+
+      {/* ── Mesh gradient background ─────────────────────── */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <div className="mesh-blob-1" style={{ position: 'absolute', top: '-10%', left: '-5%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,208,132,0.07) 0%, transparent 65%)', filter: 'blur(40px)' }} />
+        <div className="mesh-blob-2" style={{ position: 'absolute', bottom: '5%', right: '-10%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,197,24,0.07) 0%, transparent 65%)', filter: 'blur(50px)' }} />
+        <div className="mesh-blob-3" style={{ position: 'absolute', top: '40%', left: '40%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(75,159,255,0.05) 0%, transparent 65%)', filter: 'blur(35px)' }} />
+      </div>
 
       {/* ── AppHeader ────────────────────────────────────── */}
-      <AppHeader />
+      <div style={{ position: 'relative', zIndex: 10 }}>
+        <AppHeader />
+      </div>
 
-      {/* ── AppTabBar ────────────────────────────────────── */}
-      <AppTabBar />
-
-      {/* ── Content ──────────────────────────────────────── */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {/* ── Content (padded bottom for floating nav) ─────── */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
+      {/* Floating bottom nav is rendered at end */}
 
         {/* CHATS TAB */}
         {sidebarTab === 'chats' && !activeChat && <ChatListPanel />}
@@ -7003,13 +7077,18 @@ export default function App() {
           <AdminView token={token} userRole={user.role} notify={notify} />
         )}
 
-      </div>
+      </div>{/* end content */}
+
+      {/* ── Floating bottom tab nav ───────────────────────── */}
+      <AppTabBar />
 
       {/* ── Chat info panel ───────────────────────────────── */}
       {showChatInfo && activeChat && (
         <div style={{
           position: 'fixed', right: 0, top: 0, bottom: 0, width: 280, zIndex: 50,
-          background: T.bg1, borderLeft: `1px solid ${T.hairline}`,
+          background: 'rgba(12,21,25,0.97)',
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          borderLeft: `1px solid rgba(255,255,255,0.08)`,
           display: 'flex', flexDirection: 'column',
         }} className="animate-slide-up">
           <div style={{ padding: '16px 18px', borderBottom: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

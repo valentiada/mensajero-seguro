@@ -25,8 +25,8 @@
   body {
     @apply antialiased overflow-hidden;
     font-family: var(--font-sans);
-    background: #0B1A12;
-    color: #E8F2EA;
+    background: #060C0F;
+    color: #EEF4F0;
     -webkit-font-smoothing: antialiased;
   }
 

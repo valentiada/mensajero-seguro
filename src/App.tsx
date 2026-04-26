@@ -4888,37 +4888,38 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4 bg-[#0B1A12]">
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 14px', background: '#060C0F' }}>
       {/* Hero balance */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/5 p-4"
-        style={{ background: 'linear-gradient(180deg,#163524 0%,#112A1C 100%)' }}>
-        <div className="absolute -top-10 -right-10 w-40 h-40 pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(228,162,75,0.18) 0%, transparent 70%)' }} />
-        <div className="relative flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-[#E8F2EA]/60">Баланс</div>
-            <button onClick={() => onSelectGame('deposit')}
-              className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer transition-all hover:brightness-110 active:scale-95"
-              style={{ background: '#E4A24B', color: '#1a1006' }}>
-              <Plus size={13} strokeWidth={2.5} /> Поповнити
-            </button>
-          </div>
-          <div className="text-[#E8F2EA]" style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, letterSpacing: -1, lineHeight: 1 }}>
-            <AnimatedBalance value={wallet.balance} />
-          </div>
+      <div style={{
+        borderRadius: 24, overflow: 'hidden', position: 'relative',
+        background: 'linear-gradient(160deg,#0D1B24 0%,#081018 100%)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+        padding: '20px 20px 18px',
+      }}>
+        {/* Glow orb */}
+        <div style={{ position: 'absolute', top: -30, right: -20, width: 160, height: 120, background: 'radial-gradient(ellipse, rgba(245,197,24,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(238,244,240,0.45)', textTransform: 'uppercase', letterSpacing: 1.5 }}>Баланс</div>
+          <button onClick={() => onSelectGame('deposit')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, background: 'linear-gradient(135deg,#C99B14,#F5C518)', color: '#0a0800', fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', cursor: 'pointer', border: 'none', boxShadow: '0 4px 16px rgba(245,197,24,0.35)' }}>
+            <Plus size={12} strokeWidth={2.5} /> Поповнити
+          </button>
         </div>
-        <div className="relative mt-4 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#0B1A12] border border-white/5 flex items-center justify-center font-black text-sm text-[#E4A24B]">
+        <div style={{ fontSize: 36, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-grotesk)', letterSpacing: -1, lineHeight: 1, marginBottom: 16 }}>
+          <AnimatedBalance value={wallet.balance} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,rgba(245,197,24,0.2),rgba(245,197,24,0.08))', border: '1px solid rgba(245,197,24,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#F5C518', flexShrink: 0 }}>
             {wallet.level}
           </div>
-          <div className="flex-1">
-            <div className="flex justify-between font-mono text-[10px] text-[#E8F2EA]/60 mb-1 uppercase tracking-widest">
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 9, fontWeight: 700, color: 'rgba(238,244,240,0.38)', textTransform: 'uppercase', letterSpacing: 1 }}>
               <span>Рівень {wallet.level}</span>
-              <span>{xpCurrent} / {xpToNext} XP</span>
+              <span style={{ fontFamily: 'var(--font-mono)' }}>{xpCurrent} / {xpToNext} XP</span>
             </div>
-            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${xpPct}%`, background: 'linear-gradient(90deg,#5BBE8A,#E4A24B)' }} />
+            <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${xpPct}%`, background: 'linear-gradient(90deg,#00D084,#F5C518)', borderRadius: 99, boxShadow: '0 0 6px rgba(245,197,24,0.35)', transition: 'width 0.5s ease' }} />
             </div>
           </div>
         </div>
@@ -4966,25 +4967,19 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
       </div>
 
       {/* Live wins ticker */}
-      <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl overflow-hidden"
-        style={{ background: 'rgba(91,190,138,0.06)', border: '1px solid rgba(91,190,138,0.16)' }}>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-            style={{ background: '#5BBE8A', boxShadow: '0 0 0 3px rgba(91,190,138,0.16)' }} />
-          <span className="font-black text-[10px] uppercase tracking-widest" style={{ color: '#5BBE8A' }}>LIVE</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 14, overflow: 'hidden', background: 'rgba(0,208,132,0.05)', border: '1px solid rgba(0,208,132,0.18)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00D084', boxShadow: '0 0 0 3px rgba(0,208,132,0.2)', animation: 'pulse 1.5s infinite' }} />
+          <span style={{ fontWeight: 900, fontSize: 9, letterSpacing: 1.5, color: '#00D084', textTransform: 'uppercase' }}>LIVE</span>
         </div>
-        <div className="flex-1 flex overflow-hidden"
-          style={{
-            maskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)',
-            WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)',
-          }}>
-          <div className="flex gap-5 animate-ticker shrink-0">
+        <div style={{ flex: 1, overflow: 'hidden', maskImage: 'linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)', WebkitMaskImage: 'linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)' }}>
+          <div className="flex gap-5 animate-ticker" style={{ flexShrink: 0 }}>
             {[...wins, ...wins].map((w, i) => (
-              <div key={i} className="flex items-center gap-1.5 shrink-0 font-mono text-xs text-[#E8F2EA]/60 whitespace-nowrap">
-                <span className="font-bold text-[#E8F2EA]">{w.user_name.split(' ')[0]}</span>
-                <span className="text-[#E8F2EA]/30">·</span>
-                <span className="capitalize">{w.game_type}</span>
-                <span className="font-black" style={{ color: '#5BBE8A' }}>+{fmtCoins(w.win_amount)}</span>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(238,244,240,0.5)', whiteSpace: 'nowrap' }}>
+                <span style={{ fontWeight: 700, color: '#EEF4F0' }}>{w.user_name.split(' ')[0]}</span>
+                <span style={{ opacity: 0.25 }}>·</span>
+                <span style={{ textTransform: 'capitalize' }}>{w.game_type}</span>
+                <span style={{ fontWeight: 900, color: '#00D084' }}>+{fmtCoins(w.win_amount)}</span>
               </div>
             ))}
           </div>
@@ -4992,46 +4987,46 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
       </div>
 
       {/* Featured Crash */}
-      <button onClick={() => onSelectGame('crash')}
-        className="relative overflow-hidden rounded-2xl border border-white/5 text-left cursor-pointer group">
-        <div className="h-32 relative flex items-center justify-center"
-          style={{
-            background: `linear-gradient(135deg, rgba(228,162,75,0.15), rgba(224,110,74,0.1)), repeating-linear-gradient(45deg, transparent 0 8px, rgba(255,255,255,0.02) 8px 16px), #112A1C`,
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
-          }}>
-          <TrendingUp size={64} strokeWidth={1} style={{ color: 'rgba(228,162,75,0.5)' }} />
-          <span className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full font-black text-[9px] uppercase tracking-widest backdrop-blur"
-            style={{ background: 'rgba(11,26,18,0.7)', color: '#E4A24B', border: '1px solid rgba(228,162,75,0.3)' }}>
-            🔥 HOT
-          </span>
-          <span className="absolute top-3 right-3 font-black text-xl" style={{ color: '#5BBE8A', letterSpacing: -0.5 }}>
-            ×12.45
-          </span>
+      <button onClick={() => onSelectGame('crash')} style={{
+        borderRadius: 22, overflow: 'hidden', textAlign: 'left', cursor: 'pointer', border: 'none',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.5)', position: 'relative',
+      }}>
+        <div style={{
+          height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden',
+          background: 'linear-gradient(135deg, #0D1B24 0%, #131018 100%)',
+        }}>
+          {/* Animated lines */}
+          <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(55deg, transparent 0 14px, rgba(245,197,24,0.025) 14px 16px)', pointerEvents: 'none' }} />
+          {/* Glow */}
+          <div style={{ position: 'absolute', bottom: -30, left: '30%', width: 200, height: 120, background: 'radial-gradient(ellipse, rgba(245,197,24,0.18), transparent 65%)', filter: 'blur(20px)' }} />
+          <TrendingUp size={70} strokeWidth={1} style={{ color: 'rgba(245,197,24,0.35)', position: 'relative', zIndex: 1 }} />
+          <span style={{ position: 'absolute', top: 10, left: 12, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', color: '#F5C518', fontSize: 9, fontWeight: 900, letterSpacing: 1.2, border: '1px solid rgba(245,197,24,0.35)' }}>🔥 HOT</span>
+          <span style={{ position: 'absolute', top: 10, right: 12, fontSize: 22, fontWeight: 900, color: '#00D084', letterSpacing: -0.5, textShadow: '0 0 16px rgba(0,208,132,0.7)' }}>×12.45</span>
         </div>
-        <div className="flex items-center justify-between px-4 py-3" style={{ background: '#112A1C' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0C1519', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           <div>
-            <div className="font-black text-sm text-[#E8F2EA] uppercase tracking-tight">Crash</div>
-            <div className="font-mono text-[11px] text-[#E8F2EA]/60 mt-0.5">1 247 грає зараз</div>
+            <div style={{ fontWeight: 900, fontSize: 14, color: '#EEF4F0', letterSpacing: 0.5, textTransform: 'uppercase' }}>Crash</div>
+            <div style={{ fontSize: 10, color: 'rgba(238,244,240,0.45)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>1 247 грає зараз</div>
           </div>
-          <span className="px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest"
-            style={{ background: '#E8F2EA', color: '#0B1A12' }}>
-            Грати
-          </span>
+          <span style={{ padding: '8px 18px', borderRadius: 20, fontWeight: 800, fontSize: 12, letterSpacing: 0.5, background: 'linear-gradient(135deg,#C99B14,#F5C518)', color: '#0a0800', boxShadow: '0 3px 12px rgba(245,197,24,0.4)' }}>Грати →</span>
         </div>
       </button>
 
       {/* Category tabs */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-0.5">
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }} className="scrollbar-hide">
         {CATS.map(c => {
           const labels: Record<Cat, string> = { 'Всі': 'Всі', Table: 'Стіл', Arcade: 'Аркада', Instant: 'Миттєві', Classic: 'Класика', Jackpot: 'Джекпот' };
+          const active = cat === c;
           return (
-            <button key={c} onClick={() => setCat(c)}
-              className="shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
-              style={{
-                background: cat === c ? '#E4A24B' : 'rgba(255,255,255,0.05)',
-                color: cat === c ? '#1a1006' : 'rgba(232,242,234,0.5)',
-                border: `1px solid ${cat === c ? '#E4A24B' : 'rgba(255,255,255,0.06)'}`,
-              }}>
+            <button key={c} onClick={() => setCat(c)} style={{
+              flexShrink: 0, padding: '6px 14px', borderRadius: 20,
+              fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: 'pointer',
+              background: active ? '#F5C518' : 'rgba(255,255,255,0.05)',
+              color: active ? '#0a0800' : 'rgba(238,244,240,0.5)',
+              border: `1px solid ${active ? '#F5C518' : 'rgba(255,255,255,0.07)'}`,
+              boxShadow: active ? '0 2px 12px rgba(245,197,24,0.35)' : 'none',
+              transition: 'all 0.15s',
+            }}>
               {labels[c]}
             </button>
           );
@@ -5039,111 +5034,67 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
       </div>
 
       {/* Games grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {visibleGames.map(g => {
-          const patternMap: Record<string, string> = {
-            crash:      'repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,0.025) 6px 12px)',
-            slots:      'repeating-linear-gradient(90deg, transparent 0 10px, rgba(255,255,255,0.02) 10px 11px)',
-            roulette:   'repeating-conic-gradient(rgba(255,255,255,0.02) 0deg 10deg, transparent 10deg 20deg)',
-            blackjack:  'repeating-linear-gradient(-45deg, transparent 0 8px, rgba(255,255,255,0.025) 8px 16px)',
-            baccarat:   'repeating-linear-gradient(0deg, transparent 0 10px, rgba(255,255,255,0.02) 10px 11px)',
-            plinko:     'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.04) 1px, transparent 2px) 0 0/14px 14px',
-            mines:      'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04) 1px, transparent 2px) 0 0/18px 18px',
-            dice:       'repeating-linear-gradient(30deg, transparent 0 8px, rgba(255,255,255,0.02) 8px 10px)',
-            chicken:    'repeating-linear-gradient(60deg, transparent 0 10px, rgba(255,255,255,0.02) 10px 12px)',
-            limbo:      'radial-gradient(ellipse at 50% 100%, rgba(198,120,221,0.1) 0%, transparent 70%)',
-            wheel:      'repeating-conic-gradient(rgba(255,255,255,0.03) 0deg 15deg, transparent 15deg 30deg)',
-            hilo:       'repeating-linear-gradient(135deg, transparent 0 8px, rgba(255,255,255,0.02) 8px 16px)',
-            tower:      'repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 16px)',
-            keno:       'radial-gradient(circle at 25% 25%, rgba(255,255,255,0.03) 1px, transparent 2px) 0 0/12px 12px, radial-gradient(circle at 75% 75%, rgba(255,255,255,0.03) 1px, transparent 2px) 0 0/12px 12px',
-            videopoker: 'repeating-linear-gradient(-30deg, transparent 0 10px, rgba(91,190,138,0.04) 10px 12px)',
-            dragontiger:'radial-gradient(ellipse at 0% 100%, rgba(229,75,94,0.15) 0%, transparent 60%)',
-            scratch:    'repeating-linear-gradient(45deg, rgba(198,120,221,0.04) 0 2px, transparent 2px 12px)',
-          };
-          const pat = patternMap[g.key] || '';
-          return (
-            <button key={g.key} onClick={() => { sfx.click(); onSelectGame(g.key); }}
-              className="rounded-2xl overflow-hidden text-left cursor-pointer active:scale-[0.96] group"
-              style={{
-                background: `#0f2018`,
-                border: `1px solid ${g.accent}30`,
-                boxShadow: `0 2px 12px rgba(0,0,0,0.3)`,
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow=`0 0 20px ${g.accent}30, 0 4px 16px rgba(0,0,0,0.4)`; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow=`0 2px 12px rgba(0,0,0,0.3)`; }}>
-              {/* Card art */}
-              <div style={{
-                height: 100,
-                background: `${pat}, radial-gradient(ellipse at 60% 30%, ${g.accent}22 0%, transparent 65%), linear-gradient(180deg, ${g.accent}15 0%, #0a1a10 100%)`,
-                position: 'relative', display:'flex', alignItems:'center', justifyContent:'center',
-                borderBottom: `1px solid ${g.accent}20`,
-                overflow: 'hidden',
-              }}>
-                {/* Big dim accent circle */}
-                <div style={{
-                  position:'absolute', right:-20, bottom:-20, width:80, height:80, borderRadius:'50%',
-                  background: `radial-gradient(circle, ${g.accent}20 0%, transparent 70%)`,
-                  filter: 'blur(8px)',
-                }} />
-                <span style={{ fontSize: 44, lineHeight: 1, filter: `drop-shadow(0 0 16px ${g.accent}80) drop-shadow(0 4px 8px rgba(0,0,0,0.4))`, position:'relative', zIndex:1 }}>
-                  {g.emoji}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {visibleGames.map(g => (
+          <button key={g.key} onClick={() => { sfx.click(); onSelectGame(g.key); }}
+            style={{
+              borderRadius: 20, overflow: 'hidden', textAlign: 'left', cursor: 'pointer',
+              background: '#0C1519',
+              border: `1px solid rgba(255,255,255,0.07)`,
+              boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
+              transition: 'all 0.18s ease',
+            }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform='translateY(-2px)'; el.style.boxShadow=`0 8px 32px ${g.accent}30, 0 0 0 1px ${g.accent}30`; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.transform='translateY(0)'; el.style.boxShadow='0 2px 16px rgba(0,0,0,0.4)'; }}>
+            {/* Art area */}
+            <div style={{
+              height: 96, position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+              background: `radial-gradient(ellipse at 60% 30%, ${g.accent}1E 0%, transparent 65%), linear-gradient(170deg, ${g.accent}12 0%, #08101A 100%)`,
+            }}>
+              {/* Glow blob */}
+              <div style={{ position: 'absolute', width: 70, height: 70, borderRadius: '50%', background: `radial-gradient(circle, ${g.accent}25, transparent 70%)`, filter: 'blur(12px)' }} />
+              <span style={{ fontSize: 42, lineHeight: 1, filter: `drop-shadow(0 0 14px ${g.accent}90)`, position: 'relative', zIndex: 1 }}>{g.emoji}</span>
+              {g.live && (
+                <span style={{ position: 'absolute', top: 7, left: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(0,208,132,0.1)', border: '1px solid rgba(0,208,132,0.4)' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00D084', boxShadow: '0 0 5px #00D084' }} />
+                  <span style={{ fontWeight: 900, fontSize: 8, letterSpacing: '0.12em', color: '#00D084' }}>LIVE</span>
                 </span>
-                {g.live && (
-                  <span style={{
-                    position:'absolute', top:8, left:8,
-                    display:'flex', alignItems:'center', gap:4, padding:'3px 7px', borderRadius:20,
-                    background:'rgba(91,190,138,0.12)', border:'1px solid rgba(91,190,138,0.35)',
-                  }}>
-                    <span style={{ width:5, height:5, borderRadius:'50%', background:'#5BBE8A', boxShadow:'0 0 4px #5BBE8A', animation:'pulse 1.5s infinite' }} />
-                    <span style={{ fontWeight:900, fontSize:8, letterSpacing:'0.1em', color:'#5BBE8A' }}>LIVE</span>
-                  </span>
-                )}
-                <span style={{ position:'absolute', bottom:7, right:9, fontWeight:900, fontSize:11, color:g.accent, textShadow:`0 0 8px ${g.accent}80` }}>
-                  {g.hint}
-                </span>
-              </div>
-              {/* Label */}
-              <div style={{ padding:'10px 12px' }}>
-                <div style={{ fontWeight:900, fontSize:12, color:'#fff', letterSpacing:'0.02em', textTransform:'uppercase' }}>{g.label}</div>
-                <div style={{ fontWeight:600, fontSize:10, color:`${g.accent}90`, marginTop:2, letterSpacing:'0.06em' }}>{g.tag}</div>
-              </div>
-            </button>
-          );
-        })}
+              )}
+              <span style={{ position: 'absolute', bottom: 7, right: 9, fontWeight: 900, fontSize: 11, color: g.accent, textShadow: `0 0 8px ${g.accent}` }}>{g.hint}</span>
+            </div>
+            {/* Label */}
+            <div style={{ padding: '10px 12px 12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontWeight: 800, fontSize: 12, color: '#fff', letterSpacing: 0.3, textTransform: 'uppercase' }}>{g.label}</div>
+              <div style={{ fontWeight: 600, fontSize: 10, color: `${g.accent}99`, marginTop: 2, letterSpacing: 0.5 }}>{g.tag}</div>
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Quick links */}
-      <div className="flex flex-col gap-2">
-        <button onClick={() => onSelectGame('leaderboard')}
-          className="flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
-          style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(228,162,75,0.12)' }}>
-            <Trophy size={18} style={{ color: '#E4A24B' }} />
-          </div>
-          <div className="flex-1 text-left">
-            <div className="font-black text-sm text-[#E8F2EA] uppercase tracking-tight">Таблиця лідерів</div>
-            <div className="font-mono text-[10px] text-[#E8F2EA]/50 mt-0.5">Топ-10 гравців за виграшами</div>
-          </div>
-          <ChevronRight size={16} style={{ color: '#E8F2EA40' }} />
-        </button>
-        <button onClick={() => onSelectGame('history')}
-          className="flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
-          style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(91,190,138,0.1)' }}>
-            <BarChart2 size={18} style={{ color: '#5BBE8A' }} />
-          </div>
-          <div className="flex-1 text-left">
-            <div className="font-black text-sm text-[#E8F2EA] uppercase tracking-tight">Історія ігор</div>
-            <div className="font-mono text-[10px] text-[#E8F2EA]/50 mt-0.5">Всі ваші ставки та результати</div>
-          </div>
-          <ChevronRight size={16} style={{ color: '#E8F2EA40' }} />
-        </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[
+          { label: 'Таблиця лідерів', sub: 'Топ-10 гравців', emoji: '🏆', view: 'leaderboard' as CasinoView, color: '#F5C518' },
+          { label: 'Історія ігор',    sub: 'Всі ваші ставки',  emoji: '📊', view: 'history'     as CasinoView, color: '#00D084' },
+        ].map(item => (
+          <button key={item.label} onClick={() => onSelectGame(item.view)} style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 16, cursor: 'pointer',
+            background: '#0C1519', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'left', transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#12202A')}
+          onMouseLeave={e => (e.currentTarget.style.background = '#0C1519')}>
+            <div style={{ width: 40, height: 40, borderRadius: 13, background: `rgba(255,255,255,0.04)`, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{item.emoji}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#EEF4F0', letterSpacing: 0.2 }}>{item.label}</div>
+              <div style={{ fontSize: 10, color: 'rgba(238,244,240,0.4)', marginTop: 2 }}>{item.sub}</div>
+            </div>
+            <ChevronRight size={14} style={{ color: 'rgba(238,244,240,0.25)', flexShrink: 0 }} />
+          </button>
+        ))}
       </div>
 
-      <div className="h-4" />
+      <div style={{ height: 16 }} />
     </div>
   );
 }
@@ -5589,125 +5540,209 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
 
   const winRate = wallet.total_bet > 0 ? Math.round((wallet.total_won / wallet.total_bet) * 100) : 0;
   const initial = (user.full_name || 'U')[0].toUpperCase();
-  const handle = user.phone || user.email || 'user';
+  const handle = user.email || user.phone || '';
   const _xpForLvl = (lvl: number) => Math.floor(Math.pow(lvl - 1, 1 / 0.6) * 500);
   const _xpCur    = wallet.xp - _xpForLvl(wallet.level);
   const xpToNext  = Math.max(1, _xpForLvl(wallet.level + 1) - _xpForLvl(wallet.level));
   const xpPct     = Math.min(100, Math.round(_xpCur / xpToNext * 100));
 
-  const ALL_ACHIEVEMENTS: Record<string, { label: string; emoji: string }> = {
-    big_winner:          { label: 'Великий переможець',  emoji: '💰' },
-    roulette_zero:       { label: 'Зеро!',               emoji: '🎡' },
-    roulette_straight_win:{ label: 'Ставка на число',    emoji: '🎯' },
-    slots_jackpot:       { label: 'Джекпот у слотах',    emoji: '🎰' },
-    first_game:          { label: 'Перша гра',           emoji: '🎮' },
-    high_roller:         { label: 'Хай-ролер',           emoji: '🃏' },
-    lucky_streak:        { label: 'Серія удачі',         emoji: '🔥' },
-  };
-
-  const T = {
-    bg0: '#0B1A12', bg1: '#112A1C', bg2: '#163524',
-    hairline: 'rgba(255,255,255,0.09)',
-    text: '#E8F2EA', textDim: 'rgba(232,242,234,0.62)', textMute: 'rgba(232,242,234,0.38)',
-    amber: '#E4A24B', coral: '#E06E4A', mint: '#5BBE8A', ruby: '#E54B5E',
-  };
-
-  const settingsItems = [
-    { icon: <Coins size={15} />, label: 'Поповнення', detail: '', onClick: () => onGoDeposit?.() },
-    { icon: <BarChart2 size={15} />, label: 'Транзакції', detail: '', onClick: () => onGoHistory?.() },
-    { icon: <Trophy size={15} />, label: 'Досягнення', detail: '', onClick: () => setShowAch(v => !v) },
-    { icon: <LifeBuoy size={15} />, label: 'Підтримка', detail: '', onClick: () => onGoSupport?.() },
-    { icon: <LogOut size={15} />, label: 'Вийти', detail: '', onClick: onLogout || (() => notify('Виходимо…')), danger: true },
+  // Avatar gradient — based on first letter
+  const avatarGrads = [
+    'linear-gradient(135deg,#F5C518,#FF9500)',
+    'linear-gradient(135deg,#00D084,#0078FF)',
+    'linear-gradient(135deg,#FF3D5C,#FF9500)',
+    'linear-gradient(135deg,#A855F7,#4B9FFF)',
+    'linear-gradient(135deg,#00D084,#F5C518)',
   ];
+  const avatarGrad = avatarGrads[initial.charCodeAt(0) % avatarGrads.length];
+
+  const LEVEL_TITLES = ['', 'Новачок', 'Початківець', 'Гравець', 'Досвідчений', 'Майстер', 'Гуру', 'Легенда', 'Бог'];
+  const levelTitle = LEVEL_TITLES[Math.min(wallet.level, LEVEL_TITLES.length - 1)] || 'Профі';
+
+  const ALL_ACHIEVEMENTS: Record<string, { label: string; emoji: string }> = {
+    big_winner:           { label: 'Великий переможець', emoji: '💰' },
+    roulette_zero:        { label: 'Зеро!',              emoji: '🎡' },
+    roulette_straight_win:{ label: 'Ставка на число',    emoji: '🎯' },
+    slots_jackpot:        { label: 'Джекпот',            emoji: '🎰' },
+    first_game:           { label: 'Перша гра',          emoji: '🎮' },
+    high_roller:          { label: 'Хай-ролер',          emoji: '🃏' },
+    lucky_streak:         { label: 'Серія удачі',        emoji: '🔥' },
+  };
+
+  const P = {
+    bg: '#060C0F', card: '#0C1519', card2: '#12202A',
+    line: 'rgba(255,255,255,0.07)', lineHi: 'rgba(255,255,255,0.12)',
+    text: '#EEF4F0', dim: 'rgba(238,244,240,0.55)', mute: 'rgba(238,244,240,0.3)',
+    gold: '#F5C518', mint: '#00D084', ruby: '#FF3D5C',
+  };
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ background: T.bg0 }}>
-      <div className="p-4 flex flex-col gap-4 max-w-lg mx-auto">
+    <div style={{ flex: 1, overflowY: 'auto', background: P.bg }}>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '16px 14px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* Avatar card */}
-        <div style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 20 }} className="p-5 flex flex-col items-center gap-2">
-          <div style={{
-            width: 72, height: 72, borderRadius: 20,
-            background: `linear-gradient(135deg, ${T.amber} 0%, ${T.coral} 100%)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 28, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-grotesk)',
-          }}>
-            {initial}
+        {/* ── Hero card ── */}
+        <div style={{
+          borderRadius: 24, overflow: 'hidden',
+          background: `linear-gradient(160deg, #0E1F2A 0%, #081218 100%)`,
+          border: `1px solid ${P.lineHi}`,
+          boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+          position: 'relative',
+        }}>
+          {/* Top accent glow */}
+          <div style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', width: 200, height: 80, background: `radial-gradient(ellipse, ${P.gold}18, transparent 70%)`, pointerEvents: 'none' }} />
+
+          <div style={{ padding: '28px 24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, position: 'relative' }}>
+            {/* Avatar */}
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                width: 80, height: 80, borderRadius: 24,
+                background: avatarGrad,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 32, fontWeight: 900, color: '#fff',
+                fontFamily: 'var(--font-grotesk)',
+                boxShadow: `0 0 0 4px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.5)`,
+              }}>
+                {initial}
+              </div>
+              {/* Level badge */}
+              <div style={{
+                position: 'absolute', bottom: -6, right: -6,
+                width: 26, height: 26, borderRadius: 8,
+                background: `linear-gradient(135deg, ${P.gold}, #C99B14)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 900, color: '#0a0800',
+                boxShadow: `0 2px 10px rgba(245,197,24,0.4), 0 0 0 2px ${P.bg}`,
+              }}>
+                {wallet.level}
+              </div>
+            </div>
+
+            {/* Name & info */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: P.text, letterSpacing: 0.2 }}>{user.full_name}</div>
+              <div style={{ fontSize: 12, color: P.dim, marginTop: 3 }}>{handle}</div>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8,
+                padding: '4px 12px', borderRadius: 20,
+                background: `rgba(245,197,24,0.1)`, border: `1px solid rgba(245,197,24,0.3)`,
+                fontSize: 11, fontWeight: 700, color: P.gold, letterSpacing: 1.2, textTransform: 'uppercase',
+              }}>
+                ⭐ {levelTitle}
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: T.text, textAlign: 'center' }}>{user.full_name}</div>
-          <div style={{ fontSize: 13, color: T.textDim, textAlign: 'center' }}>{handle} · Level {wallet.level}</div>
+
+          {/* XP bar */}
+          <div style={{ padding: '0 20px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: P.mute, textTransform: 'uppercase', letterSpacing: 1 }}>Рівень {wallet.level} → {wallet.level + 1}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: P.gold, fontFamily: 'var(--font-mono)' }}>{_xpCur.toLocaleString()} / {xpToNext.toLocaleString()} XP</span>
+            </div>
+            <div style={{ height: 7, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
+              <div style={{ height: '100%', width: `${xpPct}%`, borderRadius: 99, transition: 'width 0.8s cubic-bezier(0.22,1,0.36,1)', background: `linear-gradient(90deg, ${P.mint}, ${P.gold})`, boxShadow: `0 0 8px rgba(245,197,24,0.4)` }} />
+            </div>
+            <div style={{ fontSize: 10, color: P.mute, marginTop: 5 }}>{Math.max(0, xpToNext - _xpCur).toLocaleString()} XP до наступного рівня</div>
+          </div>
         </div>
 
-        {/* XP progress */}
-        <div style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 14 }} className="px-4 py-3 flex flex-col gap-2">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: T.textDim }}>Рівень {wallet.level}</div>
-            <div style={{ fontSize: 11, color: T.amber, fontFamily: 'monospace' }}>{_xpCur} / {xpToNext} XP</div>
-          </div>
-          <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${xpPct}%`, background: 'linear-gradient(90deg,#5BBE8A,#E4A24B)', borderRadius: 99, transition: 'width 0.6s cubic-bezier(0.22,1,0.36,1)' }} />
-          </div>
-          <div style={{ fontSize: 10, color: T.textMute }}>{xpToNext - _xpCur} XP до {wallet.level + 1} рівня</div>
-        </div>
-
-        {/* Stats grid */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* ── Balance + stats ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           {[
-            { label: 'Ігор зіграно', val: String(wallet.games_count ?? 0) },
-            { label: 'Виграно всього', val: fmtCoins(wallet.total_won) },
-            { label: 'Win Rate', val: `${winRate}%` },
+            { label: 'Баланс',  val: fmtCoins(wallet.balance), accent: P.gold,   icon: '💰' },
+            { label: 'Ігор',    val: String(wallet.games_count ?? 0), accent: P.mint, icon: '🎮' },
+            { label: 'Win Rate',val: `${winRate}%`,            accent: winRate >= 50 ? P.mint : P.dim, icon: '📈' },
           ].map(s => (
-            <div key={s.label} style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 12 }} className="p-3 flex flex-col gap-1">
-              <div className="font-grotesk" style={{ fontSize: 17, fontWeight: 600, color: T.text }}>{s.val}</div>
-              <div style={{ fontSize: 10, color: T.textDim, textTransform: 'uppercase', letterSpacing: '0.6px' }}>{s.label}</div>
+            <div key={s.label} style={{
+              background: P.card, border: `1px solid ${P.line}`, borderRadius: 16,
+              padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 4, position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{ position: 'absolute', top: -12, right: -8, fontSize: 36, opacity: 0.07 }}>{s.icon}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: s.accent, fontFamily: 'var(--font-grotesk)', letterSpacing: -0.3 }}>{s.val}</div>
+              <div style={{ fontSize: 9, color: P.mute, textTransform: 'uppercase', letterSpacing: 1 }}>{s.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Settings list */}
-        <div style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 14, overflow: 'hidden' }}>
-          {settingsItems.map((item, i) => (
+        {/* Winnings bar */}
+        {wallet.total_bet > 0 && (
+          <div style={{ background: P.card, border: `1px solid ${P.line}`, borderRadius: 16, padding: '14px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 11, color: P.dim, fontWeight: 600 }}>Ставки / Виграші</span>
+              <span style={{ fontSize: 11, color: P.gold, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{fmtCoins(wallet.total_won)}</span>
+            </div>
+            <div style={{ height: 5, background: 'rgba(255,255,255,0.05)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${Math.min(100, (wallet.total_won / Math.max(1, wallet.total_bet)) * 100)}%`, background: `linear-gradient(90deg,${P.mint},${P.gold})`, borderRadius: 99 }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
+              <span style={{ fontSize: 9, color: P.mute }}>Всього ставок: {fmtCoins(wallet.total_bet)}</span>
+              <span style={{ fontSize: 9, color: wallet.total_won >= wallet.total_bet ? P.mint : P.ruby }}>
+                {wallet.total_won >= wallet.total_bet ? '+' : ''}{fmtCoins(wallet.total_won - wallet.total_bet)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ── Settings / menu ── */}
+        <div style={{ background: P.card, border: `1px solid ${P.line}`, borderRadius: 20, overflow: 'hidden' }}>
+          {[
+            { icon: '💳', label: 'Поповнення', sub: 'BTC · ETH · USDT', onClick: () => onGoDeposit?.(), danger: false },
+            { icon: '📊', label: 'Транзакції', sub: 'Історія ставок',    onClick: () => onGoHistory?.(), danger: false },
+            { icon: '🏆', label: 'Досягнення', sub: `${achList.length} / ${Object.keys(ALL_ACHIEVEMENTS).length} відкрито`, onClick: () => setShowAch(v => !v), danger: false },
+            { icon: '🛟', label: 'Підтримка',  sub: 'Онлайн 24/7',       onClick: () => onGoSupport?.(), danger: false },
+            { icon: '🚪', label: 'Вийти',      sub: '',                   onClick: onLogout || (() => notify('…')), danger: true },
+          ].map((item, i, arr) => (
             <div key={item.label}>
-              {i > 0 && <div style={{ height: 1, background: T.hairline }} />}
-              <button onClick={item.onClick} className="w-full flex items-center gap-3 cursor-pointer transition-all"
-                style={{ padding: '13px 16px', background: 'transparent' }}
-                onMouseEnter={e => (e.currentTarget.style.background = T.bg2)}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                <div style={{ width: 30, height: 30, background: T.bg2, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: item.danger ? T.ruby : T.amber, flexShrink: 0 }}>
+              {i > 0 && <div style={{ height: 1, background: P.line, marginLeft: 60 }} />}
+              <button onClick={item.onClick} style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+                padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+                textAlign: 'left', transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 13, flexShrink: 0,
+                  background: item.danger ? 'rgba(255,61,92,0.1)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${item.danger ? 'rgba(255,61,92,0.25)' : P.line}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                }}>
                   {item.icon}
                 </div>
-                <span style={{ flex: 1, textAlign: 'left', fontSize: 15, color: item.danger ? T.ruby : T.text }}>{item.label}</span>
-                {item.detail && <span style={{ fontSize: 13, color: T.textDim }}>{item.detail}</span>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: item.danger ? P.ruby : P.text }}>{item.label}</div>
+                  {item.sub && <div style={{ fontSize: 11, color: P.mute, marginTop: 1 }}>{item.sub}</div>}
+                </div>
                 {!item.danger && (
-                  <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
-                    <path d="M2 2 L7 7 L2 12" stroke="rgba(232,242,234,0.38)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <div style={{ width: 24, height: 24, borderRadius: 7, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ChevronRight size={12} style={{ color: P.mute }} />
+                  </div>
                 )}
               </button>
             </div>
           ))}
         </div>
 
-        {/* Achievements panel */}
+        {/* ── Achievements panel ── */}
         {showAch && (
-          <div style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: T.text, letterSpacing: '0.5px' }}>🏆 Досягнення</span>
-              <span style={{ fontSize: 11, color: T.textDim }}>{achList.length} / {Object.keys(ALL_ACHIEVEMENTS).length}</span>
+          <div style={{ background: P.card, border: `1px solid ${P.line}`, borderRadius: 20, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px', borderBottom: `1px solid ${P.line}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: P.text }}>🏆 Досягнення</span>
+              <span style={{ fontSize: 11, color: P.dim, fontFamily: 'var(--font-mono)' }}>{achList.length} / {Object.keys(ALL_ACHIEVEMENTS).length}</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 p-3">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 12 }}>
               {Object.entries(ALL_ACHIEVEMENTS).map(([key, ach]) => {
                 const unlocked = achList.includes(key);
                 return (
                   <div key={key} style={{
-                    background: unlocked ? T.bg2 : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${unlocked ? 'rgba(228,162,75,0.3)' : T.hairline}`,
-                    borderRadius: 10, padding: '10px 12px',
-                    opacity: unlocked ? 1 : 0.45,
+                    borderRadius: 14, padding: '12px 14px',
+                    background: unlocked ? 'rgba(245,197,24,0.06)' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${unlocked ? 'rgba(245,197,24,0.3)' : P.line}`,
+                    opacity: unlocked ? 1 : 0.4,
+                    transition: 'all 0.2s',
                   }}>
-                    <div style={{ fontSize: 20, marginBottom: 4 }}>{ach.emoji}</div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: unlocked ? T.amber : T.textMute, lineHeight: 1.3 }}>{ach.label}</div>
-                    {!unlocked && <div style={{ fontSize: 9, color: T.textMute, marginTop: 2 }}>не відкрито</div>}
+                    <div style={{ fontSize: 22, marginBottom: 6 }}>{ach.emoji}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: unlocked ? P.gold : P.mute, lineHeight: 1.3 }}>{ach.label}</div>
+                    {!unlocked && <div style={{ fontSize: 9, color: P.mute, marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.8 }}>не відкрито</div>}
                   </div>
                 );
               })}
@@ -6421,66 +6456,96 @@ export default function App() {
 
   // ── Design tokens ─────────────────────────────────────────
   const T = {
-    bg0: '#0B1A12', bg1: '#112A1C', bg2: '#163524',
-    hairline: 'rgba(255,255,255,0.09)',
-    text: '#E8F2EA', textDim: 'rgba(232,242,234,0.62)', textMute: 'rgba(232,242,234,0.38)',
-    amber: '#E4A24B', coral: '#E06E4A', mint: '#5BBE8A', ruby: '#E54B5E', sky: '#6DB5D4',
+    // Surfaces
+    bg0: '#060C0F',         // base — near-black
+    bg1: '#0C1519',         // card bg
+    bg2: '#12202A',         // elevated card
+    bg3: '#18293600',       // glass layer (use with backdrop-filter)
+    // Text
+    text: '#EEF4F0',
+    textDim: 'rgba(238,244,240,0.58)',
+    textMute: 'rgba(238,244,240,0.32)',
+    // Lines
+    hairline: 'rgba(255,255,255,0.07)',
+    hairlineHi: 'rgba(255,255,255,0.13)',
+    // Accents
+    gold: '#F5C518',        // primary gold
+    goldDim: '#C99B14',
+    goldGlow: 'rgba(245,197,24,0.28)',
+    mint: '#00D084',        // emerald green
+    mintDim: '#00A366',
+    mintGlow: 'rgba(0,208,132,0.22)',
+    coral: '#FF6B5B',
+    ruby: '#FF3D5C',
+    sky: '#4B9FFF',
+    purple: '#A855F7',
+    // Compat aliases
+    amber: '#F5C518',
   };
 
   // ── AppHeader ─────────────────────────────────────────────
   const AppHeader = () => (
     <div style={{
-      display: 'flex', alignItems: 'center',
-      padding: '6px 14px 10px',
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '8px 16px 8px',
+      background: `linear-gradient(180deg, rgba(6,12,15,0.98) 0%, rgba(6,12,15,0.92) 100%)`,
       borderBottom: `1px solid ${T.hairline}`,
-      background: T.bg0,
-      flexShrink: 0, gap: 10,
+      backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+      flexShrink: 0,
+      position: 'relative', zIndex: 10,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 }}>
-        <HummingbirdLogo size={20} />
+      {/* Logo + name */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 9,
+          background: 'linear-gradient(135deg,#0e2c1a,#071a10)',
+          border: `1px solid rgba(245,197,24,0.3)`,
+          boxShadow: '0 0 12px rgba(245,197,24,0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <HummingbirdLogo size={18} />
+        </div>
         <span style={{
-          fontFamily: 'var(--font-grotesk)', fontWeight: 700,
-          letterSpacing: '2.2px', fontSize: 16, color: T.text,
-        }}>КОЛІБРІ</span>
+          fontFamily: 'var(--font-grotesk)', fontWeight: 800,
+          letterSpacing: '2.5px', fontSize: 15, color: T.text,
+          textTransform: 'uppercase',
+        }}>Колібрі</span>
       </div>
-      {/* Live balance pill — always visible */}
-      {wallet && (
-        <button onClick={() => { setSidebarTab('casino'); setCasinoView('deposit'); }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '5px 11px', borderRadius: 10,
-            background: 'linear-gradient(135deg,rgba(228,162,75,0.13),rgba(228,162,75,0.07))',
-            border: `1px solid rgba(228,162,75,0.3)`,
-            color: T.amber, fontSize: 13, fontWeight: 800,
-            cursor: 'pointer', fontFamily: 'monospace', flexShrink: 0,
-            letterSpacing: 0.2,
-          }}>
-          <Coins size={13} />
-          <AnimatedBalance value={wallet.balance} />
-        </button>
-      )}
-      <div style={{ display: 'flex', gap: 6 }}>
-        {/* Sound toggle */}
-        <button onClick={() => { const v = !soundOn; setSoundOn(v); setSoundEnabled(v); if (v) sfx.click(); }}
-          title={soundOn ? 'Звук увімкнено' : 'Звук вимкнено'}
-          style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.hairline}`, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', color: soundOn ? T.amber : T.textDim, cursor: 'pointer', fontSize: 15 }}>
-          {soundOn ? '🔊' : '🔇'}
-        </button>
+
+      {/* Balance pill */}
+      <button onClick={() => { setSidebarTab('casino'); setCasinoView('deposit'); }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 12px', borderRadius: 20,
+          background: 'linear-gradient(135deg, rgba(245,197,24,0.15), rgba(245,197,24,0.08))',
+          border: `1.5px solid rgba(245,197,24,0.35)`,
+          boxShadow: '0 2px 16px rgba(245,197,24,0.12)',
+          color: T.gold, fontSize: 13, fontWeight: 800,
+          cursor: 'pointer', fontFamily: 'var(--font-mono)', flexShrink: 0,
+          letterSpacing: 0.2, transition: 'all 0.15s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(245,197,24,0.22), rgba(245,197,24,0.13))'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(245,197,24,0.15), rgba(245,197,24,0.08))'; }}>
+        <Coins size={13} style={{ flexShrink: 0 }} />
+        <AnimatedBalance value={wallet.balance} />
+      </button>
+
+      {/* Icon buttons */}
+      <div style={{ display: 'flex', gap: 4 }}>
         {[
-          { icon: <LifeBuoy size={16} />, onClick: () => setShowSupport(v => !v), title: 'Підтримка' },
-          { icon: <LogOut size={16} />, onClick: handleLogout, title: 'Вийти' },
+          { label: soundOn ? '🔊' : '🔇', text: true, active: soundOn, onClick: () => { const v = !soundOn; setSoundOn(v); setSoundEnabled(v); if (v) sfx.click(); }, title: soundOn ? 'Звук' : 'Без звуку' },
+          { label: null, icon: <LifeBuoy size={15} />, active: false, onClick: () => setShowSupport(v => !v), title: 'Підтримка' },
+          { label: null, icon: <LogOut size={15} />, active: false, danger: true, onClick: handleLogout, title: 'Вийти' },
         ].map((btn, i) => (
           <button key={i} onClick={btn.onClick} title={btn.title} style={{
-            width: 34, height: 34,
-            background: 'rgba(255,255,255,0.04)',
-            border: `1px solid ${T.hairline}`,
-            borderRadius: 9,
+            width: 32, height: 32, borderRadius: 9,
+            background: btn.active ? 'rgba(245,197,24,0.1)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${btn.active ? 'rgba(245,197,24,0.3)' : T.hairline}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: T.textDim, cursor: 'pointer',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = T.amber)}
-          onMouseLeave={e => (e.currentTarget.style.color = T.textDim)}>
-            {btn.icon}
+            color: btn.danger ? T.ruby : btn.active ? T.gold : T.textDim,
+            cursor: 'pointer', fontSize: 14, transition: 'all 0.15s', flexShrink: 0,
+          }}>
+            {btn.label ?? btn.icon}
           </button>
         ))}
       </div>
@@ -6490,50 +6555,67 @@ export default function App() {
   // ── AppTabBar ─────────────────────────────────────────────
   const AppTabBar = () => {
     const tabs: { key: SidebarTab; icon: React.ReactNode; label: string; badge: number }[] = [
-      { key: 'chats',   icon: <MessageCircle size={17} />, label: 'Чати',    badge: totalUnread },
-      { key: 'casino',  icon: <Zap size={17} />,           label: 'Казино',  badge: 0 },
-      { key: 'profile', icon: <Award size={17} />,          label: 'Профіль', badge: 0 },
+      { key: 'chats',   icon: <MessageCircle size={16} />, label: 'Чати',    badge: totalUnread },
+      { key: 'casino',  icon: <Zap size={16} />,           label: 'Казино',  badge: 0 },
+      { key: 'profile', icon: <Award size={16} />,          label: 'Профіль', badge: 0 },
     ];
     if (user?.role === 'admin' || user?.role === 'operator') {
-      tabs.push({ key: 'admin', icon: <Shield size={17} />, label: 'Адмін', badge: 0 });
+      tabs.push({ key: 'admin', icon: <Shield size={16} />, label: 'Адмін', badge: 0 });
     }
     return (
       <div style={{
-        display: 'flex', gap: 6, padding: '10px 18px 4px',
-        background: T.bg0, borderBottom: `1px solid ${T.hairline}`,
+        display: 'flex', gap: 5, padding: '8px 14px 6px',
+        background: T.bg0,
+        borderBottom: `1px solid ${T.hairline}`,
         flexShrink: 0,
       }}>
-        {tabs.map(tab => {
-          const active = sidebarTab === tab.key;
-          return (
-            <button key={tab.key} onClick={() => { sfx.click(); setSidebarTab(tab.key); if (tab.key === 'casino') setCasinoView('lobby'); }}
-              style={{
-                flex: 1, height: 42, borderRadius: 12,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                fontSize: 13, fontWeight: 500,
-                background: active ? T.bg2 : 'transparent',
-                border: `1px solid ${active ? T.hairline : 'transparent'}`,
-                color: active ? T.amber : T.textDim,
-                cursor: 'pointer', position: 'relative',
-                transition: 'all 0.15s',
-              }}>
-              {tab.badge > 0 && (
-                <span style={{
-                  position: 'absolute', top: 4, right: 10,
-                  minWidth: 18, height: 18,
-                  background: T.coral, color: '#1a0c06',
-                  fontFamily: 'var(--font-grotesk)', fontSize: 11, fontWeight: 700,
-                  borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '0 4px',
+        <div style={{
+          display: 'flex', flex: 1, gap: 4, padding: 4, borderRadius: 16,
+          background: 'rgba(255,255,255,0.03)',
+          border: `1px solid ${T.hairline}`,
+        }}>
+          {tabs.map(tab => {
+            const active = sidebarTab === tab.key;
+            return (
+              <button key={tab.key}
+                onClick={() => { sfx.click(); setSidebarTab(tab.key); if (tab.key === 'casino') setCasinoView('lobby'); }}
+                style={{
+                  flex: 1, height: 38, borderRadius: 11,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  background: active
+                    ? tab.key === 'casino'
+                      ? `linear-gradient(135deg, rgba(245,197,24,0.2), rgba(245,197,24,0.1))`
+                      : `rgba(255,255,255,0.07)`
+                    : 'transparent',
+                  border: active
+                    ? `1px solid ${tab.key === 'casino' ? 'rgba(245,197,24,0.4)' : T.hairlineHi}`
+                    : '1px solid transparent',
+                  color: active
+                    ? tab.key === 'casino' ? T.gold : T.text
+                    : T.textMute,
+                  cursor: 'pointer', position: 'relative',
+                  transition: 'all 0.2s',
+                  boxShadow: active && tab.key === 'casino' ? '0 0 16px rgba(245,197,24,0.1)' : 'none',
                 }}>
-                  {tab.badge}
-                </span>
-              )}
-              {tab.icon}
-              {tab.label}
-            </button>
-          );
-        })}
+                {tab.badge > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 3, right: 8,
+                    minWidth: 16, height: 16, lineHeight: '16px',
+                    background: T.coral, color: '#fff',
+                    fontSize: 10, fontWeight: 800,
+                    borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 4px',
+                  }}>
+                    {tab.badge}
+                  </span>
+                )}
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -6630,33 +6712,43 @@ export default function App() {
   const GameHeader = ({ emoji, title, sub }: { emoji: string; title: string; sub: string }) => (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
-      padding: '10px 14px', borderBottom: `1px solid ${T.hairline}`,
-      background: T.bg0, flexShrink: 0,
+      padding: '10px 14px', flexShrink: 0,
+      background: `linear-gradient(180deg, ${T.bg1} 0%, ${T.bg0} 100%)`,
+      borderBottom: `1px solid ${T.hairline}`,
     }}>
       <button onClick={() => { sfx.click(); setCasinoView('lobby'); }}
-        style={{ color: T.amber, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-        <ChevronLeft size={22} />
+        style={{
+          width: 34, height: 34, borderRadius: 10,
+          background: 'rgba(255,255,255,0.05)', border: `1px solid ${T.hairline}`,
+          color: T.gold, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          transition: 'all 0.15s',
+        }}>
+        <ChevronLeft size={18} />
       </button>
-      <span style={{ fontSize: 20, flexShrink: 0 }}>{emoji}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{title}</div>
-        <div style={{ fontSize: 10, color: T.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div>
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+        {emoji}
       </div>
-      {/* Live balance in game header */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: T.text, letterSpacing: 0.2 }}>{title}</div>
+        <div style={{ fontSize: 10, color: T.textMute, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{sub}</div>
+      </div>
+      {/* Live balance */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 4,
-        padding: '4px 10px', borderRadius: 8,
-        background: 'rgba(228,162,75,0.08)', border: `1px solid rgba(228,162,75,0.2)`,
-        color: T.amber, fontSize: 12, fontWeight: 800,
-        fontFamily: 'monospace', flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 5,
+        padding: '5px 12px', borderRadius: 20,
+        background: 'linear-gradient(135deg, rgba(245,197,24,0.14), rgba(245,197,24,0.07))',
+        border: `1.5px solid rgba(245,197,24,0.3)`,
+        color: T.gold, fontSize: 12, fontWeight: 800,
+        fontFamily: 'var(--font-mono)', flexShrink: 0,
       }}>
+        <Coins size={12} />
         <AnimatedBalance value={wallet.balance} />
       </div>
     </div>
   );
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: T.bg0, color: T.text, overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#060C0F', color: T.text, overflow: 'hidden' }}>
 
       {/* ── AppHeader ────────────────────────────────────── */}
       <AppHeader />

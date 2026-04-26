@@ -11,7 +11,7 @@ class ChatRepository:
             'INSERT INTO chats (title, is_group, created_by) VALUES (?, ?, ?)'
             + (' RETURNING id' if USE_PG else '')
         )
-        return execute(sql, (title, 1 if is_group else 0, created_by))
+        return execute(sql, (title, bool(is_group), created_by))
 
     def get_by_id(self, chat_id: int) -> dict | None:
         return query_one('SELECT * FROM chats WHERE id = ?', (chat_id,))
@@ -62,13 +62,13 @@ class ChatRepository:
     def set_muted(self, chat_id: int, user_id: int, muted: bool) -> None:
         execute(
             'UPDATE chat_members SET muted = ? WHERE chat_id = ? AND user_id = ?',
-            (1 if muted else 0, chat_id, user_id),
+            (bool(muted), chat_id, user_id),
         )
 
     def set_pinned(self, chat_id: int, user_id: int, pinned: bool) -> None:
         execute(
             'UPDATE chat_members SET pinned = ? WHERE chat_id = ? AND user_id = ?',
-            (1 if pinned else 0, chat_id, user_id),
+            (bool(pinned), chat_id, user_id),
         )
 
     def touch_updated_at(self, chat_id: int) -> None:

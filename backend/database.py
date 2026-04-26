@@ -57,7 +57,19 @@ class _PgConn:
 
 
 def _pg_sql(sql: str) -> str:
-    return sql.replace('?', '%s').replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+    import re
+    # INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING (before ? substitution)
+    had_ignore = bool(re.search(r'\bINSERT\s+OR\s+IGNORE\b', sql, re.IGNORECASE))
+    sql = re.sub(r'\bINSERT\s+OR\s+IGNORE\b', 'INSERT', sql, flags=re.IGNORECASE)
+    sql = sql.replace('?', '%s')
+    sql = sql.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+    # SQLite integer booleans → PostgreSQL booleans
+    sql = re.sub(r'\b(is_group|is_online|muted|pinned|edited|deleted)\s*=\s*0\b', r'\1 = FALSE', sql)
+    sql = re.sub(r'\b(is_group|is_online|muted|pinned|edited|deleted)\s*=\s*1\b', r'\1 = TRUE', sql)
+    # Append ON CONFLICT DO NOTHING only for originally-IGNORE inserts
+    if had_ignore and 'ON CONFLICT' not in sql.upper():
+        sql = sql.rstrip().rstrip(';') + ' ON CONFLICT DO NOTHING'
+    return sql
 
 
 def _sqlite_row_factory(cursor, row):

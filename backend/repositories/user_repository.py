@@ -32,7 +32,7 @@ class UserRepository:
         execute(f"UPDATE users SET last_seen_at = {now_sql} WHERE id = ?", (user_id,))
 
     def set_online(self, user_id: int, online: bool) -> None:
-        execute('UPDATE users SET is_online = ? WHERE id = ?', (1 if online else 0, user_id))
+        execute('UPDATE users SET is_online = ? WHERE id = ?', (bool(online), user_id))
 
     def search(self, query: str, exclude_id: int, limit: int = 20) -> list[dict]:
         q = f'%{query}%'

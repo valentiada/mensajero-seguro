@@ -39,15 +39,6 @@ socketio = SocketIO(
     engineio_logger=False,
 )
 
-# ── DB init ───────────────────────────────────────────────────────────────────
-with app.app_context():
-    try:
-        init_db()
-        _seed_admin()
-    except Exception as _e:
-        app.logger.warning('DB init: %s', _e)
-
-
 def _seed_admin():
     from .config import ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD, ADMIN_PHONE
     if not (ADMIN_EMAIL and ADMIN_PASSWORD):
@@ -66,6 +57,15 @@ def _seed_admin():
     from .database import execute
     execute("UPDATE users SET role = 'admin' WHERE id = ?", (user_id,))
     app.logger.info('Admin seeded: %s', ADMIN_EMAIL)
+
+
+# ── DB init ───────────────────────────────────────────────────────────────────
+with app.app_context():
+    try:
+        init_db()
+        _seed_admin()
+    except Exception as _e:
+        app.logger.warning('DB init: %s', _e)
 
 
 # ── CORS ──────────────────────────────────────────────────────────────────────

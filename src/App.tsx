@@ -6107,9 +6107,9 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
             style={{
               flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
               fontSize: 13, fontWeight: 700, transition: 'all 0.18s',
-              background: tab === tab_ ? `linear-gradient(135deg,${C.goldDim},${C.gold})` : 'transparent',
+              background: tab === tab_ ? `linear-gradient(135deg,${C.violetDim},${C.violet})` : 'transparent',
               color: tab === tab_ ? '#140e00' : C.textDim,
-              boxShadow: tab === tab_ ? '0 2px 12px rgba(200,150,40,0.4)' : 'none',
+              boxShadow: tab === tab_ ? '0 2px 12px rgba(124,92,252,0.4)' : 'none',
             }}>
             {tab_ === 'login' ? '🔑 ' + t.login : '✨ ' + t.register}
           </button>
@@ -6122,7 +6122,7 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
           <button key={l} type="button" onClick={() => setLang(l)}
             style={{
               cursor: 'pointer', padding: '5px 8px', borderRadius: 9, fontSize: 18,
-              background: lang === l ? 'rgba(200,150,40,0.15)' : 'transparent',
+              background: lang === l ? 'rgba(124,92,252,0.15)' : 'transparent',
               border: `1.5px solid ${lang === l ? C.borderHi : 'transparent'}`,
               transform: lang === l ? 'scale(1.12)' : 'scale(1)',
               transition: 'all 0.15s',
@@ -6140,7 +6140,7 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
             <label style={lbl}>{t.fullName}</label>
             <input style={inp} placeholder={t.namePlaceholder} value={form.full_name}
               onChange={set('full_name')} required autoFocus
-              onFocus={e => (e.target.style.borderColor = C.gold)} onBlur={e => (e.target.style.borderColor = C.border)} />
+              onFocus={e => (e.target.style.borderColor = C.violet)} onBlur={e => (e.target.style.borderColor = C.border)} />
           </div>
           <div>
             <label style={lbl}>{t.country}</label>
@@ -6151,7 +6151,7 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
             <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1.5px solid ${C.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', background: 'rgba(0,0,0,0.5)', flexShrink: 0, borderRight: `1px solid ${C.border}` }}>
                 <span style={{ fontSize: 17 }}>{country.flag}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>{country.dialCode}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.violet }}>{country.dialCode}</span>
               </div>
               <input style={{ ...inp, borderRadius: 0, border: 'none', flex: 1 }}
                 placeholder={t.phonePlaceholder} value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" />
@@ -6161,7 +6161,7 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
             <label style={lbl}>{t.email}</label>
             <input style={inp} type="email" placeholder={t.emailPlaceholder} value={form.email}
               onChange={set('email')} required autoComplete="email"
-              onFocus={e => (e.target.style.borderColor = C.gold)} onBlur={e => (e.target.style.borderColor = C.border)} />
+              onFocus={e => (e.target.style.borderColor = C.violet)} onBlur={e => (e.target.style.borderColor = C.border)} />
           </div>
         </>)}
 
@@ -6171,8 +6171,8 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
             {(['email', 'phone'] as const).map(m => (
               <button key={m} type="button" onClick={() => setLoginMethod(m)}
                 style={{ flex: 1, cursor: 'pointer', padding: '8px 0', borderRadius: 7, border: 'none', fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
-                  background: loginMethod === m ? 'rgba(200,150,40,0.14)' : 'transparent',
-                  color: loginMethod === m ? C.gold : C.textDim }}>
+                  background: loginMethod === m ? 'rgba(124,92,252,0.14)' : 'transparent',
+                  color: loginMethod === m ? C.violet : C.textDim }}>
                 {m === 'email' ? '✉️ Email' : '📱 ' + t.phone}
               </button>
             ))}
@@ -6182,7 +6182,7 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
               <label style={lbl}>{t.email}</label>
               <input style={inp} type="email" placeholder={t.emailPlaceholder}
                 value={form.login_email} onChange={set('login_email')} required autoFocus autoComplete="email"
-                onFocus={e => (e.target.style.borderColor = C.gold)} onBlur={e => (e.target.style.borderColor = C.border)} />
+                onFocus={e => (e.target.style.borderColor = C.violet)} onBlur={e => (e.target.style.borderColor = C.border)} />
             </div>
           ) : (<>
             <div>
@@ -6194,7 +6194,7 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
               <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1.5px solid ${C.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', background: 'rgba(0,0,0,0.5)', flexShrink: 0, borderRight: `1px solid ${C.border}` }}>
                   <span style={{ fontSize: 17 }}>{country.flag}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>{country.dialCode}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.violet }}>{country.dialCode}</span>
                 </div>
                 <input style={{ ...inp, borderRadius: 0, border: 'none', flex: 1 }}
                   placeholder={t.phonePlaceholder} value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" autoFocus />
@@ -6212,15 +6212,15 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
           <input style={inp} type="password" placeholder="Мін. 8 символів" value={form.password}
             onChange={set('password')} required
             autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
-            onFocus={e => (e.target.style.borderColor = C.gold)} onBlur={e => (e.target.style.borderColor = C.border)} />
+            onFocus={e => (e.target.style.borderColor = C.violet)} onBlur={e => (e.target.style.borderColor = C.border)} />
         </div>
 
         {/* Register bonus banner */}
         {tab === 'register' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 12, padding: '11px 14px', background: 'linear-gradient(135deg,rgba(200,150,40,0.1),rgba(200,150,40,0.05))', border: `1px solid rgba(200,150,40,0.3)` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 12, padding: '11px 14px', background: 'linear-gradient(135deg,rgba(124,92,252,0.1),rgba(124,92,252,0.05))', border: `1px solid rgba(124,92,252,0.3)` }}>
             <span style={{ fontSize: 22, flexShrink: 0 }}>🎁</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>Вітальний бонус +200₮</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.violet }}>Вітальний бонус +200₮</div>
               <div style={{ fontSize: 11, color: C.textDim, marginTop: 1 }}>Зараховується одразу після реєстрації</div>
             </div>
           </div>
@@ -6237,10 +6237,10 @@ function AuthFormInner({ tab, setTab, lang, setLang, t, LANG_FLAGS, loginMethod,
         <button type="submit" disabled={loading} style={{
           width: '100%', padding: '15px', borderRadius: 13, border: 'none',
           cursor: loading ? 'default' : 'pointer',
-          background: loading ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg,${C.goldDim} 0%,${C.gold} 50%,${C.goldDim} 100%)`,
+          background: loading ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg,${C.violetDim} 0%,${C.violet} 50%,${C.violetDim} 100%)`,
           color: loading ? C.textDim : '#120c00',
           fontSize: 15, fontWeight: 800, letterSpacing: 0.3,
-          boxShadow: loading ? 'none' : '0 4px 24px rgba(200,150,40,0.45)',
+          boxShadow: loading ? 'none' : '0 4px 24px rgba(124,92,252,0.45)',
           transition: 'all 0.2s', marginTop: 2,
         }}>
           {loading ? (

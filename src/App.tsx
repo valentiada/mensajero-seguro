@@ -6195,39 +6195,37 @@ export default function App() {
   const [token, setToken] = useState('');
   const [waking, setWaking] = useState(false);
 
-  // Keep Render free tier awake + show wake-up screen on cold start
-  // Also try to restore saved session from localStorage
+  // ── Session restore: try immediately from localStorage, validate in background ──
   useEffect(() => {
+    try {
+      const savedToken = localStorage.getItem('nexus_token');
+      const savedUser = localStorage.getItem('nexus_user');
+      if (savedToken && savedUser) {
+        const u = JSON.parse(savedUser) as User;
+        // Optimistically restore session right away (no waiting for ping)
+        setUser(u); setToken(savedToken); setScreen('app');
+        // Then validate token in background — if invalid, force logout
+        fetch('/api/auth/me', { headers: { Authorization: `Bearer ${savedToken}` } })
+          .then(r => r.json())
+          .then(j => {
+            if (!j.ok) {
+              setUser(null); setToken(''); setScreen('auth');
+              try { localStorage.removeItem('nexus_token'); localStorage.removeItem('nexus_user'); } catch {}
+            } else {
+              // Refresh user data from server
+              setUser(j.data);
+            }
+          })
+          .catch(() => { /* keep session, might be offline */ });
+      }
+    } catch {}
+
+    // Keep Render free tier awake + show wake-up screen on cold start
     let wakeTimer: ReturnType<typeof setTimeout>;
     wakeTimer = setTimeout(() => setWaking(true), 1800);
-
     fetch('/api/ping')
       .catch(() => {})
-      .finally(() => {
-        clearTimeout(wakeTimer);
-        setWaking(false);
-
-        // After server is awake, try to restore saved session
-        try {
-          const savedToken = localStorage.getItem('nexus_token');
-          const savedUser = localStorage.getItem('nexus_user');
-          if (savedToken && savedUser) {
-            const u = JSON.parse(savedUser) as User;
-            // Verify token is still valid
-            fetch('/api/auth/me', { headers: { Authorization: `Bearer ${savedToken}` } })
-              .then(r => r.json())
-              .then(j => {
-                if (j.ok) {
-                  setUser(u); setToken(savedToken); setScreen('app');
-                } else {
-                  localStorage.removeItem('nexus_token');
-                  localStorage.removeItem('nexus_user');
-                }
-              })
-              .catch(() => {});
-          }
-        } catch {}
-      });
+      .finally(() => { clearTimeout(wakeTimer); setWaking(false); });
 
     const interval = setInterval(() => fetch('/api/ping').catch(() => {}), 10 * 60 * 1000);
     return () => { clearTimeout(wakeTimer); clearInterval(interval); };
@@ -6284,16 +6282,15 @@ export default function App() {
 
   function handleAuth(u: User, t: string, isNew = false) {
     setUser(u); setToken(t); setScreen('app');
-    setSidebarTab('profile');
+    // Always open casino lobby — avoids the "green profile screen" on first load
+    setSidebarTab('casino'); setCasinoView('lobby');
     try {
       localStorage.setItem('nexus_token', t);
       localStorage.setItem('nexus_user', JSON.stringify(u));
     } catch {}
     if (isNew) {
-      setTimeout(() => {
-        setWallet(prev => ({ ...prev, balance: prev.balance + 200 }));
-        notify('🎁 Вітаємо! +200₮ бонус нараховано!');
-      }, 800);
+      celebrate('small');
+      setTimeout(() => notify('🎁 Вітаємо! +200₮ бонус нараховано — перевір лобі!'), 600);
     }
   }
   function handleLogout() {
@@ -6340,7 +6337,8 @@ export default function App() {
   const chatMessages = activeChat ? (messages[activeChat.id] || []) : [];
   const totalUnread = chats.reduce((a, c) => a + c.unread_count, 0);
 
-  if (waking) return <WakeUpScreen />;
+  // Only show wake-up screen if server is cold AND no cached session available
+  if (waking && screen === 'auth') return <WakeUpScreen />;
   if (screen === 'auth') return <AuthScreen onAuth={handleAuth} />;
 
   // ── Design tokens ─────────────────────────────────────────

@@ -6266,6 +6266,9 @@ export default function App() {
   // Call
   const [call, setCall] = useState<CallState | null>(null);
 
+  // Sound — must be here (before any early return) to satisfy Rules of Hooks
+  const [soundOn, setSoundOn] = useState(isSoundEnabled);
+
   // Support
   const [showSupport, setShowSupport] = useState(false);
   const [tickets] = useState<SupportTicket[]>([
@@ -6365,7 +6368,6 @@ export default function App() {
   };
 
   // ── AppHeader ─────────────────────────────────────────────
-  const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const AppHeader = () => (
     <div style={{
       display: 'flex', alignItems: 'center',
@@ -6429,7 +6431,7 @@ export default function App() {
   const AppTabBar = () => {
     const tabs: { key: SidebarTab; icon: React.ReactNode; label: string; badge: number }[] = [
       { key: 'chats',   icon: <MessageCircle size={17} />, label: 'Чати',    badge: totalUnread },
-      { key: 'casino',  icon: <Zap size={17} />,           label: casinoView !== 'lobby' ? '← Казино' : 'Казино',  badge: 0 },
+      { key: 'casino',  icon: <Zap size={17} />,           label: 'Казино',  badge: 0 },
       { key: 'profile', icon: <Award size={17} />,          label: 'Профіль', badge: 0 },
     ];
     if (user?.role === 'admin' || user?.role === 'operator') {
@@ -6444,7 +6446,7 @@ export default function App() {
         {tabs.map(tab => {
           const active = sidebarTab === tab.key;
           return (
-            <button key={tab.key} onClick={() => { sfx.click(); setSidebarTab(tab.key); }}
+            <button key={tab.key} onClick={() => { sfx.click(); setSidebarTab(tab.key); if (tab.key === 'casino') setCasinoView('lobby'); }}
               style={{
                 flex: 1, height: 42, borderRadius: 12,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,

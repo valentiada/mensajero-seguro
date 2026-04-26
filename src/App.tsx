@@ -51,7 +51,7 @@ const sfx = {
 
 function celebrate(intensity: 'small' | 'big' | 'huge' = 'big') {
   const count = intensity === 'huge' ? 300 : intensity === 'big' ? 150 : 60;
-  const defaults = { origin: { y: 0.7 }, colors: ['#E4A24B', '#5BBE8A', '#E54B5E', '#C678DD', '#6DB5D4'] };
+  const defaults = { origin: { y: 0.7 }, colors: ['#E4A24B', '#00D4FF', '#E54B5E', '#C678DD', '#6DB5D4'] };
   confetti({ ...defaults, particleCount: count * 0.6, spread: 60, startVelocity: 55, scalar: 1.1 });
   confetti({ ...defaults, particleCount: count * 0.4, spread: 120, startVelocity: 35, scalar: 0.8, decay: 0.9 });
   if (intensity === 'huge') {
@@ -88,7 +88,7 @@ function HummingbirdLogo({ size = 48, className = '' }: { size?: number; classNa
       {/* Beak */}
       <path d="M18 20 L4 17 L18 22 Z" fill="#a8792a" />
       {/* Eye */}
-      <circle cx="22" cy="20" r="1.5" fill="#0d1a10" />
+      <circle cx="22" cy="20" r="1.5" fill="#100E1E" />
       <circle cx="21.5" cy="19.5" r="0.5" fill="white" />
       {/* Wing top */}
       <path d="M30 28 Q44 14 54 18 Q46 24 36 30 Z" fill="url(#hb_wing1)" opacity="0.9" />
@@ -442,7 +442,7 @@ function Avatar({ name, size = 40, online }: { name: string; size?: number; onli
       </div>
       {online !== undefined && (
         <span className="absolute bottom-0 right-0 rounded-full border-2"
-          style={{ width: size * 0.28, height: size * 0.28, background: online ? '#4caf7d' : '#6b7c6d', borderColor: '#1d2e20' }} />
+          style={{ width: size * 0.28, height: size * 0.28, background: online ? '#00D4FF' : '#6b7c6d', borderColor: '#1d2e20' }} />
       )}
     </div>
   );
@@ -488,7 +488,7 @@ function ToastItem({ item, onDone }: { item: ToastItem; onDone: () => void }) {
   const isError = /^[⚠️❌💥🚫]|Помилка|Error|error/.test(msg);
   const isLoss  = !isWin && !isError && /^[😞💸]|Програш|Без виграшу|Міна|Збила|💣/.test(msg);
 
-  const accent = isWin ? '#5BBE8A' : isError ? '#E54B5E' : isLoss ? '#888' : '#E4A24B';
+  const accent = isWin ? '#00D4FF' : isError ? '#E54B5E' : isLoss ? '#888' : '#E4A24B';
   const bg     = isWin ? '#0d2a1a' : isError ? '#2a0d0d' : isLoss ? '#1a1a1a' : '#1a1608';
   const icon   = isWin ? '💰' : isError ? '⚠️' : isLoss ? '💸' : 'ℹ️';
 
@@ -608,7 +608,7 @@ function BetInput({
           onChange={e => onChange(clamp(+e.target.value || min))}
           min={min} max={Math.min(max, balance)} disabled={disabled}
           style={{
-            flex: 1, background: '#163524', border: '1px solid rgba(255,255,255,0.08)',
+            flex: 1, background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 10, padding: '8px 10px', color: '#fff', fontFamily: 'monospace',
             fontSize: 14, outline: 'none',
           }}
@@ -1402,9 +1402,9 @@ function SlotsView({ wallet, onWalletUpdate, token, notify }: {
           {history.map((r, i) => (
             <div key={i} className="rounded-lg w-10 h-10 flex items-center justify-center font-mono text-[10px] font-black"
               style={{
-                background: r.net >= 0 ? 'rgba(91,190,138,0.12)' : 'rgba(229,75,94,0.1)',
+                background: r.net >= 0 ? 'rgba(124,92,252,0.12)' : 'rgba(229,75,94,0.1)',
                 border: `1px solid ${r.net >= 0 ? '#5BBE8A60' : '#E54B5E40'}`,
-                color: r.net >= 0 ? '#5BBE8A' : '#E54B5E',
+                color: r.net >= 0 ? '#00D4FF' : '#E54B5E',
               }}>
               {r.multiplier > 0 ? `×${r.multiplier}` : '—'}
             </div>
@@ -1419,7 +1419,7 @@ function SlotsView({ wallet, onWalletUpdate, token, notify }: {
 
 function CrashCanvas({ points, phase }: { points: number[]; phase: 'idle' | 'running' | 'cashed' | 'crashed' }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const color = phase === 'crashed' ? '#c0392b' : phase === 'cashed' ? '#4caf7d' : '#a8792a';
+  const color = phase === 'crashed' ? '#c0392b' : phase === 'cashed' ? '#00D4FF' : '#a8792a';
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1623,7 +1623,7 @@ function CrashView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
     socketRef.current?.emit('cashout', { token });
   }
 
-  const multColor = serverPhase === 'crashed' ? '#c0392b' : cashedOut ? '#4caf7d' : '#E4A24B';
+  const multColor = serverPhase === 'crashed' ? '#c0392b' : cashedOut ? '#00D4FF' : '#E4A24B';
   const canvasPhase = serverPhase === 'crashed' ? 'crashed' : cashedOut ? 'cashed' : serverPhase === 'flying' ? 'running' : 'idle';
 
   return (
@@ -1642,7 +1642,7 @@ function CrashView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
       </div>
 
       {/* Chart */}
-      <div className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(180deg, #0d1f11 0%, #111d13 100%)', border: '1.5px solid rgba(228,162,75,0.25)' }}>
+      <div className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(180deg, #0D0B1C 0%, #0D0B1C 100%)', border: '1.5px solid rgba(228,162,75,0.25)' }}>
         <div className="absolute top-3 left-0 right-0 flex flex-col items-center z-10">
           {serverPhase === 'waiting' ? (
             <>
@@ -1658,14 +1658,14 @@ function CrashView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
         </div>
         {serverPhase === 'crashed' && (
           <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-            <div className="font-black text-xl text-[#E54B5E] uppercase tracking-widest animate-fade-in bg-[#0d1f11]/80 px-5 py-2 rounded-xl mt-16">
+            <div className="font-black text-xl text-[#E54B5E] uppercase tracking-widest animate-fade-in bg-[#0D0B1C]/80 px-5 py-2 rounded-xl mt-16">
               💥 КРАХ!
             </div>
           </div>
         )}
         {cashedOut && serverPhase === 'flying' && (
           <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-            <div className="font-black text-xl text-[#5BBE8A] uppercase tracking-widest animate-fade-in bg-[#0d1f11]/80 px-5 py-2 rounded-xl mt-16">
+            <div className="font-black text-xl text-[#5BBE8A] uppercase tracking-widest animate-fade-in bg-[#0D0B1C]/80 px-5 py-2 rounded-xl mt-16">
               💸 +{fmtCoins(myWin)}
             </div>
           </div>
@@ -1714,7 +1714,7 @@ function CrashView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
 
       {serverPhase === 'waiting' && betPlaced && (
         <div className="rounded-xl px-4 py-3 text-center font-black text-sm text-[#5BBE8A]"
-          style={{ background: 'rgba(91,190,138,0.08)', border: '1px solid rgba(91,190,138,0.2)' }}>
+          style={{ background: 'rgba(124,92,252,0.08)', border: '1px solid rgba(124,92,252,0.2)' }}>
           ✅ Ставка {fmtCoins(bet)}₮ прийнята — чекаємо старту!
         </div>
       )}
@@ -1807,7 +1807,7 @@ function MinesView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWa
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
       {/* Stats bar */}
-      <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, #0d1f11, #1d2e20)', border: '1.5px solid rgba(168,121,42,0.25)' }}>
+      <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, #0D0B1C, #1d2e20)', border: '1.5px solid rgba(168,121,42,0.25)' }}>
         <div className="flex-1 text-center">
           <div className="font-mono text-[9px] text-[#6b7c6d] uppercase mb-0.5">Міни</div>
           <div className="font-black text-xl text-[#c0392b]">💣 {mineCount}</div>
@@ -1982,7 +1982,7 @@ function ChickenRoadView({ wallet, onWalletUpdate, token, notify }: { wallet: Ca
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
       {/* Multiplier bar */}
-      <div className="rounded-2xl px-5 py-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0d1f11, #1d2e20)', border: '1.5px solid rgba(168,121,42,0.3)' }}>
+      <div className="rounded-2xl px-5 py-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0D0B1C, #1d2e20)', border: '1.5px solid rgba(168,121,42,0.3)' }}>
         <div>
           <div className="font-mono text-[9px] text-[#6b7c6d] uppercase">Ставка</div>
           <div className="font-black text-lg text-white">{fmtCoins(bet)}</div>
@@ -1998,11 +1998,11 @@ function ChickenRoadView({ wallet, onWalletUpdate, token, notify }: { wallet: Ca
       </div>
 
       {/* Road */}
-      <div className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(180deg,#0a1a0d 0%,#0d1f11 100%)', border: '1.5px solid rgba(76,175,125,0.25)', minHeight: 220 }}>
+      <div className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(180deg,#0a1a0d 0%,#0D0B1C 100%)', border: '1.5px solid rgba(76,175,125,0.25)', minHeight: 220 }}>
         {/* Asphalt lane dividers */}
         <div className="absolute inset-0 pointer-events-none" style={{ left: 56, right: 56 }}>
           {Array.from({ length: CHICKEN_LANES - 1 }).map((_, i) => (
-            <div key={i} className="absolute top-0 bottom-0 w-px opacity-15" style={{ left: `${((i + 1) / CHICKEN_LANES) * 100}%`, background: '#4caf7d' }} />
+            <div key={i} className="absolute top-0 bottom-0 w-px opacity-15" style={{ left: `${((i + 1) / CHICKEN_LANES) * 100}%`, background: '#00D4FF' }} />
           ))}
           {/* Road center stripe */}
           <div className="absolute inset-y-0 left-0 right-0 flex items-center pointer-events-none">
@@ -2181,7 +2181,7 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
       {/* Result display */}
-      <div className="rounded-2xl flex items-center justify-center py-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d1f11, #1d2e20)', border: '1.5px solid rgba(168,121,42,0.3)', minHeight: 140 }}>
+      <div className="rounded-2xl flex items-center justify-center py-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0D0B1C, #1d2e20)', border: '1.5px solid rgba(168,121,42,0.3)', minHeight: 140 }}>
         {rolling ? (
           <div className="flex flex-col items-center gap-2">
             <div className="text-5xl animate-blink">🎲</div>
@@ -2190,7 +2190,7 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
         ) : result !== null ? (
           <div className="flex flex-col items-center gap-1 animate-count-up">
             <div className={`font-black tracking-tighter`}
-              style={{ fontSize: 72, color: isWin ? '#4caf7d' : '#c0392b', textShadow: `0 0 24px ${isWin ? '#4caf7d' : '#c0392b'}80` }}>
+              style={{ fontSize: 72, color: isWin ? '#00D4FF' : '#c0392b', textShadow: `0 0 24px ${isWin ? '#00D4FF' : '#c0392b'}80` }}>
               {result}
             </div>
             <div className={`font-black text-sm uppercase tracking-widest ${isWin ? 'text-[#4caf7d]' : 'text-[#c0392b]'}`}>
@@ -2236,7 +2236,7 @@ function DiceView({ wallet, onWalletUpdate, token, notify }: { wallet: CasinoWal
           {/* Result marker */}
           {result !== null && (
             <div className="absolute top-0 bottom-0 w-1 rounded transition-all duration-500 pointer-events-none"
-              style={{ left: `${result}%`, background: isWin ? '#4caf7d' : '#c0392b', boxShadow: `0 0 8px ${isWin ? '#4caf7d' : '#c0392b'}` }} />
+              style={{ left: `${result}%`, background: isWin ? '#00D4FF' : '#c0392b', boxShadow: `0 0 8px ${isWin ? '#00D4FF' : '#c0392b'}` }} />
           )}
           {/* Labels */}
           <div className="absolute top-1/2 -translate-y-1/2 left-2 font-mono text-[10px] font-bold text-white/60">1</div>
@@ -2323,7 +2323,7 @@ function BJCard({ card, hidden = false }: { card?: { suit: string; value: string
   if (hidden || !card) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-white/20 text-white/50 text-xl font-bold select-none"
-        style={{ width: 44, height: 64, background: 'linear-gradient(135deg,#163524,#0d2518)', flexShrink: 0 }}>
+        style={{ width: 44, height: 64, background: 'linear-gradient(135deg,#1E1B35,#0d2518)', flexShrink: 0 }}>
         ?
       </div>
     );
@@ -2402,7 +2402,7 @@ function BlackjackView({ wallet, onWalletUpdate, token, notify }: {
   }
 
   const outcomeColor: Record<string, string> = {
-    blackjack: '#E4A24B', win: '#5BBE8A', push: '#6DB5D4', loss: '#E54B5E',
+    blackjack: '#E4A24B', win: '#00D4FF', push: '#6DB5D4', loss: '#E54B5E',
   };
   const outcomeLabel: Record<string, string> = {
     blackjack: 'Блекджек!', win: 'Перемога!', push: 'Нічия', loss: 'Поразка',
@@ -2411,7 +2411,7 @@ function BlackjackView({ wallet, onWalletUpdate, token, notify }: {
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-4 py-4" style={{ background: '#0B1A12' }}>
       {/* Dealer zone */}
-      <div className="rounded-2xl border border-white/5 p-4" style={{ background: '#112A1C' }}>
+      <div className="rounded-2xl border border-white/5 p-4" style={{ background: '#100E22' }}>
         <div className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-3">
           Дилер {!dealerHidden && dealerValue !== null ? `· ${dealerValue}` : ''}
         </div>
@@ -2422,7 +2422,7 @@ function BlackjackView({ wallet, onWalletUpdate, token, notify }: {
       </div>
 
       {/* Player zone */}
-      <div className="rounded-2xl border border-white/5 p-4" style={{ background: '#112A1C' }}>
+      <div className="rounded-2xl border border-white/5 p-4" style={{ background: '#100E22' }}>
         <div className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-3">
           Гравець · {playerValue || '—'}
         </div>
@@ -2447,13 +2447,13 @@ function BlackjackView({ wallet, onWalletUpdate, token, notify }: {
             <span className="text-white/50 text-xs w-12">Ставка</span>
             <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1} max={wallet.balance}
               className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
-              style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+              style={{ background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)' }} />
           </div>
           <div className="flex gap-2">
             {[10, 50, 100, 500].map(v => (
               <button key={v} onClick={() => setBet(v)}
                 className="flex-1 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                style={{ background: bet === v ? '#E4A24B' : '#1E1B35', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 {v}
               </button>
             ))}
@@ -2467,7 +2467,7 @@ function BlackjackView({ wallet, onWalletUpdate, token, notify }: {
         <div className="flex gap-3">
           <button onClick={() => doAction('hit')} disabled={loading}
             className="flex-1 py-3 rounded-xl font-black text-sm transition-all hover:brightness-110 disabled:opacity-40"
-            style={{ background: '#5BBE8A', color: '#0B1A12' }}>Ще</button>
+            style={{ background: '#00D4FF', color: '#0B1A12' }}>Ще</button>
           <button onClick={() => doAction('stand')} disabled={loading}
             className="flex-1 py-3 rounded-xl font-black text-sm transition-all hover:brightness-110 disabled:opacity-40"
             style={{ background: '#E54B5E', color: '#fff' }}>Стоп</button>
@@ -2508,7 +2508,7 @@ function BaccaratView({ wallet, onWalletUpdate, token, notify }: {
   }
 
   const BET_OPTS = [
-    { key: 'player' as const, label: 'Гравець', odds: '1:1', color: '#5BBE8A' },
+    { key: 'player' as const, label: 'Гравець', odds: '1:1', color: '#00D4FF' },
     { key: 'banker' as const, label: 'Банкір', odds: '0.95:1', color: '#E4A24B' },
     { key: 'tie' as const, label: 'Нічия', odds: '8:1', color: '#6DB5D4' },
   ];
@@ -2520,9 +2520,9 @@ function BaccaratView({ wallet, onWalletUpdate, token, notify }: {
         <div className="flex gap-3 animate-slide-up">
           {(['player', 'banker'] as const).map(side => (
             <div key={side} className="flex-1 rounded-2xl border border-white/5 p-3"
-              style={{ background: '#112A1C', outline: result.winner === side ? `2px solid ${side === 'player' ? '#5BBE8A' : '#E4A24B'}` : undefined }}>
+              style={{ background: '#100E22', outline: result.winner === side ? `2px solid ${side === 'player' ? '#00D4FF' : '#E4A24B'}` : undefined }}>
               <div className="font-mono text-[10px] uppercase tracking-widest mb-2 flex justify-between"
-                style={{ color: side === 'player' ? '#5BBE8A' : '#E4A24B' }}>
+                style={{ color: side === 'player' ? '#00D4FF' : '#E4A24B' }}>
                 <span>{side === 'player' ? 'Гравець' : 'Банкір'}</span>
                 <span className="text-white/60">{side === 'player' ? result.player_value : result.banker_value}</span>
               </div>
@@ -2541,7 +2541,7 @@ function BaccaratView({ wallet, onWalletUpdate, token, notify }: {
           style={{
             borderColor: result.win > 0 ? '#5BBE8A60' : result.winner === 'tie' && betType !== 'tie' ? '#6DB5D440' : '#E54B5E40',
             background: result.win > 0 ? '#5BBE8A15' : '#E54B5E10',
-            color: result.win > 0 ? '#5BBE8A' : result.winner === 'tie' && betType !== 'tie' ? '#6DB5D4' : '#E54B5E',
+            color: result.win > 0 ? '#00D4FF' : result.winner === 'tie' && betType !== 'tie' ? '#6DB5D4' : '#E54B5E',
           }}>
           Переміг: {result.winner === 'player' ? 'Гравець' : result.winner === 'banker' ? 'Банкір' : 'Нічия'}
           {result.win > 0 && <span> · +{fmtCoins(result.win)}</span>}
@@ -2554,7 +2554,7 @@ function BaccaratView({ wallet, onWalletUpdate, token, notify }: {
           <button key={o.key} onClick={() => setBetType(o.key)}
             className="flex-1 py-3 rounded-xl flex flex-col items-center gap-0.5 transition-all border"
             style={{
-              background: betType === o.key ? o.color + '25' : '#112A1C',
+              background: betType === o.key ? o.color + '25' : '#100E22',
               borderColor: betType === o.key ? o.color + '80' : 'rgba(255,255,255,0.06)',
               boxShadow: betType === o.key ? `0 0 12px ${o.color}20` : undefined,
             }}>
@@ -2570,13 +2570,13 @@ function BaccaratView({ wallet, onWalletUpdate, token, notify }: {
           <span className="text-white/50 text-xs w-12">Ставка</span>
           <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
             className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
-            style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+            style={{ background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)' }} />
         </div>
         <div className="flex gap-2">
           {[10, 50, 100, 500].map(v => (
             <button key={v} onClick={() => setBet(v)}
               className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-              style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              style={{ background: bet === v ? '#E4A24B' : '#1E1B35', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
               {v}
             </button>
           ))}
@@ -2763,7 +2763,7 @@ function PlinkoView({ wallet, onWalletUpdate, token, notify }: {
           style={{
             borderColor: displayResult.win > 0 ? '#5BBE8A60' : '#E54B5E40',
             background: displayResult.win > 0 ? '#5BBE8A15' : '#E54B5E10',
-            color: displayResult.win > 0 ? '#5BBE8A' : '#E54B5E',
+            color: displayResult.win > 0 ? '#00D4FF' : '#E54B5E',
           }}>
           ×{displayResult.mult} {displayResult.win > 0 ? `· +${fmtCoins(displayResult.win)}` : ''}
         </div>
@@ -2775,19 +2775,19 @@ function PlinkoView({ wallet, onWalletUpdate, token, notify }: {
           <button key={r} onClick={() => { setRows(r); setResult(null); }}
             disabled={animating}
             className="flex-1 py-2 rounded-xl text-xs font-bold transition-all border"
-            style={{ background: rows === r ? '#E4A24B' : '#112A1C', color: rows === r ? '#1a1006' : 'rgba(255,255,255,0.6)', borderColor: rows === r ? '#E4A24B' : 'rgba(255,255,255,0.06)' }}>
+            style={{ background: rows === r ? '#E4A24B' : '#100E22', color: rows === r ? '#1a1006' : 'rgba(255,255,255,0.6)', borderColor: rows === r ? '#E4A24B' : 'rgba(255,255,255,0.06)' }}>
             {r} рядків
           </button>
         ))}
       </div>
       <div className="flex gap-2">
         {(['low', 'medium', 'high'] as const).map(rv => {
-          const col = rv === 'low' ? '#5BBE8A' : rv === 'medium' ? '#E4A24B' : '#E54B5E';
+          const col = rv === 'low' ? '#00D4FF' : rv === 'medium' ? '#E4A24B' : '#E54B5E';
           return (
             <button key={rv} onClick={() => { setRisk(rv); setResult(null); }}
               disabled={animating}
               className="flex-1 py-2 rounded-xl text-xs font-bold transition-all border"
-              style={{ background: risk === rv ? col + '25' : '#112A1C', color: risk === rv ? col : 'rgba(255,255,255,0.6)', borderColor: risk === rv ? col + '80' : 'rgba(255,255,255,0.06)' }}>
+              style={{ background: risk === rv ? col + '25' : '#100E22', color: risk === rv ? col : 'rgba(255,255,255,0.6)', borderColor: risk === rv ? col + '80' : 'rgba(255,255,255,0.06)' }}>
               {rv === 'low' ? 'Низький' : rv === 'medium' ? 'Середній' : 'Високий'}
             </button>
           );
@@ -2798,13 +2798,13 @@ function PlinkoView({ wallet, onWalletUpdate, token, notify }: {
         <span className="text-white/50 text-xs w-12">Ставка</span>
         <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
           className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
-          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+          style={{ background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)' }} />
       </div>
       <div className="flex gap-2">
         {[10, 50, 100, 500].map(v => (
           <button key={v} onClick={() => setBet(v)}
             className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-            style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            style={{ background: bet === v ? '#E4A24B' : '#1E1B35', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {v}
           </button>
         ))}
@@ -2916,7 +2916,7 @@ function LimboView({ wallet, onWalletUpdate, token, notify }: {
         <div className="relative z-10 text-center">
           <div className="text-[56px] font-black tabular-nums tracking-tight leading-none"
             style={{
-              color: result ? (result.won ? '#5BBE8A' : '#E54B5E') : '#fff',
+              color: result ? (result.won ? '#00D4FF' : '#E54B5E') : '#fff',
               textShadow: launching ? '0 0 24px rgba(228,162,75,0.6)' : '0 2px 8px rgba(0,0,0,0.4)',
             }}>
             ×{animMult.toFixed(2)}
@@ -2932,13 +2932,13 @@ function LimboView({ wallet, onWalletUpdate, token, notify }: {
         <input type="number" step="0.01" min={1.01} max={1000} value={target}
           onChange={e => setTarget(Math.max(1.01, Math.min(1000, +e.target.value || 1.01)))}
           className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
-          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+          style={{ background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)' }} />
       </div>
       <div className="flex gap-2">
         {[1.5, 2, 5, 10, 100].map(v => (
           <button key={v} onClick={() => setTarget(v)}
             className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-            style={{ background: target === v ? '#C678DD' : '#163524', color: target === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            style={{ background: target === v ? '#C678DD' : '#1E1B35', color: target === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
             ×{v}
           </button>
         ))}
@@ -2948,13 +2948,13 @@ function LimboView({ wallet, onWalletUpdate, token, notify }: {
         <span className="text-white/50 text-xs w-16">Ставка</span>
         <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
           className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
-          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+          style={{ background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)' }} />
       </div>
       <div className="flex gap-2">
         {[10, 50, 100, 500].map(v => (
           <button key={v} onClick={() => setBet(v)}
             className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-            style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            style={{ background: bet === v ? '#E4A24B' : '#1E1B35', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {v}
           </button>
         ))}
@@ -3039,7 +3039,7 @@ function WheelView({ wallet, onWalletUpdate, token, notify }: {
   }, [risk, segments, result]);
 
   const colorOf = (m: number) =>
-    m >= 10 ? '#E54B5E' : m >= 3 ? '#C678DD' : m >= 1.5 ? '#E4A24B' : m > 0 ? '#5BBE8A' : '#1d3a2a';
+    m >= 10 ? '#E54B5E' : m >= 3 ? '#C678DD' : m >= 1.5 ? '#E4A24B' : m > 0 ? '#00D4FF' : '#1d3a2a';
   const gradOf = (m: number) => {
     const c = colorOf(m);
     return m > 0 ? `linear-gradient(135deg, ${c}, ${c}cc)` : c;
@@ -3113,7 +3113,7 @@ function WheelView({ wallet, onWalletUpdate, token, notify }: {
           style={{
             borderColor: result.win > 0 ? '#5BBE8A60' : '#E54B5E40',
             background: result.win > 0 ? '#5BBE8A15' : '#E54B5E10',
-            color: result.win > 0 ? '#5BBE8A' : '#E54B5E',
+            color: result.win > 0 ? '#00D4FF' : '#E54B5E',
           }}>
           ×{result.mult} {result.win > 0 ? `· +${fmtCoins(result.win)}` : ''}
         </div>
@@ -3121,11 +3121,11 @@ function WheelView({ wallet, onWalletUpdate, token, notify }: {
 
       <div className="flex gap-2">
         {(['low', 'medium', 'high'] as const).map(rv => {
-          const col = rv === 'low' ? '#5BBE8A' : rv === 'medium' ? '#E4A24B' : '#E54B5E';
+          const col = rv === 'low' ? '#00D4FF' : rv === 'medium' ? '#E4A24B' : '#E54B5E';
           return (
             <button key={rv} onClick={() => setRisk(rv)} disabled={loading}
               className="flex-1 py-2 rounded-xl text-xs font-bold transition-all border"
-              style={{ background: risk === rv ? col + '25' : '#112A1C', color: risk === rv ? col : 'rgba(255,255,255,0.6)', borderColor: risk === rv ? col + '80' : 'rgba(255,255,255,0.06)' }}>
+              style={{ background: risk === rv ? col + '25' : '#100E22', color: risk === rv ? col : 'rgba(255,255,255,0.6)', borderColor: risk === rv ? col + '80' : 'rgba(255,255,255,0.06)' }}>
               {rv === 'low' ? 'Низький' : rv === 'medium' ? 'Середній' : 'Високий'}
             </button>
           );
@@ -3135,7 +3135,7 @@ function WheelView({ wallet, onWalletUpdate, token, notify }: {
         {([10, 20, 30, 40, 50] as const).map(s => (
           <button key={s} onClick={() => setSegments(s)} disabled={loading}
             className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-            style={{ background: segments === s ? '#E4A24B' : '#163524', color: segments === s ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            style={{ background: segments === s ? '#E4A24B' : '#1E1B35', color: segments === s ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {s}
           </button>
         ))}
@@ -3145,13 +3145,13 @@ function WheelView({ wallet, onWalletUpdate, token, notify }: {
         <span className="text-white/50 text-xs w-12">Ставка</span>
         <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
           className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
-          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+          style={{ background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)' }} />
       </div>
       <div className="flex gap-2">
         {[10, 50, 100, 500].map(v => (
           <button key={v} onClick={() => setBet(v)}
             className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-            style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            style={{ background: bet === v ? '#E4A24B' : '#1E1B35', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {v}
           </button>
         ))}
@@ -3262,12 +3262,12 @@ function HiloView({ wallet, onWalletUpdate, token, notify }: {
     <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
       <div className="rounded-3xl border p-6 flex flex-col items-center gap-3"
         style={{
-          background: bust ? '#E54B5E15' : '#112A1C',
+          background: bust ? '#E54B5E15' : '#100E22',
           borderColor: bust ? '#E54B5E60' : 'rgba(255,255,255,0.08)',
         }}>
         <div className="text-white/50 text-xs">Множник</div>
         <div className="text-3xl font-black tabular-nums"
-          style={{ color: bust ? '#E54B5E' : multiplier > 1 ? '#5BBE8A' : '#E4A24B' }}>
+          style={{ color: bust ? '#E54B5E' : multiplier > 1 ? '#00D4FF' : '#E4A24B' }}>
           ×{multiplier.toFixed(2)}
         </div>
         <CardVis card={current} big />
@@ -3284,7 +3284,7 @@ function HiloView({ wallet, onWalletUpdate, token, notify }: {
           <div className="grid grid-cols-3 gap-2">
             <button onClick={() => guess('higher')} disabled={loading}
               className="py-3 rounded-xl text-sm font-black transition-all"
-              style={{ background: '#5BBE8A', color: '#0a1a12' }}>
+              style={{ background: '#00D4FF', color: '#0a1a12' }}>
               ▲ Вище ({probH}%)
             </button>
             <button onClick={() => guess('equal')} disabled={loading}
@@ -3309,13 +3309,13 @@ function HiloView({ wallet, onWalletUpdate, token, notify }: {
             <span className="text-white/50 text-xs w-12">Ставка</span>
             <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
               className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
-              style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+              style={{ background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)' }} />
           </div>
           <div className="flex gap-2">
             {[10, 50, 100, 500].map(v => (
               <button key={v} onClick={() => setBet(v)}
                 className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-                style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                style={{ background: bet === v ? '#E4A24B' : '#1E1B35', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 {v}
               </button>
             ))}
@@ -3338,7 +3338,7 @@ function TowerView({ wallet, onWalletUpdate, token, notify }: {
 }) {
   type Diff = 'easy' | 'medium' | 'hard' | 'expert';
   const DIFF: Record<Diff, { cols: number; label: string; col: string; safe: number }> = {
-    easy:   { cols: 4, label: 'Легко',     col: '#5BBE8A', safe: 3 },
+    easy:   { cols: 4, label: 'Легко',     col: '#00D4FF', safe: 3 },
     medium: { cols: 3, label: 'Середньо',  col: '#E4A24B', safe: 2 },
     hard:   { cols: 2, label: 'Важко',     col: '#E54B5E', safe: 1 },
     expert: { cols: 3, label: 'Експерт',   col: '#C678DD', safe: 1 },
@@ -3426,11 +3426,11 @@ function TowerView({ wallet, onWalletUpdate, token, notify }: {
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-4" style={{ background: '#0B1A12' }}>
       <div className="flex items-center justify-between rounded-2xl border p-3"
-        style={{ background: '#112A1C', borderColor: 'rgba(255,255,255,0.08)' }}>
+        style={{ background: '#100E22', borderColor: 'rgba(255,255,255,0.08)' }}>
         <div>
           <div className="text-white/50 text-[10px] uppercase tracking-wider">Множник</div>
           <div className="text-2xl font-black tabular-nums"
-            style={{ color: multiplier > 1 ? '#5BBE8A' : '#E4A24B' }}>
+            style={{ color: multiplier > 1 ? '#00D4FF' : '#E4A24B' }}>
             ×{multiplier.toFixed(4)}
           </div>
         </div>
@@ -3462,9 +3462,9 @@ function TowerView({ wallet, onWalletUpdate, token, notify }: {
                   const bustedHere = bustAtLvl && bustInfo!.col === c;
                   const revealedSafe = (bustInfo && bustInfo.pattern[lvl]?.includes(c)) || (rev && rev.safe && rev.col === c);
                   const revealedBust = bustInfo && !bustInfo.pattern[lvl]?.includes(c);
-                  let bg = '#163524';
+                  let bg = '#1E1B35';
                   let content: string | React.ReactElement = '';
-                  if (isPast && clicked) { bg = '#5BBE8A'; content = '✓'; }
+                  if (isPast && clicked) { bg = '#00D4FF'; content = '✓'; }
                   else if (bustedHere) { bg = '#E54B5E'; content = '💣'; }
                   else if (bustInfo && revealedSafe) { bg = '#2a4a35'; content = '○'; }
                   else if (bustInfo && revealedBust) { bg = '#3a1a1f'; content = '·'; }
@@ -3505,7 +3505,7 @@ function TowerView({ wallet, onWalletUpdate, token, notify }: {
               <button key={d} onClick={() => setDiff(d)}
                 className="flex-1 py-2 rounded-xl text-xs font-bold transition-all border"
                 style={{
-                  background: diff === d ? DIFF[d].col + '25' : '#112A1C',
+                  background: diff === d ? DIFF[d].col + '25' : '#100E22',
                   color: diff === d ? DIFF[d].col : 'rgba(255,255,255,0.6)',
                   borderColor: diff === d ? DIFF[d].col + '80' : 'rgba(255,255,255,0.06)',
                 }}>
@@ -3517,13 +3517,13 @@ function TowerView({ wallet, onWalletUpdate, token, notify }: {
             <span className="text-white/50 text-xs w-12">Ставка</span>
             <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
               className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
-              style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+              style={{ background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)' }} />
           </div>
           <div className="flex gap-2">
             {[10, 50, 100, 500].map(v => (
               <button key={v} onClick={() => setBet(v)}
                 className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-                style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                style={{ background: bet === v ? '#E4A24B' : '#1E1B35', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 {v}
               </button>
             ))}
@@ -3630,7 +3630,7 @@ function KenoView({ wallet, onWalletUpdate, token, notify }: {
           const isDrawn = activeDrawn.includes(n);
           const hit = picked && isDrawn;
           const missedDraw = !picked && isDrawn;
-          let bg = '#163524', color = 'rgba(255,255,255,0.7)';
+          let bg = '#1E1B35', color = 'rgba(255,255,255,0.7)';
           if (hit) { bg = 'linear-gradient(135deg, #5BBE8A 0%, #3a8f65 100%)'; color = '#0a1a12'; }
           else if (picked) { bg = 'linear-gradient(135deg, #E4A24B 0%, #b87d2e 100%)'; color = '#1a1006'; }
           else if (missedDraw) { bg = 'linear-gradient(135deg, #6DB5D4 0%, #4a8aa8 100%)'; color = '#0a1624'; }
@@ -3651,7 +3651,7 @@ function KenoView({ wallet, onWalletUpdate, token, notify }: {
       </div>
 
       <div className="flex items-center justify-between rounded-2xl border p-3"
-        style={{ background: '#112A1C', borderColor: 'rgba(255,255,255,0.08)' }}>
+        style={{ background: '#100E22', borderColor: 'rgba(255,255,255,0.08)' }}>
         <div>
           <div className="text-white/50 text-[10px] uppercase">Вибрано</div>
           <div className="text-lg font-black text-white">{picks.length}/10</div>
@@ -3659,7 +3659,7 @@ function KenoView({ wallet, onWalletUpdate, token, notify }: {
         {result && (
           <div className="text-center">
             <div className="text-white/50 text-[10px] uppercase">Співпало</div>
-            <div className="text-lg font-black" style={{ color: result.win > 0 ? '#5BBE8A' : '#E54B5E' }}>
+            <div className="text-lg font-black" style={{ color: result.win > 0 ? '#00D4FF' : '#E54B5E' }}>
               {result.matches} · ×{result.mult}
             </div>
           </div>
@@ -3678,7 +3678,7 @@ function KenoView({ wallet, onWalletUpdate, token, notify }: {
           {payoutsFor.map((m, i) => (
             <div key={i} className="rounded-lg px-1 py-1.5 text-center"
               style={{
-                background: result && result.matches === i ? '#5BBE8A20' : '#112A1C',
+                background: result && result.matches === i ? '#5BBE8A20' : '#100E22',
                 border: result && result.matches === i ? '1px solid #5BBE8A80' : '1px solid rgba(255,255,255,0.05)',
               }}>
               <div className="text-white/40 text-[9px]">{i}</div>
@@ -3695,7 +3695,7 @@ function KenoView({ wallet, onWalletUpdate, token, notify }: {
           <button key={n} onClick={() => autoPick(n)}
             disabled={drawnStaged.length > 0 || loading}
             className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-            style={{ background: '#163524', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            style={{ background: '#1E1B35', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.06)' }}>
             Авто {n}
           </button>
         ))}
@@ -3711,13 +3711,13 @@ function KenoView({ wallet, onWalletUpdate, token, notify }: {
         <span className="text-white/50 text-xs w-12">Ставка</span>
         <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} min={1}
           className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
-          style={{ background: '#163524', border: '1px solid rgba(255,255,255,0.08)' }} />
+          style={{ background: '#1E1B35', border: '1px solid rgba(255,255,255,0.08)' }} />
       </div>
       <div className="flex gap-2">
         {[10, 50, 100, 500].map(v => (
           <button key={v} onClick={() => setBet(v)}
             className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-            style={{ background: bet === v ? '#E4A24B' : '#163524', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            style={{ background: bet === v ? '#E4A24B' : '#1E1B35', color: bet === v ? '#1a1006' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {v}
           </button>
         ))}
@@ -3867,12 +3867,12 @@ function VideoPokerView({ wallet, onWalletUpdate, token, notify }: {
       {/* Machine frame */}
       <div className="rounded-3xl overflow-hidden" style={{
         background: BG,
-        border: '2px solid rgba(91,190,138,0.3)',
-        boxShadow: '0 0 40px rgba(91,190,138,0.1), 0 8px 32px rgba(0,0,0,0.5)',
+        border: '2px solid rgba(124,92,252,0.3)',
+        boxShadow: '0 0 40px rgba(124,92,252,0.1), 0 8px 32px rgba(0,0,0,0.5)',
       }}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3" style={{
-          background: 'rgba(91,190,138,0.08)', borderBottom: '1px solid rgba(91,190,138,0.2)',
+          background: 'rgba(124,92,252,0.08)', borderBottom: '1px solid rgba(124,92,252,0.2)',
         }}>
           <div>
             <div className="font-black text-[#5BBE8A] text-sm uppercase tracking-widest">VIDEO POKER</div>
@@ -3902,7 +3902,7 @@ function VideoPokerView({ wallet, onWalletUpdate, token, notify }: {
               </div>
               {phase === 'hold' && (
                 <div className="text-[10px] font-black uppercase tracking-wider"
-                  style={{ color: held[i] ? '#5BBE8A' : 'rgba(255,255,255,0.2)' }}>
+                  style={{ color: held[i] ? '#00D4FF' : 'rgba(255,255,255,0.2)' }}>
                   {held[i] ? 'HOLD' : ''}
                 </div>
               )}
@@ -3915,9 +3915,9 @@ function VideoPokerView({ wallet, onWalletUpdate, token, notify }: {
           {result && phase==='result' && (
             <div className="font-black text-center text-sm px-6 py-2 rounded-xl"
               style={{
-                background: result.win>0?'rgba(91,190,138,0.15)':'rgba(255,255,255,0.03)',
-                border:`1px solid ${result.win>0?'rgba(91,190,138,0.4)':'rgba(255,255,255,0.07)'}`,
-                color: result.win>0?'#5BBE8A':'rgba(255,255,255,0.3)',
+                background: result.win>0?'rgba(124,92,252,0.15)':'rgba(255,255,255,0.03)',
+                border:`1px solid ${result.win>0?'rgba(124,92,252,0.4)':'rgba(255,255,255,0.07)'}`,
+                color: result.win>0?'#00D4FF':'rgba(255,255,255,0.3)',
               }}>
               {VP_HAND_NAMES[result.result]} {result.win>0?`· +${fmtCoins(result.win)}`:''}
             </div>
@@ -3933,7 +3933,7 @@ function VideoPokerView({ wallet, onWalletUpdate, token, notify }: {
                 style={{
                   background: bet===v?'linear-gradient(135deg,#5BBE8A,#3a8f65)':'rgba(255,255,255,0.04)',
                   color: bet===v?'#0a1a12':'rgba(255,255,255,0.4)',
-                  border:`1px solid ${bet===v?'#5BBE8A':'rgba(255,255,255,0.06)'}`,
+                  border:`1px solid ${bet===v?'#00D4FF':'rgba(255,255,255,0.06)'}`,
                 }}>
                 {v}
               </button>
@@ -3944,7 +3944,7 @@ function VideoPokerView({ wallet, onWalletUpdate, token, notify }: {
               className="w-full py-4 rounded-2xl font-black text-base uppercase tracking-widest"
               style={{
                 background: 'linear-gradient(135deg,#5BBE8A,#2e7d55)',
-                color:'#0a1a12', boxShadow:'0 0 24px rgba(91,190,138,0.5)',
+                color:'#0a1a12', boxShadow:'0 0 24px rgba(124,92,252,0.5)',
                 border:'none', cursor:'pointer',
               }}>
               {loading?'…':'🃏 DRAW'}
@@ -3954,7 +3954,7 @@ function VideoPokerView({ wallet, onWalletUpdate, token, notify }: {
               className="w-full py-4 rounded-2xl font-black text-base uppercase tracking-widest disabled:opacity-40"
               style={{
                 background: 'linear-gradient(135deg,#5BBE8A,#2e7d55)',
-                color:'#0a1a12', boxShadow:'0 0 24px rgba(91,190,138,0.4)',
+                color:'#0a1a12', boxShadow:'0 0 24px rgba(124,92,252,0.4)',
                 border:'none', cursor:'pointer',
               }}>
               {loading?'…':'🂡 DEAL'}
@@ -3964,17 +3964,17 @@ function VideoPokerView({ wallet, onWalletUpdate, token, notify }: {
       </div>
 
       {/* Paytable */}
-      <div className="rounded-2xl overflow-hidden" style={{ border:'1px solid rgba(91,190,138,0.15)' }}>
+      <div className="rounded-2xl overflow-hidden" style={{ border:'1px solid rgba(124,92,252,0.15)' }}>
         <div className="px-4 py-2 text-[#5BBE8A] text-[10px] font-black uppercase tracking-widest"
-          style={{ background:'rgba(91,190,138,0.05)', borderBottom:'1px solid rgba(91,190,138,0.12)' }}>
+          style={{ background:'rgba(124,92,252,0.05)', borderBottom:'1px solid rgba(124,92,252,0.12)' }}>
           Таблиця виплат (5 монет)
         </div>
         <div className="grid grid-cols-2">
           {VP_PAYS.map(([key, m], idx) => (
             <div key={key} className="px-3 py-2 flex justify-between items-center"
               style={{
-                background: result?.result===key ? 'rgba(91,190,138,0.12)' : idx%2===0?'rgba(255,255,255,0.02)':'transparent',
-                border: result?.result===key ? '1px solid rgba(91,190,138,0.4)' : 'none',
+                background: result?.result===key ? 'rgba(124,92,252,0.12)' : idx%2===0?'rgba(255,255,255,0.02)':'transparent',
+                border: result?.result===key ? '1px solid rgba(124,92,252,0.4)' : 'none',
                 borderBottom:'1px solid rgba(255,255,255,0.04)',
               }}>
               <span className="text-white/60 text-[11px]">{VP_HAND_NAMES[key].replace(/^[^\s]+ /,'')}</span>
@@ -4511,7 +4511,7 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
       {/* Balance strip */}
-      <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0d1f11,#1d2e20)', border: '1.5px solid rgba(168,121,42,0.35)' }}>
+      <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0D0B1C,#1d2e20)', border: '1.5px solid rgba(168,121,42,0.35)' }}>
         <div>
           <div className="font-mono text-[9px] text-[#6b7c6d] uppercase mb-0.5">Ваш баланс</div>
           <div className="font-black text-xl text-[#a8792a]">{wallet.balance.toFixed(2)} USDT</div>
@@ -4628,7 +4628,7 @@ function DepositView({ wallet, onWalletUpdate, token, notify }: {
 
       {tab === 'withdraw' && (
         <div className="flex flex-col gap-3">
-          <div className="rounded-xl p-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0d1f11,#1d2e20)', border: '1.5px solid rgba(168,121,42,0.3)' }}>
+          <div className="rounded-xl p-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#0D0B1C,#1d2e20)', border: '1.5px solid rgba(168,121,42,0.3)' }}>
             <div>
               <div className="font-mono text-[9px] text-[#6b7c6d] uppercase">Баланс</div>
               <div className="font-black text-2xl text-[#a8792a]">{fmtCoins(wallet.balance)}</div>
@@ -4824,19 +4824,19 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
   const GAMES: GameMeta[] = [
     { key: 'crash',     label: 'Crash',        tag: 'Arcade',  hint: 'LIVE',  accent: '#E06E4A', emoji: '🚀', live: true },
     { key: 'plinko',    label: 'Plinko',       tag: 'Instant', hint: '×999',  accent: '#E4A24B', emoji: '🔮' },
-    { key: 'blackjack', label: 'Blackjack',    tag: 'Table',   hint: '3:2',   accent: '#5BBE8A', emoji: '🃏' },
+    { key: 'blackjack', label: 'Blackjack',    tag: 'Table',   hint: '3:2',   accent: '#00D4FF', emoji: '🃏' },
     { key: 'baccarat',  label: 'Baccarat',     tag: 'Table',   hint: '8:1',   accent: '#6DB5D4', emoji: '🎴' },
     { key: 'roulette',  label: 'Roulette',     tag: 'Table',   hint: 'LIVE',  accent: '#E54B5E', emoji: '🎡', live: true },
     { key: 'mines',     label: 'Mines',        tag: 'Instant', hint: '×1000', accent: '#E4A24B', emoji: '💣' },
     { key: 'dice',      label: 'Dice',         tag: 'Classic', hint: '×49',   accent: '#6DB5D4', emoji: '🎲' },
-    { key: 'slots',     label: 'Slots',        tag: 'Jackpot', hint: '×50',   accent: '#5BBE8A', emoji: '🎰' },
+    { key: 'slots',     label: 'Slots',        tag: 'Jackpot', hint: '×50',   accent: '#00D4FF', emoji: '🎰' },
     { key: 'chicken',   label: 'Chicken Road', tag: 'Arcade',  hint: '×30',   accent: '#E4A24B', emoji: '🐔' },
     { key: 'limbo',     label: 'Limbo',        tag: 'Instant', hint: '×1000', accent: '#C678DD', emoji: '🚀' },
     { key: 'wheel',     label: 'Wheel',        tag: 'Arcade',  hint: '×49',   accent: '#E54B5E', emoji: '🎡' },
-    { key: 'hilo',      label: 'Hi-Lo',        tag: 'Classic', hint: 'Cards', accent: '#5BBE8A', emoji: '🎴' },
+    { key: 'hilo',      label: 'Hi-Lo',        tag: 'Classic', hint: 'Cards', accent: '#00D4FF', emoji: '🎴' },
     { key: 'tower',     label: 'Tower',        tag: 'Arcade',  hint: '×9',    accent: '#E54B5E', emoji: '🗼' },
     { key: 'keno',      label: 'Keno',         tag: 'Jackpot', hint: '×800',  accent: '#6DB5D4', emoji: '🎯' },
-    { key: 'videopoker',label: 'Video Poker',  tag: 'Classic', hint: '×800',  accent: '#5BBE8A', emoji: '🂡' },
+    { key: 'videopoker',label: 'Video Poker',  tag: 'Classic', hint: '×800',  accent: '#00D4FF', emoji: '🂡' },
     { key: 'dragontiger',label:'Dragon Tiger', tag: 'Table',   hint: '×8',    accent: '#E54B5E', emoji: '🐉' },
     { key: 'scratch',   label: 'Scratch',      tag: 'Instant', hint: '×50',   accent: '#C678DD', emoji: '🎴' },
   ];
@@ -4898,11 +4898,11 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
         padding: '20px 20px 18px',
       }}>
         {/* Glow orb */}
-        <div style={{ position: 'absolute', top: -30, right: -20, width: 160, height: 120, background: 'radial-gradient(ellipse, rgba(245,197,24,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: -30, right: -20, width: 160, height: 120, background: 'radial-gradient(ellipse, rgba(124,92,252,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(238,244,240,0.45)', textTransform: 'uppercase', letterSpacing: 1.5 }}>Баланс</div>
           <button onClick={() => onSelectGame('deposit')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, background: 'linear-gradient(135deg,#C99B14,#F5C518)', color: '#0a0800', fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', cursor: 'pointer', border: 'none', boxShadow: '0 4px 16px rgba(245,197,24,0.35)' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, background: 'linear-gradient(135deg,#5A3FD4,#7C5CFC)', color: '#050318', fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', cursor: 'pointer', border: 'none', boxShadow: '0 4px 16px rgba(124,92,252,0.35)' }}>
             <Plus size={12} strokeWidth={2.5} /> Поповнити
           </button>
         </div>
@@ -4910,7 +4910,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
           <AnimatedBalance value={wallet.balance} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,rgba(245,197,24,0.2),rgba(245,197,24,0.08))', border: '1px solid rgba(245,197,24,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#F5C518', flexShrink: 0 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,rgba(124,92,252,0.2),rgba(124,92,252,0.08))', border: '1px solid rgba(124,92,252,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#7C5CFC', flexShrink: 0 }}>
             {wallet.level}
           </div>
           <div style={{ flex: 1 }}>
@@ -4919,7 +4919,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
               <span style={{ fontFamily: 'var(--font-mono)' }}>{xpCurrent} / {xpToNext} XP</span>
             </div>
             <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${xpPct}%`, background: 'linear-gradient(90deg,#00D084,#F5C518)', borderRadius: 99, boxShadow: '0 0 6px rgba(245,197,24,0.35)', transition: 'width 0.5s ease' }} />
+              <div style={{ height: '100%', width: `${xpPct}%`, background: 'linear-gradient(90deg,#00D4FF,#7C5CFC)', borderRadius: 99, boxShadow: '0 0 6px rgba(124,92,252,0.35)', transition: 'width 0.5s ease' }} />
             </div>
           </div>
         </div>
@@ -4941,7 +4941,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
                 onClick={isToday ? claimBonus : undefined}
                 className="shrink-0 w-[130px] rounded-xl p-3 text-left transition-all"
                 style={{
-                  background: b.claimed ? '#0d1a10' : isCurrent ? '#163524' : '#0f1e14',
+                  background: b.claimed ? '#100E1E' : isCurrent ? '#1E1B35' : '#0D0B1C',
                   border: `1px solid ${b.claimed ? 'rgba(255,255,255,0.04)' : isCurrent ? 'rgba(228,162,75,0.4)' : 'rgba(255,255,255,0.06)'}`,
                   opacity: (!b.claimed && !isCurrent) ? 0.45 : 1,
                   cursor: isToday ? 'pointer' : 'default',
@@ -4949,12 +4949,12 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
                 }}>
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: b.claimed ? '#163524' : 'rgba(228,162,75,0.15)' }}>
+                    style={{ background: b.claimed ? '#1E1B35' : 'rgba(228,162,75,0.15)' }}>
                     {b.claimed ? <span className="text-sm">✅</span> : <Gift size={14} style={{ color: '#E4A24B' }} />}
                   </div>
                   <div className="font-mono text-[10px] uppercase tracking-widest text-[#E8F2EA]/60">День {b.day}</div>
                 </div>
-                <div className="mt-2 font-black text-base" style={{ color: b.claimed ? '#4caf7d' : '#E4A24B' }}>
+                <div className="mt-2 font-black text-base" style={{ color: b.claimed ? '#00D4FF' : '#E4A24B' }}>
                   +{b.amount} ₮
                 </div>
                 <div className="font-mono text-[10px] text-[#E8F2EA]/40 mt-0.5">
@@ -4967,10 +4967,10 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
       </div>
 
       {/* Live wins ticker */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 14, overflow: 'hidden', background: 'rgba(0,208,132,0.05)', border: '1px solid rgba(0,208,132,0.18)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 14, overflow: 'hidden', background: 'rgba(0,212,255,0.05)', border: '1px solid rgba(0,212,255,0.18)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00D084', boxShadow: '0 0 0 3px rgba(0,208,132,0.2)', animation: 'pulse 1.5s infinite' }} />
-          <span style={{ fontWeight: 900, fontSize: 9, letterSpacing: 1.5, color: '#00D084', textTransform: 'uppercase' }}>LIVE</span>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00D4FF', boxShadow: '0 0 0 3px rgba(0,212,255,0.2)', animation: 'pulse 1.5s infinite' }} />
+          <span style={{ fontWeight: 900, fontSize: 9, letterSpacing: 1.5, color: '#00D4FF', textTransform: 'uppercase' }}>LIVE</span>
         </div>
         <div style={{ flex: 1, overflow: 'hidden', maskImage: 'linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)', WebkitMaskImage: 'linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)' }}>
           <div className="flex gap-5 animate-ticker" style={{ flexShrink: 0 }}>
@@ -4979,7 +4979,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
                 <span style={{ fontWeight: 700, color: '#EEF4F0' }}>{w.user_name.split(' ')[0]}</span>
                 <span style={{ opacity: 0.25 }}>·</span>
                 <span style={{ textTransform: 'capitalize' }}>{w.game_type}</span>
-                <span style={{ fontWeight: 900, color: '#00D084' }}>+{fmtCoins(w.win_amount)}</span>
+                <span style={{ fontWeight: 900, color: '#00D4FF' }}>+{fmtCoins(w.win_amount)}</span>
               </div>
             ))}
           </div>
@@ -4996,19 +4996,19 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
           background: 'linear-gradient(135deg, #0D1B24 0%, #131018 100%)',
         }}>
           {/* Animated lines */}
-          <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(55deg, transparent 0 14px, rgba(245,197,24,0.025) 14px 16px)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(55deg, transparent 0 14px, rgba(124,92,252,0.025) 14px 16px)', pointerEvents: 'none' }} />
           {/* Glow */}
-          <div style={{ position: 'absolute', bottom: -30, left: '30%', width: 200, height: 120, background: 'radial-gradient(ellipse, rgba(245,197,24,0.18), transparent 65%)', filter: 'blur(20px)' }} />
-          <TrendingUp size={70} strokeWidth={1} style={{ color: 'rgba(245,197,24,0.35)', position: 'relative', zIndex: 1 }} />
-          <span style={{ position: 'absolute', top: 10, left: 12, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', color: '#F5C518', fontSize: 9, fontWeight: 900, letterSpacing: 1.2, border: '1px solid rgba(245,197,24,0.35)' }}>🔥 HOT</span>
-          <span style={{ position: 'absolute', top: 10, right: 12, fontSize: 22, fontWeight: 900, color: '#00D084', letterSpacing: -0.5, textShadow: '0 0 16px rgba(0,208,132,0.7)' }}>×12.45</span>
+          <div style={{ position: 'absolute', bottom: -30, left: '30%', width: 200, height: 120, background: 'radial-gradient(ellipse, rgba(124,92,252,0.18), transparent 65%)', filter: 'blur(20px)' }} />
+          <TrendingUp size={70} strokeWidth={1} style={{ color: 'rgba(124,92,252,0.35)', position: 'relative', zIndex: 1 }} />
+          <span style={{ position: 'absolute', top: 10, left: 12, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', color: '#7C5CFC', fontSize: 9, fontWeight: 900, letterSpacing: 1.2, border: '1px solid rgba(124,92,252,0.35)' }}>🔥 HOT</span>
+          <span style={{ position: 'absolute', top: 10, right: 12, fontSize: 22, fontWeight: 900, color: '#00D4FF', letterSpacing: -0.5, textShadow: '0 0 16px rgba(0,212,255,0.7)' }}>×12.45</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0C1519', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#100E1E', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           <div>
             <div style={{ fontWeight: 900, fontSize: 14, color: '#EEF4F0', letterSpacing: 0.5, textTransform: 'uppercase' }}>Crash</div>
             <div style={{ fontSize: 10, color: 'rgba(238,244,240,0.45)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>1 247 грає зараз</div>
           </div>
-          <span style={{ padding: '8px 18px', borderRadius: 20, fontWeight: 800, fontSize: 12, letterSpacing: 0.5, background: 'linear-gradient(135deg,#C99B14,#F5C518)', color: '#0a0800', boxShadow: '0 3px 12px rgba(245,197,24,0.4)' }}>Грати →</span>
+          <span style={{ padding: '8px 18px', borderRadius: 20, fontWeight: 800, fontSize: 12, letterSpacing: 0.5, background: 'linear-gradient(135deg,#5A3FD4,#7C5CFC)', color: '#050318', boxShadow: '0 3px 12px rgba(124,92,252,0.4)' }}>Грати →</span>
         </div>
       </button>
 
@@ -5021,10 +5021,10 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
             <button key={c} onClick={() => setCat(c)} style={{
               flexShrink: 0, padding: '6px 14px', borderRadius: 20,
               fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: 'pointer',
-              background: active ? '#F5C518' : 'rgba(255,255,255,0.05)',
-              color: active ? '#0a0800' : 'rgba(238,244,240,0.5)',
-              border: `1px solid ${active ? '#F5C518' : 'rgba(255,255,255,0.07)'}`,
-              boxShadow: active ? '0 2px 12px rgba(245,197,24,0.35)' : 'none',
+              background: active ? '#7C5CFC' : 'rgba(255,255,255,0.05)',
+              color: active ? '#050318' : 'rgba(238,244,240,0.5)',
+              border: `1px solid ${active ? '#7C5CFC' : 'rgba(255,255,255,0.07)'}`,
+              boxShadow: active ? '0 2px 12px rgba(124,92,252,0.35)' : 'none',
               transition: 'all 0.15s',
             }}>
               {labels[c]}
@@ -5069,9 +5069,9 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
                     <div style={{ position: 'relative', zIndex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                         {g.live && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(0,208,132,0.12)', border: '1px solid rgba(0,208,132,0.4)' }}>
-                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00D084', boxShadow: '0 0 6px #00D084', animation: 'pulse 1.5s infinite' }} />
-                            <span style={{ fontWeight: 900, fontSize: 8, letterSpacing: '0.12em', color: '#00D084' }}>LIVE</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.4)' }}>
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00D4FF', boxShadow: '0 0 6px #00D4FF', animation: 'pulse 1.5s infinite' }} />
+                            <span style={{ fontWeight: 900, fontSize: 8, letterSpacing: '0.12em', color: '#00D4FF' }}>LIVE</span>
                           </span>
                         )}
                         <span style={{ padding: '3px 9px', borderRadius: 20, background: `${g.accent}18`, border: `1px solid ${g.accent}40`, fontWeight: 800, fontSize: 9, color: g.accent, letterSpacing: 0.8 }}>{g.hint}</span>
@@ -5085,9 +5085,9 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
                   <>
                     <span style={{ fontSize: isTall ? 48 : 38, lineHeight: 1, filter: `drop-shadow(0 0 14px ${g.accent}90)`, position: 'relative', zIndex: 1 }}>{g.emoji}</span>
                     {g.live && (
-                      <span style={{ position: 'absolute', top: 7, left: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(0,208,132,0.1)', border: '1px solid rgba(0,208,132,0.4)' }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00D084', boxShadow: '0 0 5px #00D084' }} />
-                        <span style={{ fontWeight: 900, fontSize: 8, letterSpacing: '0.12em', color: '#00D084' }}>LIVE</span>
+                      <span style={{ position: 'absolute', top: 7, left: 8, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.4)' }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00D4FF', boxShadow: '0 0 5px #00D4FF' }} />
+                        <span style={{ fontWeight: 900, fontSize: 8, letterSpacing: '0.12em', color: '#00D4FF' }}>LIVE</span>
                       </span>
                     )}
                     <span style={{ position: 'absolute', bottom: 7, right: 9, fontWeight: 900, fontSize: 11, color: g.accent, textShadow: `0 0 8px ${g.accent}` }}>{g.hint}</span>
@@ -5105,7 +5105,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
                 {isWide && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ fontWeight: 600, fontSize: 10, color: 'rgba(238,244,240,0.4)' }}>Натисни щоб грати</div>
-                    <span style={{ padding: '5px 14px', borderRadius: 20, fontWeight: 800, fontSize: 11, background: `linear-gradient(135deg, ${g.accent}CC, ${g.accent})`, color: '#060C0F', boxShadow: `0 3px 12px ${g.accent}40` }}>Грати →</span>
+                    <span style={{ padding: '5px 14px', borderRadius: 20, fontWeight: 800, fontSize: 11, background: `linear-gradient(135deg, ${g.accent}CC, ${g.accent})`, color: '#09090F', boxShadow: `0 3px 12px ${g.accent}40` }}>Грати →</span>
                   </div>
                 )}
               </div>
@@ -5117,15 +5117,15 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
       {/* Quick links */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[
-          { label: 'Таблиця лідерів', sub: 'Топ-10 гравців', emoji: '🏆', view: 'leaderboard' as CasinoView, color: '#F5C518' },
-          { label: 'Історія ігор',    sub: 'Всі ваші ставки',  emoji: '📊', view: 'history'     as CasinoView, color: '#00D084' },
+          { label: 'Таблиця лідерів', sub: 'Топ-10 гравців', emoji: '🏆', view: 'leaderboard' as CasinoView, color: '#7C5CFC' },
+          { label: 'Історія ігор',    sub: 'Всі ваші ставки',  emoji: '📊', view: 'history'     as CasinoView, color: '#00D4FF' },
         ].map(item => (
           <button key={item.label} onClick={() => onSelectGame(item.view)} style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 16, cursor: 'pointer',
-            background: '#0C1519', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'left', transition: 'all 0.15s',
+            background: '#100E1E', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'left', transition: 'all 0.15s',
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#12202A')}
-          onMouseLeave={e => (e.currentTarget.style.background = '#0C1519')}>
+          onMouseEnter={e => (e.currentTarget.style.background = '#181528')}
+          onMouseLeave={e => (e.currentTarget.style.background = '#100E1E')}>
             <div style={{ width: 40, height: 40, borderRadius: 13, background: `rgba(255,255,255,0.04)`, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{item.emoji}</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 800, fontSize: 13, color: '#EEF4F0', letterSpacing: 0.2 }}>{item.label}</div>
@@ -5205,7 +5205,7 @@ function LeaderboardView({ token }: { token: string }) {
               <div key={r.user_id}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
                 style={{
-                  background: i < 3 ? `${RANK_COLORS[i]}0a` : '#112A1C',
+                  background: i < 3 ? `${RANK_COLORS[i]}0a` : '#100E22',
                   border: `1px solid ${i < 3 ? RANK_COLORS[i] + '25' : 'rgba(255,255,255,0.05)'}`,
                 }}>
                 <div className="w-6 text-center font-black text-sm shrink-0">
@@ -5219,7 +5219,7 @@ function LeaderboardView({ token }: { token: string }) {
                   <div className="font-black text-xs text-[#E8F2EA] truncate">{r.full_name}</div>
                   <div className="font-mono text-[10px] text-[#E8F2EA]/40">{r.games_count} ігор</div>
                 </div>
-                <div className="font-black text-sm shrink-0" style={{ color: i < 3 ? RANK_COLORS[i] : '#5BBE8A' }}>
+                <div className="font-black text-sm shrink-0" style={{ color: i < 3 ? RANK_COLORS[i] : '#00D4FF' }}>
                   {fmtCoins(r.total_won)}
                 </div>
               </div>
@@ -5262,11 +5262,11 @@ function HistoryView({ token }: { token: string }) {
         <div className="grid grid-cols-3 gap-2">
           {[
             { label: 'Ставки', value: fmtCoins(totalBet), color: '#E8F2EA' },
-            { label: 'Виграші', value: fmtCoins(totalWon), color: totalWon >= totalBet ? '#5BBE8A' : '#E54B5E' },
+            { label: 'Виграші', value: fmtCoins(totalWon), color: totalWon >= totalBet ? '#00D4FF' : '#E54B5E' },
             { label: 'Win Rate', value: `${winRate}%`, color: '#E4A24B' },
           ].map(s => (
             <div key={s.label} className="rounded-xl px-3 py-2.5 text-center"
-              style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+              style={{ background: '#100E22', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div className="font-mono text-[9px] text-[#E8F2EA]/40 uppercase mb-0.5">{s.label}</div>
               <div className="font-black text-sm" style={{ color: s.color }}>{s.value}</div>
             </div>
@@ -5280,7 +5280,7 @@ function HistoryView({ token }: { token: string }) {
         </div>
       ) : rows.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center">
-          <BarChart2 size={40} style={{ color: 'rgba(91,190,138,0.3)' }} />
+          <BarChart2 size={40} style={{ color: 'rgba(124,92,252,0.3)' }} />
           <div className="font-black text-sm text-[#E8F2EA]/40">Ще немає ігор</div>
           <div className="font-mono text-xs text-[#E8F2EA]/25">Зіграй першу партію!</div>
         </div>
@@ -5293,8 +5293,8 @@ function HistoryView({ token }: { token: string }) {
             return (
               <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
                 style={{
-                  background: '#112A1C',
-                  border: `1px solid ${won ? 'rgba(91,190,138,0.15)' : 'rgba(255,255,255,0.04)'}`,
+                  background: '#100E22',
+                  border: `1px solid ${won ? 'rgba(124,92,252,0.15)' : 'rgba(255,255,255,0.04)'}`,
                 }}>
                 <div className="text-xl shrink-0">{GAME_EMOJI[r.game_type] || '🎮'}</div>
                 <div className="flex-1 min-w-0">
@@ -5302,7 +5302,7 @@ function HistoryView({ token }: { token: string }) {
                   <div className="font-mono text-[10px] text-[#E8F2EA]/40">{date}</div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="font-black text-xs" style={{ color: won ? '#5BBE8A' : '#E54B5E' }}>
+                  <div className="font-black text-xs" style={{ color: won ? '#00D4FF' : '#E54B5E' }}>
                     {net >= 0 ? '+' : ''}{fmtCoins(net)}
                   </div>
                   <div className="font-mono text-[10px] text-[#E8F2EA]/40">bet {fmtCoins(r.bet_amount)}</div>
@@ -5367,13 +5367,13 @@ function AdminStats({ token }: { token: string }) {
 
   const cards = [
     { label: 'Гравців',      value: s.total_users,             color: '#E8F2EA' },
-    { label: 'Активних сьогодні', value: s.active_today,       color: '#5BBE8A' },
+    { label: 'Активних сьогодні', value: s.active_today,       color: '#00D4FF' },
     { label: 'Ставок всього', value: fmtCoins(s.total_wagered), color: '#E4A24B' },
     { label: 'Виплачено',    value: fmtCoins(s.total_won),     color: '#E54B5E' },
-    { label: 'Перевага казино', value: `${s.house_edge_pct}%`, color: '#5BBE8A' },
+    { label: 'Перевага казино', value: `${s.house_edge_pct}%`, color: '#00D4FF' },
     { label: 'Ігор сьогодні', value: s.games_today,            color: '#E8F2EA' },
     { label: 'Депозитів USDT', value: fmtCoins(s.total_deposits_usdt), color: '#E4A24B' },
-    { label: 'Депозитів сьогодні', value: fmtCoins(s.deposits_today), color: '#5BBE8A' },
+    { label: 'Депозитів сьогодні', value: fmtCoins(s.deposits_today), color: '#00D4FF' },
   ];
 
   return (
@@ -5381,7 +5381,7 @@ function AdminStats({ token }: { token: string }) {
       <div className="grid grid-cols-2 gap-2">
         {cards.map(c => (
           <div key={c.label} className="rounded-xl px-4 py-3"
-            style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+            style={{ background: '#100E22', border: '1px solid rgba(255,255,255,0.05)' }}>
             <div className="font-mono text-[9px] text-[#E8F2EA]/40 uppercase mb-1">{c.label}</div>
             <div className="font-black text-lg" style={{ color: c.color }}>{c.value}</div>
           </div>
@@ -5428,7 +5428,7 @@ function AdminWithdrawals({ token, notify }: { token: string; notify: (m: string
         {rows.length === 0 && <div className="text-center font-mono text-xs text-[#E8F2EA]/30 mt-8">Немає заявок</div>}
         {rows.map(w => (
           <div key={w.id} className="rounded-xl p-3 flex flex-col gap-2"
-            style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+            style={{ background: '#100E22', border: '1px solid rgba(255,255,255,0.05)' }}>
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-black text-xs text-[#E8F2EA]">{w.full_name}</div>
@@ -5444,7 +5444,7 @@ function AdminWithdrawals({ token, notify }: { token: string; notify: (m: string
                 <div className="flex gap-2">
                   <button onClick={() => process(w.id, 'approve')} disabled={processing === w.id || !txHash[w.id]}
                     className="flex-1 py-2 rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer disabled:opacity-40 transition-all"
-                    style={{ background: 'rgba(76,175,125,0.15)', color: '#4caf7d', border: '1px solid rgba(76,175,125,0.3)' }}>
+                    style={{ background: 'rgba(76,175,125,0.15)', color: '#00D4FF', border: '1px solid rgba(76,175,125,0.3)' }}>
                     {processing === w.id ? '⏳' : '✅ Підтвердити'}
                   </button>
                   <button onClick={() => process(w.id, 'reject')} disabled={processing === w.id}
@@ -5456,7 +5456,7 @@ function AdminWithdrawals({ token, notify }: { token: string; notify: (m: string
               </div>
             )}
             {w.status !== 'pending' && (
-              <span className="font-mono text-[10px] font-bold" style={{ color: w.status === 'done' ? '#4caf7d' : '#E54B5E' }}>
+              <span className="font-mono text-[10px] font-bold" style={{ color: w.status === 'done' ? '#00D4FF' : '#E54B5E' }}>
                 {w.status === 'done' ? '✅ Виконано' : '❌ Відхилено'}
               </span>
             )}
@@ -5496,7 +5496,7 @@ function AdminUsers({ token, notify }: { token: string; notify: (m: string) => v
       <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-2">
         {filtered.map(u => (
           <div key={u.id} className="rounded-xl px-3 py-2.5 flex items-center gap-3"
-            style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+            style={{ background: '#100E22', border: '1px solid rgba(255,255,255,0.05)' }}>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm shrink-0"
               style={{ background: 'rgba(228,162,75,0.12)', color: '#E4A24B' }}>
               {(u.full_name || '?')[0].toUpperCase()}
@@ -5538,7 +5538,7 @@ function AdminAdjust({ token, notify }: { token: string; notify: (m: string) => 
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
       <div className="rounded-xl p-4 flex flex-col gap-3"
-        style={{ background: '#112A1C', border: '1px solid rgba(255,255,255,0.05)' }}>
+        style={{ background: '#100E22', border: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="font-black text-xs text-[#E8F2EA] uppercase tracking-widest mb-1">Коригування балансу</div>
         <div>
           <label className="block font-mono text-[10px] text-[#E8F2EA]/40 uppercase mb-1">User ID</label>
@@ -5590,11 +5590,11 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
 
   // Avatar gradient — based on first letter
   const avatarGrads = [
-    'linear-gradient(135deg,#F5C518,#FF9500)',
-    'linear-gradient(135deg,#00D084,#0078FF)',
+    'linear-gradient(135deg,#7C5CFC,#FF9500)',
+    'linear-gradient(135deg,#00D4FF,#0078FF)',
     'linear-gradient(135deg,#FF3D5C,#FF9500)',
     'linear-gradient(135deg,#A855F7,#4B9FFF)',
-    'linear-gradient(135deg,#00D084,#F5C518)',
+    'linear-gradient(135deg,#00D4FF,#7C5CFC)',
   ];
   const avatarGrad = avatarGrads[initial.charCodeAt(0) % avatarGrads.length];
 
@@ -5612,10 +5612,10 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
   };
 
   const P = {
-    bg: '#060C0F', card: '#0C1519', card2: '#12202A',
+    bg: '#09090F', card: '#100E1E', card2: '#181528',
     line: 'rgba(255,255,255,0.07)', lineHi: 'rgba(255,255,255,0.12)',
     text: '#EEF4F0', dim: 'rgba(238,244,240,0.55)', mute: 'rgba(238,244,240,0.3)',
-    gold: '#F5C518', mint: '#00D084', ruby: '#FF3D5C',
+    gold: '#7C5CFC', mint: '#00D4FF', ruby: '#FF3D5C',
   };
 
   return (
@@ -5650,10 +5650,10 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
               <div style={{
                 position: 'absolute', bottom: -6, right: -6,
                 width: 26, height: 26, borderRadius: 8,
-                background: `linear-gradient(135deg, ${P.gold}, #C99B14)`,
+                background: `linear-gradient(135deg, ${P.gold}, #5A3FD4)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 900, color: '#0a0800',
-                boxShadow: `0 2px 10px rgba(245,197,24,0.4), 0 0 0 2px ${P.bg}`,
+                fontSize: 12, fontWeight: 900, color: '#050318',
+                boxShadow: `0 2px 10px rgba(124,92,252,0.4), 0 0 0 2px ${P.bg}`,
               }}>
                 {wallet.level}
               </div>
@@ -5666,7 +5666,7 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8,
                 padding: '4px 12px', borderRadius: 20,
-                background: `rgba(245,197,24,0.1)`, border: `1px solid rgba(245,197,24,0.3)`,
+                background: `rgba(124,92,252,0.1)`, border: `1px solid rgba(124,92,252,0.3)`,
                 fontSize: 11, fontWeight: 700, color: P.gold, letterSpacing: 1.2, textTransform: 'uppercase',
               }}>
                 ⭐ {levelTitle}
@@ -5681,7 +5681,7 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
               <span style={{ fontSize: 11, fontWeight: 700, color: P.gold, fontFamily: 'var(--font-mono)' }}>{_xpCur.toLocaleString()} / {xpToNext.toLocaleString()} XP</span>
             </div>
             <div style={{ height: 7, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
-              <div style={{ height: '100%', width: `${xpPct}%`, borderRadius: 99, transition: 'width 0.8s cubic-bezier(0.22,1,0.36,1)', background: `linear-gradient(90deg, ${P.mint}, ${P.gold})`, boxShadow: `0 0 8px rgba(245,197,24,0.4)` }} />
+              <div style={{ height: '100%', width: `${xpPct}%`, borderRadius: 99, transition: 'width 0.8s cubic-bezier(0.22,1,0.36,1)', background: `linear-gradient(90deg, ${P.mint}, ${P.gold})`, boxShadow: `0 0 8px rgba(124,92,252,0.4)` }} />
             </div>
             <div style={{ fontSize: 10, color: P.mute, marginTop: 5 }}>{Math.max(0, xpToNext - _xpCur).toLocaleString()} XP до наступного рівня</div>
           </div>
@@ -5777,8 +5777,8 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
                 return (
                   <div key={key} style={{
                     borderRadius: 14, padding: '12px 14px',
-                    background: unlocked ? 'rgba(245,197,24,0.06)' : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${unlocked ? 'rgba(245,197,24,0.3)' : P.line}`,
+                    background: unlocked ? 'rgba(124,92,252,0.06)' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${unlocked ? 'rgba(124,92,252,0.3)' : P.line}`,
                     opacity: unlocked ? 1 : 0.4,
                     transition: 'all 0.2s',
                   }}>
@@ -5810,7 +5810,7 @@ function WakeUpScreen() {
       style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(228,162,75,0.08) 0%, transparent 70%), #080e12' }}>
       <div className="relative">
         <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg,#163524,#0d1f18)', border: '1px solid rgba(228,162,75,0.35)', boxShadow: '0 0 40px rgba(228,162,75,0.15)' }}>
+          style={{ background: 'linear-gradient(135deg,#1E1B35,#130F28)', border: '1px solid rgba(228,162,75,0.35)', boxShadow: '0 0 40px rgba(228,162,75,0.15)' }}>
           <HummingbirdLogo size={52} />
         </div>
         <div className="absolute -inset-2 rounded-3xl animate-ping opacity-20"
@@ -5923,21 +5923,21 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
 
   const LANG_FLAGS: Record<LangCode, string> = { en: '🇬🇧', uk: '🇺🇦', ru: '🇷🇺', es: '🇪🇸', it: '🇮🇹', de: '🇩🇪' };
 
-  // Casino design tokens
+  // Design tokens — Deep Space Violet
   const C = {
-    bg:       '#07090d',
-    panel:    'rgba(12,18,14,0.95)',
-    card:     '#0d1a10',
-    border:   'rgba(200,160,60,0.22)',
-    borderHi: 'rgba(240,185,58,0.7)',
-    gold:     '#F0B93A',
-    goldDim:  '#c9962e',
-    text:     '#F0EDE6',
-    textDim:  'rgba(240,237,230,0.5)',
-    textMute: 'rgba(240,237,230,0.3)',
-    input:    'rgba(0,0,0,0.4)',
-    error:    '#FF5A6E',
-    green:    '#4ecb8d',
+    bg:       '#09090F',
+    panel:    'rgba(13,11,26,0.97)',
+    card:     '#100E1E',
+    border:   'rgba(124,92,252,0.2)',
+    borderHi: 'rgba(155,127,255,0.65)',
+    gold:     '#F5A623',
+    goldDim:  '#D48A15',
+    text:     '#EEEEF2',
+    textDim:  'rgba(238,238,242,0.55)',
+    textMute: 'rgba(238,238,242,0.30)',
+    input:    'rgba(255,255,255,0.05)',
+    error:    '#FF4466',
+    green:    '#00D4FF',
   };
 
   const inp: React.CSSProperties = {
@@ -5964,24 +5964,24 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
       <div style={{
         position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: `
-          radial-gradient(ellipse 120% 40% at 50% 0%, rgba(200,150,40,0.14) 0%, transparent 55%),
-          radial-gradient(ellipse 70% 70% at 90% 100%, rgba(14,80,40,0.2) 0%, transparent 55%),
-          radial-gradient(ellipse 60% 60% at 0% 60%, rgba(14,60,30,0.16) 0%, transparent 55%)
+          radial-gradient(ellipse 120% 40% at 50% 0%, rgba(124,92,252,0.18) 0%, transparent 55%),
+          radial-gradient(ellipse 70% 70% at 90% 100%, rgba(0,212,255,0.10) 0%, transparent 55%),
+          radial-gradient(ellipse 60% 60% at 0% 60%, rgba(124,92,252,0.10) 0%, transparent 55%)
         `,
       }} />
 
       {/* Floating card suits — decorative */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0, userSelect: 'none' }}>
         {[
-          { s: '♠', x: '3%',  y: '6%',  sz: 90,  rot: -18, op: 0.05 },
+          { s: '♠', x: '3%',  y: '6%',  sz: 90,  rot: -18, op: 0.07 },
           { s: '♥', x: '85%', y: '4%',  sz: 75,  rot: 14,  op: 0.06 },
-          { s: '♦', x: '1%',  y: '68%', sz: 85,  rot: -10, op: 0.04 },
-          { s: '♣', x: '82%', y: '66%', sz: 100, rot: 22,  op: 0.05 },
-          { s: '♥', x: '45%', y: '2%',  sz: 50,  rot: 6,   op: 0.03 },
+          { s: '♦', x: '1%',  y: '68%', sz: 85,  rot: -10, op: 0.05 },
+          { s: '♣', x: '82%', y: '66%', sz: 100, rot: 22,  op: 0.06 },
+          { s: '♥', x: '45%', y: '2%',  sz: 50,  rot: 6,   op: 0.04 },
         ].map((d, i) => (
           <div key={i} style={{
             position: 'absolute', left: d.x, top: d.y,
-            fontSize: d.sz, color: `rgba(220,170,50,${d.op})`,
+            fontSize: d.sz, color: `rgba(124,92,252,${d.op})`,
             transform: `rotate(${d.rot}deg)`, lineHeight: 1, fontWeight: 900,
           }}>{d.s}</div>
         ))}
@@ -5998,12 +5998,12 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
             padding: '40px 36px',
-            background: 'linear-gradient(155deg,#0a1a0d 0%,#071209 60%,#060f09 100%)',
+            background: 'linear-gradient(155deg,#0D0B1F 0%,#0A0818 60%,#08070F 100%)',
             borderRight: `1px solid ${C.border}`,
           }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#163524,#0d1f18)', border: `1px solid rgba(200,160,60,0.35)`, boxShadow: '0 0 24px rgba(200,160,60,0.15)' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#2A1F5A,#1A1435)', border: `1px solid rgba(124,92,252,0.4)`, boxShadow: '0 0 24px rgba(124,92,252,0.2)' }}>
                   <HummingbirdLogo size={30} />
                 </div>
                 <div>
@@ -6017,7 +6017,7 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
                 { icon: '🔒', title: 'E2E шифрування', sub: 'Захищені повідомлення Fernet' },
                 { icon: '🎁', title: '+200₮ бонус', sub: 'При першій реєстрації одразу' },
               ].map(f => (
-                <div key={f.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, marginBottom: 10 }}>
+                <div key={f.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'rgba(124,92,252,0.06)', border: `1px solid ${C.border}`, marginBottom: 10 }}>
                   <span style={{ fontSize: 18, marginTop: 1 }}>{f.icon}</span>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{f.title}</div>
@@ -6058,14 +6058,14 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
         {/* Top hero section */}
         <div style={{
           padding: '52px 24px 28px',
-          background: 'linear-gradient(180deg, rgba(14,30,18,0.95) 0%, transparent 100%)',
+          background: 'linear-gradient(180deg, rgba(20,14,45,0.98) 0%, transparent 100%)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flexShrink: 0,
         }}>
           <div style={{
             width: 64, height: 64, borderRadius: 18,
-            background: 'linear-gradient(135deg,#163524,#0d1f18)',
-            border: `1.5px solid rgba(200,160,60,0.4)`,
-            boxShadow: '0 0 32px rgba(200,160,60,0.2)',
+            background: 'linear-gradient(135deg,#2A1F5A,#1A1435)',
+            border: `1.5px solid rgba(124,92,252,0.5)`,
+            boxShadow: '0 0 32px rgba(124,92,252,0.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <HummingbirdLogo size={40} />
@@ -6087,10 +6087,10 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string, isNew?: bo
         <div style={{
           flex: 1,
           margin: '0 12px 16px',
-          background: 'rgba(10,17,12,0.97)',
+          background: 'rgba(13,11,26,0.97)',
           borderRadius: 24,
           border: `1px solid ${C.border}`,
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,92,252,0.08) inset',
           padding: '24px 20px 28px',
           display: 'flex', flexDirection: 'column',
         }}>
@@ -6498,31 +6498,35 @@ export default function App() {
 
   // ── Design tokens ─────────────────────────────────────────
   const T = {
-    // Surfaces
-    bg0: '#060C0F',         // base — near-black
-    bg1: '#0C1519',         // card bg
-    bg2: '#12202A',         // elevated card
-    bg3: '#18293600',       // glass layer (use with backdrop-filter)
+    // Surfaces — Deep Space Violet
+    bg0: '#09090F',         // base — true near-black
+    bg1: '#100E1E',         // card bg
+    bg2: '#181528',         // elevated card
+    bg3: '#201C3500',       // glass layer
     // Text
-    text: '#EEF4F0',
-    textDim: 'rgba(238,244,240,0.58)',
-    textMute: 'rgba(238,244,240,0.32)',
+    text: '#EEEEF2',
+    textDim: 'rgba(238,238,242,0.55)',
+    textMute: 'rgba(238,238,242,0.30)',
     // Lines
     hairline: 'rgba(255,255,255,0.07)',
-    hairlineHi: 'rgba(255,255,255,0.13)',
-    // Accents
-    gold: '#F5C518',        // primary gold
-    goldDim: '#C99B14',
-    goldGlow: 'rgba(245,197,24,0.28)',
-    mint: '#00D084',        // emerald green
-    mintDim: '#00A366',
-    mintGlow: 'rgba(0,208,132,0.22)',
+    hairlineHi: 'rgba(255,255,255,0.14)',
+    // Primary — Electric Violet
+    gold: '#7C5CFC',        // primary violet (reusing "gold" key for compat)
+    goldDim: '#5A3FD4',
+    goldGlow: 'rgba(124,92,252,0.30)',
+    // Secondary — Neon Cyan
+    mint: '#00D4FF',        // neon cyan
+    mintDim: '#00A8CC',
+    mintGlow: 'rgba(0,212,255,0.22)',
+    // Casino gold (actual gold for $ values)
+    amber: '#F5A623',
+    amberGlow: 'rgba(245,166,35,0.28)',
     coral: '#FF6B5B',
-    ruby: '#FF3D5C',
+    ruby: '#FF3B6B',
     sky: '#4B9FFF',
     purple: '#A855F7',
     // Compat aliases
-    amber: '#F5C518',
+    amber: '#7C5CFC',
   };
 
   // ── AppHeader ─────────────────────────────────────────────
@@ -6540,9 +6544,9 @@ export default function App() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
         <div style={{
           width: 30, height: 30, borderRadius: 9,
-          background: 'linear-gradient(135deg,#0e2c1a,#071a10)',
-          border: `1px solid rgba(245,197,24,0.3)`,
-          boxShadow: '0 0 12px rgba(245,197,24,0.15)',
+          background: 'linear-gradient(135deg,#1A1535,#100E22)',
+          border: `1px solid rgba(124,92,252,0.3)`,
+          boxShadow: '0 0 12px rgba(124,92,252,0.15)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>
           <HummingbirdLogo size={18} />
@@ -6559,15 +6563,15 @@ export default function App() {
         style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '6px 12px', borderRadius: 20,
-          background: 'linear-gradient(135deg, rgba(245,197,24,0.15), rgba(245,197,24,0.08))',
-          border: `1.5px solid rgba(245,197,24,0.35)`,
-          boxShadow: '0 2px 16px rgba(245,197,24,0.12)',
+          background: 'linear-gradient(135deg, rgba(124,92,252,0.15), rgba(124,92,252,0.08))',
+          border: `1.5px solid rgba(124,92,252,0.35)`,
+          boxShadow: '0 2px 16px rgba(124,92,252,0.12)',
           color: T.gold, fontSize: 13, fontWeight: 800,
           cursor: 'pointer', fontFamily: 'var(--font-mono)', flexShrink: 0,
           letterSpacing: 0.2, transition: 'all 0.15s',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(245,197,24,0.22), rgba(245,197,24,0.13))'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(245,197,24,0.15), rgba(245,197,24,0.08))'; }}>
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(124,92,252,0.22), rgba(124,92,252,0.13))'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(124,92,252,0.15), rgba(124,92,252,0.08))'; }}>
         <Coins size={13} style={{ flexShrink: 0 }} />
         <AnimatedBalance value={wallet.balance} />
       </button>
@@ -6581,8 +6585,8 @@ export default function App() {
         ].map((btn, i) => (
           <button key={i} onClick={btn.onClick} title={btn.title} style={{
             width: 32, height: 32, borderRadius: 9,
-            background: btn.active ? 'rgba(245,197,24,0.1)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${btn.active ? 'rgba(245,197,24,0.3)' : T.hairline}`,
+            background: btn.active ? 'rgba(124,92,252,0.1)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${btn.active ? 'rgba(124,92,252,0.3)' : T.hairline}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: btn.danger ? T.ruby : btn.active ? T.gold : T.textDim,
             cursor: 'pointer', fontSize: 14, transition: 'all 0.15s', flexShrink: 0,
@@ -6616,7 +6620,7 @@ export default function App() {
         <div style={{
           display: 'flex', gap: 0, padding: '6px 8px',
           borderRadius: 26,
-          background: 'rgba(14,22,28,0.92)',
+          background: 'rgba(16,14,30,0.92)',
           backdropFilter: 'blur(32px) saturate(200%)',
           WebkitBackdropFilter: 'blur(32px) saturate(200%)',
           border: '1px solid rgba(255,255,255,0.1)',
@@ -6637,10 +6641,10 @@ export default function App() {
                   border: 'none',
                   background: active
                     ? isCasino
-                      ? 'linear-gradient(135deg, rgba(245,197,24,0.22), rgba(201,155,20,0.14))'
+                      ? 'linear-gradient(135deg, rgba(124,92,252,0.22), rgba(201,155,20,0.14))'
                       : 'rgba(255,255,255,0.08)'
                     : 'transparent',
-                  boxShadow: active && isCasino ? '0 0 20px rgba(245,197,24,0.2), inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
+                  boxShadow: active && isCasino ? '0 0 20px rgba(124,92,252,0.2), inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
                   transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
                   transform: active ? 'scale(1.04)' : 'scale(1)',
                 }}>
@@ -6659,13 +6663,13 @@ export default function App() {
                   </span>
                 )}
                 {/* Icon */}
-                <div style={{ color: active ? (isCasino ? '#F5C518' : '#EEF4F0') : 'rgba(238,244,240,0.38)', transition: 'color 0.2s' }}>
+                <div style={{ color: active ? (isCasino ? '#7C5CFC' : '#EEF4F0') : 'rgba(238,244,240,0.38)', transition: 'color 0.2s' }}>
                   {tab.icon}
                 </div>
                 {/* Label */}
                 <span style={{
                   fontSize: 9, fontWeight: active ? 700 : 500, letterSpacing: 0.4,
-                  color: active ? (isCasino ? '#F5C518' : 'rgba(238,244,240,0.9)') : 'rgba(238,244,240,0.32)',
+                  color: active ? (isCasino ? '#7C5CFC' : 'rgba(238,244,240,0.9)') : 'rgba(238,244,240,0.32)',
                   transition: 'color 0.2s', textTransform: 'uppercase',
                 }}>
                   {tab.label}
@@ -6675,8 +6679,8 @@ export default function App() {
                   <span style={{
                     position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
                     width: 4, height: 4, borderRadius: '50%',
-                    background: isCasino ? '#F5C518' : '#EEF4F0',
-                    boxShadow: isCasino ? '0 0 6px #F5C518' : 'none',
+                    background: isCasino ? '#7C5CFC' : '#EEF4F0',
+                    boxShadow: isCasino ? '0 0 6px #7C5CFC' : 'none',
                   }} />
                 )}
               </button>
@@ -6803,8 +6807,8 @@ export default function App() {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 5,
         padding: '5px 12px', borderRadius: 20,
-        background: 'linear-gradient(135deg, rgba(245,197,24,0.14), rgba(245,197,24,0.07))',
-        border: `1.5px solid rgba(245,197,24,0.3)`,
+        background: 'linear-gradient(135deg, rgba(124,92,252,0.14), rgba(124,92,252,0.07))',
+        border: `1.5px solid rgba(124,92,252,0.3)`,
         color: T.gold, fontSize: 12, fontWeight: 800,
         fontFamily: 'var(--font-mono)', flexShrink: 0,
       }}>
@@ -6815,13 +6819,13 @@ export default function App() {
   );
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#060C0F', color: T.text, overflow: 'hidden', position: 'relative' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#09090F', color: T.text, overflow: 'hidden', position: 'relative' }}>
 
       {/* ── Mesh gradient background ─────────────────────── */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-        <div className="mesh-blob-1" style={{ position: 'absolute', top: '-10%', left: '-5%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,208,132,0.07) 0%, transparent 65%)', filter: 'blur(40px)' }} />
-        <div className="mesh-blob-2" style={{ position: 'absolute', bottom: '5%', right: '-10%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,197,24,0.07) 0%, transparent 65%)', filter: 'blur(50px)' }} />
-        <div className="mesh-blob-3" style={{ position: 'absolute', top: '40%', left: '40%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(75,159,255,0.05) 0%, transparent 65%)', filter: 'blur(35px)' }} />
+        <div className="mesh-blob-1" style={{ position: 'absolute', top: '-10%', left: '-5%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,92,252,0.12) 0%, transparent 65%)', filter: 'blur(60px)' }} />
+        <div className="mesh-blob-2" style={{ position: 'absolute', bottom: '5%', right: '-10%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,212,255,0.08) 0%, transparent 65%)', filter: 'blur(70px)' }} />
+        <div className="mesh-blob-3" style={{ position: 'absolute', top: '40%', left: '40%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(155,127,255,0.07) 0%, transparent 65%)', filter: 'blur(50px)' }} />
       </div>
 
       {/* ── AppHeader ────────────────────────────────────── */}
@@ -7086,7 +7090,7 @@ export default function App() {
       {showChatInfo && activeChat && (
         <div style={{
           position: 'fixed', right: 0, top: 0, bottom: 0, width: 280, zIndex: 50,
-          background: 'rgba(12,21,25,0.97)',
+          background: 'rgba(13,11,26,0.97)',
           backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
           borderLeft: `1px solid rgba(255,255,255,0.08)`,
           display: 'flex', flexDirection: 'column',

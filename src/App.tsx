@@ -4804,8 +4804,12 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
   token: string;
   notify: (m: string) => void;
 }) {
-  const xpToNext = wallet.level * 500;
-  const xpPct = Math.min(100, Math.round((wallet.xp % xpToNext) / xpToNext * 100));
+  // Match backend: level = floor((xp/500)^0.6) + 1  →  xp needed for lvl N = floor((N-1)^(1/0.6) * 500)
+  const xpForLevel = (lvl: number) => Math.floor(Math.pow(lvl - 1, 1 / 0.6) * 500);
+  const xpCurrent = wallet.xp - xpForLevel(wallet.level);
+  const xpNeeded  = xpForLevel(wallet.level + 1) - xpForLevel(wallet.level);
+  const xpToNext  = Math.max(1, xpNeeded);
+  const xpPct = Math.min(100, Math.round(xpCurrent / xpToNext * 100));
 
   type GameMeta = { key: CasinoView; label: string; tag: string; hint: string; accent: string; emoji: string; live?: boolean };
   const GAMES: GameMeta[] = [
@@ -4901,7 +4905,7 @@ function CasinoLobby({ wallet, onSelectGame, onWalletUpdate, token, notify }: {
           <div className="flex-1">
             <div className="flex justify-between font-mono text-[10px] text-[#E8F2EA]/60 mb-1 uppercase tracking-widest">
               <span>Рівень {wallet.level}</span>
-              <span>{wallet.xp % xpToNext} / {xpToNext} XP</span>
+              <span>{xpCurrent} / {xpToNext} XP</span>
             </div>
             <div className="h-1 bg-white/5 rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-all duration-500"
@@ -5577,8 +5581,10 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
   const winRate = wallet.total_bet > 0 ? Math.round((wallet.total_won / wallet.total_bet) * 100) : 0;
   const initial = (user.full_name || 'U')[0].toUpperCase();
   const handle = user.phone || user.email || 'user';
-  const xpToNext = wallet.level * 100;
-  const xpPct = Math.min(100, Math.round((wallet.xp % xpToNext) / xpToNext * 100));
+  const _xpForLvl = (lvl: number) => Math.floor(Math.pow(lvl - 1, 1 / 0.6) * 500);
+  const _xpCur    = wallet.xp - _xpForLvl(wallet.level);
+  const xpToNext  = Math.max(1, _xpForLvl(wallet.level + 1) - _xpForLvl(wallet.level));
+  const xpPct     = Math.min(100, Math.round(_xpCur / xpToNext * 100));
 
   const ALL_ACHIEVEMENTS: Record<string, { label: string; emoji: string }> = {
     big_winner:          { label: 'Великий переможець',  emoji: '💰' },
@@ -5627,12 +5633,12 @@ function ProfileView({ user, wallet, notify, onLogout, onGoDeposit, onGoHistory,
         <div style={{ background: T.bg1, border: `1px solid ${T.hairline}`, borderRadius: 14 }} className="px-4 py-3 flex flex-col gap-2">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: T.textDim }}>Рівень {wallet.level}</div>
-            <div style={{ fontSize: 11, color: T.amber, fontFamily: 'monospace' }}>{wallet.xp % xpToNext} / {xpToNext} XP</div>
+            <div style={{ fontSize: 11, color: T.amber, fontFamily: 'monospace' }}>{_xpCur} / {xpToNext} XP</div>
           </div>
           <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${xpPct}%`, background: 'linear-gradient(90deg,#5BBE8A,#E4A24B)', borderRadius: 99, transition: 'width 0.6s cubic-bezier(0.22,1,0.36,1)' }} />
           </div>
-          <div style={{ fontSize: 10, color: T.textMute }}>{xpToNext - (wallet.xp % xpToNext)} XP до {wallet.level + 1} рівня</div>
+          <div style={{ fontSize: 10, color: T.textMute }}>{xpToNext - _xpCur} XP до {wallet.level + 1} рівня</div>
         </div>
 
         {/* Stats grid */}

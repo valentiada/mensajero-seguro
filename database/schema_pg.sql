@@ -153,6 +153,63 @@ CREATE TABLE IF NOT EXISTS withdrawals (
 CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
 
+-- ── Support tickets ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    chat_id     INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    subject     TEXT    NOT NULL DEFAULT 'Звернення до підтримки',
+    status      TEXT    NOT NULL DEFAULT 'open',
+    priority    TEXT    NOT NULL DEFAULT 'normal',
+    assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    resolved_at TIMESTAMPTZ DEFAULT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── Casino ────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS casino_wallets (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    balance     NUMERIC(18,2) NOT NULL DEFAULT 1000.0,
+    total_bet   NUMERIC(18,2) NOT NULL DEFAULT 0,
+    total_won   NUMERIC(18,2) NOT NULL DEFAULT 0,
+    level       INTEGER NOT NULL DEFAULT 1,
+    xp          INTEGER NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS casino_games (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    game_type   TEXT    NOT NULL,
+    bet_amount  NUMERIC(18,2) NOT NULL,
+    win_amount  NUMERIC(18,2) NOT NULL DEFAULT 0,
+    result_data JSONB   NOT NULL DEFAULT '{}',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_casino_games_user ON casino_games(user_id);
+
+CREATE TABLE IF NOT EXISTS casino_achievements (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    achievement_key TEXT    NOT NULL,
+    unlocked_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, achievement_key)
+);
+CREATE INDEX IF NOT EXISTS idx_casino_ach_user ON casino_achievements(user_id);
+
+CREATE TABLE IF NOT EXISTS casino_leaderboard (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    total_won   NUMERIC(18,2) NOT NULL DEFAULT 0,
+    games_count INTEGER NOT NULL DEFAULT 0,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ── Daily bonuses ─────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS daily_bonus_claims (

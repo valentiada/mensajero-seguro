@@ -342,6 +342,7 @@ def history():
 
 
 @casino_bp.get('/recent-wins')
+@auth_required
 def recent_wins():
     rows = query_all(
         '''SELECT g.game_type, g.win_amount, g.bet_amount,

@@ -125,7 +125,7 @@ class CasinoService:
     # ── Wallet ────────────────────────────────────────────────────────────────
 
     def get_profile(self, user_id: int) -> dict:
-        from db import query_one
+        from ..database import query_one
         wallet = self.repo.ensure_wallet(user_id)
         history = self.repo.list_history(user_id, limit=10)
         achievements = self.repo.list_achievements(user_id)

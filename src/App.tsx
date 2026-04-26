@@ -2,11 +2,17 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { io, Socket } from 'socket.io-client';
 import confetti from 'canvas-confetti';
 
-// ─── Sound engine (Web Audio API, no deps) ────────────────────────────────────
-const _audioCtx = (() => {
-  try { return new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)(); }
-  catch { return null; }
-})();
+// ─── Sound engine (Web Audio API, lazy — safe on iOS Safari) ─────────────────
+let _audioCtx: AudioContext | null = null;
+
+function _getCtx(): AudioContext | null {
+  if (_audioCtx) return _audioCtx;
+  try {
+    const Ctor = (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ?? AudioContext;
+    _audioCtx = new Ctor();
+  } catch { _audioCtx = null; }
+  return _audioCtx;
+}
 
 let _soundEnabled = (() => { try { return localStorage.getItem('sound_on') !== '0'; } catch { return true; } })();
 function setSoundEnabled(v: boolean) {
@@ -16,13 +22,16 @@ function setSoundEnabled(v: boolean) {
 function isSoundEnabled() { return _soundEnabled; }
 
 function _playTone(freq: number, type: OscillatorType, gainVal: number, decay: number, delay = 0) {
-  if (!_audioCtx || !_soundEnabled) return;
+  if (!_soundEnabled) return;
   try {
-    const osc = _audioCtx.createOscillator();
-    const gain = _audioCtx.createGain();
-    osc.connect(gain); gain.connect(_audioCtx.destination);
+    const ctx = _getCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
     osc.type = type; osc.frequency.value = freq;
-    const t = _audioCtx.currentTime + delay;
+    const t = ctx.currentTime + delay;
     gain.gain.setValueAtTime(gainVal, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
     osc.start(t); osc.stop(t + decay);
@@ -6245,7 +6254,7 @@ export default function App() {
   const [search, setSearch] = useState('');
 
   // Nav
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('profile');
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('casino');
   const [casinoView, setCasinoView] = useState<CasinoView>('lobby');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showChatInfo, setShowChatInfo] = useState(false);
